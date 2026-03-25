@@ -1,0 +1,109 @@
+// SidebarDivider.swift
+// Argus
+//
+// Draggable dividers between the sidebar/content/git-sidebar columns.
+// Each divider is a 1px visible line with a 12px invisible hit zone for
+// drag gestures. The cursor changes to a horizontal-resize arrow on hover.
+
+import SwiftUI
+import AppKit
+
+// MARK: - Left Sidebar Divider
+
+/// Divider between the left sidebar and the content area.
+/// Dragging right increases `position`; dragging left decreases it.
+struct SidebarDivider: View {
+    @Binding var position: CGFloat
+    let minValue: CGFloat
+    let maxValue: CGFloat
+
+    @State private var dragStartWidth: CGFloat?
+
+    var body: some View {
+        Rectangle()
+            .fill(Color(nsColor: .separatorColor))
+            .frame(width: 1)
+            .overlay(
+                Rectangle()
+                    .fill(Color.clear)
+                    .frame(width: 12)
+                    .contentShape(Rectangle())
+                    .cursor(.resizeLeftRight)
+                    .gesture(
+                        DragGesture(minimumDistance: 2)
+                            .onChanged { value in
+                                if dragStartWidth == nil {
+                                    dragStartWidth = position
+                                }
+                                let newWidth = (dragStartWidth ?? position)
+                                    + value.translation.width
+                                withTransaction(Transaction(animation: nil)) {
+                                    position = max(minValue, min(maxValue, newWidth))
+                                }
+                            }
+                            .onEnded { _ in
+                                dragStartWidth = nil
+                            }
+                    )
+            )
+    }
+}
+
+// MARK: - Right Git Sidebar Divider
+
+/// Divider between the content area and the right git sidebar.
+/// Dragging left increases the sidebar width; dragging right decreases it
+/// (inverted compared to `SidebarDivider`).
+struct GitSidebarDivider: View {
+    @Binding var position: CGFloat
+    let minValue: CGFloat
+    let maxValue: CGFloat
+
+    @State private var dragStartWidth: CGFloat?
+
+    var body: some View {
+        Rectangle()
+            .fill(Color(nsColor: .separatorColor))
+            .frame(width: 1)
+            .overlay(
+                Rectangle()
+                    .fill(Color.clear)
+                    .frame(width: 12)
+                    .contentShape(Rectangle())
+                    .cursor(.resizeLeftRight)
+                    .gesture(
+                        DragGesture(minimumDistance: 2)
+                            .onChanged { value in
+                                if dragStartWidth == nil {
+                                    dragStartWidth = position
+                                }
+                                // Invert: dragging left (negative translation)
+                                // should increase the git sidebar width.
+                                let newWidth = (dragStartWidth ?? position)
+                                    - value.translation.width
+                                withTransaction(Transaction(animation: nil)) {
+                                    position = max(minValue, min(maxValue, newWidth))
+                                }
+                            }
+                            .onEnded { _ in
+                                dragStartWidth = nil
+                            }
+                    )
+            )
+    }
+}
+
+// MARK: - Cursor Modifier
+
+extension View {
+    /// Pushes the given cursor while the pointer hovers over this view.
+    func cursor(_ cursor: NSCursor) -> some View {
+        self.onHover { hovering in
+            if hovering {
+                cursor.push()
+            } else {
+                NSCursor.pop()
+            }
+        }
+    }
+}
