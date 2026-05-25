@@ -66,6 +66,7 @@ final class TerminalPanel: Panel, ObservableObject {
         // doesn't flash "Terminal" → "~" when the shell starts.
         let dir = workingDirectory ?? FileManager.default.homeDirectoryForCurrentUser.path
         self.title = Self.titleFromPath(dir)
+        self.directory = dir
 
         // Observe surface title changes (shell sets the terminal title).
         surface.$title

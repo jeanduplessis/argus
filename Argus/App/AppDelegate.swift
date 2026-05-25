@@ -11,12 +11,32 @@ import SwiftUI
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Set by ArgusApp.body's `.onAppear` once the view hierarchy is live.
-    var workspaceManager: WorkspaceManager?
+    var workspaceManager: WorkspaceManager? {
+        didSet { updateWindowTitle() }
+    }
 
     // MARK: - NSApplicationDelegate
 
     /// Tracks windows we've already configured to avoid redundant work.
     private var configuredWindows: Set<ObjectIdentifier> = []
+    private var windowTitleObserver: NSObjectProtocol?
+
+    func application(_ application: NSApplication, shouldSaveApplicationState coder: NSCoder) -> Bool {
+        false
+    }
+
+    func application(_ application: NSApplication, shouldRestoreApplicationState coder: NSCoder) -> Bool {
+        false
+    }
+
+    func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
+        false
+    }
+
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        UserDefaults.standard.set(true, forKey: "ApplePersistenceIgnoreState")
+        UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Configure any existing windows
@@ -35,10 +55,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                   let window = notification.object as? NSWindow else { return }
             self.configureWindow(window)
         }
+
+        windowTitleObserver = NotificationCenter.default.addObserver(
+            forName: .workspaceContextDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.updateWindowTitle()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        // Future: synchronous session save (Phase 4).
+        workspaceManager?.saveSession()
+        if let windowTitleObserver {
+            NotificationCenter.default.removeObserver(windowTitleObserver)
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(
@@ -58,6 +89,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.titleVisibility = .hidden
         window.styleMask.insert(.fullSizeContentView)
         window.titlebarSeparatorStyle = .none
+        window.backgroundColor = ChromeColors.contentBackgroundNSColor
+        window.isRestorable = false
 
         // Window sizing
         window.minSize = NSSize(width: 600, height: 400)
@@ -71,10 +104,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Falls back to "Argus" when no workspace is selected.
     func updateWindowTitle(_ window: NSWindow? = nil) {
         let targetWindow = window ?? NSApp.mainWindow
-        guard let workspace = workspaceManager?.selectedWorkspace else {
-            targetWindow?.title = "Argus"
-            return
-        }
-        targetWindow?.title = workspace.displayTitle
+        targetWindow?.title = workspaceManager?.activeWorkspaceTitle
+            ?? WorkspaceTitleFormatter.fallbackTitle
     }
 }

@@ -6,6 +6,7 @@
 // and a "+" button to add a new terminal tab.
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct TabBarView: View {
     @ObservedObject var workspace: Workspace
@@ -20,14 +21,36 @@ struct TabBarView: View {
                         if let panel = workspace.panels[panelId] {
                             TabItemView(
                                 panel: panel,
-                                isActive: panelId == workspace.activePanelId,
+                                title: workspace.tabDisplayTitle(for: panelId),
+                                isActive: panelId == workspace.activeTabId,
                                 onSelect: { workspace.selectPanel(panelId) },
                                 onClose: {
+                                    if workspace.panelOrder.count == 1,
+                                       workspaceManager.shouldConfirmWorktreeDeletionBeforeClosing(workspace.id) {
+                                        NotificationCenter.default.post(
+                                            name: .showCloseWorkspaceConfirmation,
+                                            object: nil,
+                                            userInfo: ["workspaceId": workspace.id]
+                                        )
+                                        return
+                                    }
+
                                     workspace.removePanel(panelId)
                                     if workspace.panelOrder.isEmpty {
                                         workspaceManager.removeWorkspace(workspace.id)
                                     }
                                 }
+                            )
+                            .onDrag {
+                                PanelTabDragState.draggedPanelId = panelId
+                                return NSItemProvider(object: panelId.uuidString as NSString)
+                            }
+                            .onDrop(
+                                of: [UTType.text],
+                                delegate: PanelTabDropDelegate(
+                                    workspace: workspace,
+                                    targetPanelId: panelId
+                                )
                             )
                         }
                     }
@@ -47,10 +70,34 @@ struct TabBarView: View {
             .padding(.trailing, 8)
         }
         .frame(height: 30)
-        .background(Color(nsColor: .windowBackgroundColor).opacity(0.95))
+        .background(ChromeColors.contentBackground)
         .overlay(alignment: .bottom) {
-            Divider()
+            ChromeColors.separator.frame(height: 1)
         }
+    }
+}
+
+// MARK: - Tab Drag and Drop
+
+@MainActor
+private enum PanelTabDragState {
+    static var draggedPanelId: UUID?
+}
+
+private struct PanelTabDropDelegate: DropDelegate {
+    let workspace: Workspace
+    let targetPanelId: UUID
+
+    func performDrop(info: DropInfo) -> Bool {
+        guard let draggedPanelId = PanelTabDragState.draggedPanelId else { return false }
+        defer { PanelTabDragState.draggedPanelId = nil }
+        guard draggedPanelId != targetPanelId,
+              let source = workspace.panelOrder.firstIndex(of: draggedPanelId),
+              let destination = workspace.panelOrder.firstIndex(of: targetPanelId)
+        else { return false }
+
+        workspace.reorderPanel(from: source, to: destination)
+        return true
     }
 }
 
@@ -58,11 +105,18 @@ struct TabBarView: View {
 
 struct TabItemView: View {
     let panel: any Panel
+    let title: String
     let isActive: Bool
     let onSelect: () -> Void
     let onClose: () -> Void
 
     @State private var isHovered = false
+
+    private var tabFill: Color {
+        if isActive { return ChromeColors.activeTabFill }
+        if isHovered { return ChromeColors.hoveredTabFill }
+        return Color.clear
+    }
 
     var body: some View {
         HStack(spacing: 4) {
@@ -73,8 +127,8 @@ struct TabItemView: View {
                     .foregroundColor(isActive ? .primary : .secondary)
             }
 
-            // Panel title
-            Text(panel.displayTitle)
+            // Tab title
+            Text(title)
                 .font(.system(size: 12))
                 .foregroundColor(isActive ? .primary : .secondary)
                 .lineLimit(1)
@@ -96,7 +150,7 @@ struct TabItemView: View {
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 4)
-                .fill(isActive ? Color(nsColor: .controlBackgroundColor) : Color.clear)
+                .fill(tabFill)
         )
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }

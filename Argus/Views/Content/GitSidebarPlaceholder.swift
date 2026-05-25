@@ -21,6 +21,7 @@ struct GitSidebarPlaceholder: View {
                 .foregroundColor(.secondary.opacity(0.6))
             Spacer()
         }
+        .padding(.top, 28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(VisualEffectView(material: .sidebar, blendingMode: .behindWindow))
     }

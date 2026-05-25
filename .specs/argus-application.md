@@ -85,11 +85,15 @@ tool.
    workspaces, where each workspace contains an ordered list of
    tabbed panels.
 
-2. Each workspace MUST display a tab bar showing all of its panels,
-   with each tab displaying the panel title.
+2. Each workspace MUST display a tab bar showing all top-level tabs.
+   Terminal tabs MUST be labeled by ordinal position as "Tab 1",
+   "Tab 2", and so on, rather than by working directory or process
+   title.
 
-3. Exactly one panel per workspace MUST be active (visible) at a
-   time; selecting a tab MUST switch the active panel.
+3. Exactly one top-level tab per workspace MUST be active at a
+   time; selecting a tab MUST switch the active tab. A terminal tab
+   MAY contain multiple split panes, but exactly one pane MUST be
+   focused for keyboard input at a time.
 
 4. The tab bar MUST provide a button to create a new terminal panel
    within the current workspace.
@@ -115,7 +119,11 @@ tool.
     order across all projects, and Cmd+9 to select the last workspace.
 
 11. The system MUST support keyboard shortcuts to create a new
-    workspace, create a new tab, and close the current tab.
+    workspace, create a new tab, and close the current tab or focused
+    split pane.
+
+12. The system MUST support splitting the focused terminal pane
+    vertically with Cmd+D and horizontally with Cmd+Shift+D.
 
 ### Projects
 

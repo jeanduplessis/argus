@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="${PROJECT_DIR}/.build"
 APP_NAME="Argus"
+CLI_NAME="argus"
+BUILD_CLI=1
 
 # --------------------------------------------------------------------------
 # Usage
@@ -14,19 +16,22 @@ usage() {
 Usage: $(basename "$0") <command> [options]
 
 Commands:
-  build       Build the app (default if no command given)
-  run         Build, then launch the app
-  install     Build, install to /Applications, and launch
+  build       Build the app and CLI, then bundle the CLI into the app (default)
+  cli         Build only the CLI
+  run         Build app+CLI, then launch the app
+  install     Build app+CLI, install to /Applications, and launch
   clean       Remove build artifacts
   generate    Regenerate Argus.xcodeproj from project.yml
 
 Options:
   --debug     Use Debug configuration (default)
   --release   Use Release configuration
+  --no-cli    Build the app without building/bundling the CLI
   --no-open   Don't launch the app after run/install
 
 Examples:
   ./scripts/build.sh build
+  ./scripts/build.sh cli
   ./scripts/build.sh run
   ./scripts/build.sh run --release
   ./scripts/build.sh install
@@ -44,9 +49,10 @@ OPEN_APP=1
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        build|run|install|clean|generate) COMMAND="$1"; shift ;;
+        build|cli|run|install|clean|generate) COMMAND="$1"; shift ;;
         --debug)    CONFIGURATION="Debug";   shift ;;
         --release)  CONFIGURATION="Release"; shift ;;
+        --no-cli)   BUILD_CLI=0;             shift ;;
         --no-open)  OPEN_APP=0;              shift ;;
         -h|--help)  usage ;;
         *) echo "Unknown option: $1"; usage ;;
@@ -73,7 +79,21 @@ ensure_xcode_project() {
 }
 
 find_app() {
-    find "${BUILD_DIR}" -name "${APP_NAME}.app" -type d 2>/dev/null | head -1
+    find "${BUILD_DIR}/Build/Products/${CONFIGURATION}" -name "${APP_NAME}.app" -type d 2>/dev/null | head -1
+}
+
+swiftpm_configuration() {
+    case "${CONFIGURATION}" in
+        Debug)   echo "debug" ;;
+        Release) echo "release" ;;
+        *)       echo "${CONFIGURATION}" | tr '[:upper:]' '[:lower:]' ;;
+    esac
+}
+
+cli_build_path() {
+    local swift_config
+    swift_config="$(swiftpm_configuration)"
+    echo "${BUILD_DIR}/SwiftPM/${swift_config}/${CLI_NAME}"
 }
 
 quit_running() {
@@ -113,10 +133,61 @@ do_generate() {
     ok "Xcode project generated"
 }
 
+do_build_cli() {
+    if [[ ! -f "${PROJECT_DIR}/Package.swift" ]]; then
+        err "Package.swift not found; cannot build ${CLI_NAME} CLI"
+        exit 1
+    fi
+
+    local swift_config
+    swift_config="$(swiftpm_configuration)"
+
+    log "Building ${CLI_NAME} CLI (${CONFIGURATION})..."
+    (cd "${PROJECT_DIR}" && swift build \
+        --product "${CLI_NAME}" \
+        --configuration "${swift_config}" \
+        --build-path "${BUILD_DIR}/SwiftPM")
+
+    local cli_path
+    cli_path="$(cli_build_path)"
+    if [[ ! -x "${cli_path}" ]]; then
+        err "CLI build product not found: ${cli_path}"
+        exit 1
+    fi
+
+    ok "CLI build succeeded: ${cli_path}"
+}
+
+bundle_cli() {
+    local app_path="$1"
+    local cli_path
+    cli_path="$(cli_build_path)"
+
+    if [[ ! -x "${cli_path}" ]]; then
+        err "CLI build product not found: ${cli_path}"
+        exit 1
+    fi
+
+    # Do not place the lowercase `argus` binary next to the app executable
+    # (`Argus`) because the default macOS filesystem is case-insensitive and
+    # that would overwrite the app's launcher. Keep bundled tools separate.
+    local tools_dir="${app_path}/Contents/Resources/bin"
+    mkdir -p "${tools_dir}"
+
+    log "Bundling ${CLI_NAME} CLI into ${APP_NAME}.app..."
+    install -m 755 "${cli_path}" "${tools_dir}/${CLI_NAME}"
+    ok "Bundled CLI: ${tools_dir}/${CLI_NAME}"
+}
+
 do_build() {
     ensure_xcode_project
     log "Building ${APP_NAME} (${CONFIGURATION})..."
     time_start
+
+    # The script mutates the built .app when bundling the CLI. Remove the
+    # previous product first so Xcode never treats externally modified app
+    # contents as up-to-date incremental output.
+    rm -rf "${BUILD_DIR}/Build/Products/${CONFIGURATION}/${APP_NAME}.app"
 
     xcodebuild \
         -project "${PROJECT_DIR}/Argus.xcodeproj" \
@@ -132,7 +203,12 @@ do_build() {
         exit 1
     fi
 
-    # Ad-hoc codesign
+    if [[ ${BUILD_CLI} -eq 1 ]]; then
+        do_build_cli
+        bundle_cli "${app_path}"
+    fi
+
+    # Ad-hoc codesign after bundling the CLI.
     codesign --force --deep --sign - "${app_path}" 2>/dev/null || true
 
     time_end
@@ -171,10 +247,11 @@ do_clean() {
 # Dispatch
 # --------------------------------------------------------------------------
 case "$COMMAND" in
-    build)    do_build    ;;
-    run)      do_run      ;;
-    install)  do_install  ;;
-    clean)    do_clean    ;;
-    generate) do_generate ;;
+    build)    do_build     ;;
+    cli)      do_build_cli ;;
+    run)      do_run       ;;
+    install)  do_install   ;;
+    clean)    do_clean     ;;
+    generate) do_generate  ;;
     *)        usage       ;;
 esac

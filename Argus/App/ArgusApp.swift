@@ -13,11 +13,12 @@ struct ArgusApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        Window("Argus", id: "main") {
             MainWindowView()
                 .environmentObject(workspaceManager)
                 .onAppear {
                     appDelegate.workspaceManager = workspaceManager
+                    appDelegate.updateWindowTitle()
                 }
         }
         .windowStyle(.hiddenTitleBar)
@@ -25,6 +26,13 @@ struct ArgusApp: App {
         .commands {
             // File menu — replace default "New" with workspace/tab commands
             CommandGroup(replacing: .newItem) {
+                Button("New Project\u{2026}") {
+                    NotificationCenter.default.post(
+                        name: .showNewProjectSheet, object: nil
+                    )
+                }
+                .keyboardShortcut("p", modifiers: [.command, .shift])
+
                 Button("New Workspace") {
                     workspaceManager.addWorkspace()
                 }
@@ -34,6 +42,16 @@ struct ArgusApp: App {
                     workspaceManager.addTab()
                 }
                 .keyboardShortcut("n", modifiers: [.command])
+
+                Button("Split Vertically") {
+                    workspaceManager.splitActiveTerminal(direction: .vertical)
+                }
+                .keyboardShortcut("d", modifiers: [.command])
+
+                Button("Split Horizontally") {
+                    workspaceManager.splitActiveTerminal(direction: .horizontal)
+                }
+                .keyboardShortcut("d", modifiers: [.command, .shift])
             }
 
             // Close commands — placed after new-item group
@@ -84,4 +102,8 @@ extension Notification.Name {
     static let toggleSidebar = Notification.Name("ArgusToggleSidebar")
     /// Toggle the git status sidebar visibility.
     static let toggleGitSidebar = Notification.Name("ArgusToggleGitSidebar")
+    /// Active workspace context changed; synchronize titlebar/window metadata.
+    static let workspaceContextDidChange = Notification.Name("ArgusWorkspaceContextDidChange")
+    /// Terminal NSView focus changed; synchronize the active split pane.
+    static let terminalSurfaceDidBecomeFirstResponder = Notification.Name("ArgusTerminalSurfaceDidBecomeFirstResponder")
 }

@@ -17,6 +17,8 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
     weak var surface: TerminalSurface?
     private var trackingArea: NSTrackingArea?
     private var currentCursor: NSCursor = .iBeam
+    private weak var attachedWindow: NSWindow?
+    private var lastSurfacePixelSize: (width: UInt32, height: UInt32)?
 
     // MARK: - NSView Configuration
 
@@ -68,24 +70,43 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
         super.viewDidMoveToWindow()
 
         if window != nil {
-            surface?.createSurface()
-            updateContentScale()
-            updateSurfaceSize()
-            updateTrackingArea()
-
-            if let surface = surface?.surface,
-               let screen = window?.screen,
-               let displayId = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
-            {
-                ghostty_surface_set_display_id(surface, displayId)
-            }
+            attachSurfaceToWindow(force: true)
+        } else {
+            attachedWindow = nil
+            surface?.setFocus(false)
+            surface?.setOcclusion(true)
         }
+    }
+
+    func attachSurfaceToWindow(force: Bool = false) {
+        guard let currentWindow = window else { return }
+        let needsSurface = surface?.surface == nil
+        let windowChanged = attachedWindow !== currentWindow
+        guard force || needsSurface || windowChanged else { return }
+
+        attachedWindow = currentWindow
+        surface?.createSurface(attachedTo: self)
+        surface?.setOcclusion(false)
+        updateContentScale()
+        updateSurfaceSize(force: true)
+        updateTrackingArea()
+
+        if let surface = surface?.surface,
+           let screen = currentWindow.screen,
+           let displayId = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
+        {
+            ghostty_surface_set_display_id(surface, displayId)
+        }
+
+        currentWindow.makeFirstResponder(self)
+        scheduleRenderRecovery()
     }
 
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         updateContentScale()
-        updateSurfaceSize()
+        updateSurfaceSize(force: true)
+        scheduleRenderRecovery()
     }
 
     override func viewDidMoveToSuperview() {
@@ -93,37 +114,71 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
         updateTrackingArea()
     }
 
+    override func viewWillStartLiveResize() {
+        super.viewWillStartLiveResize()
+        surface?.setFocus(false)
+        surface?.setOcclusion(true)
+    }
+
     override func viewDidEndLiveResize() {
         super.viewDidEndLiveResize()
-        updateSurfaceSize()
+        updateContentScale()
+        updateSurfaceSize(force: true)
+        surface?.setOcclusion(false)
+        surface?.setFocus(true)
+        window?.makeFirstResponder(self)
+        surface?.refresh()
+
+        // The SwiftUI content tree also remounts this representable after the
+        // window resize notification, matching the tab-switch workaround that
+        // reliably restores Ghostty's embedded Metal surface.
+        scheduleRenderRecovery()
     }
 
     // MARK: - Sizing
 
     override func setFrameSize(_ newSize: NSSize) {
+        let oldSize = frame.size
         super.setFrameSize(newSize)
         updateSurfaceSize()
+        if oldSize != newSize, newSize.width > 0, newSize.height > 0, !inLiveResize {
+            scheduleRenderRecovery()
+        }
     }
 
     override func setBoundsSize(_ newSize: NSSize) {
+        let oldSize = bounds.size
         super.setBoundsSize(newSize)
         updateSurfaceSize()
+        if oldSize != newSize, newSize.width > 0, newSize.height > 0, !inLiveResize {
+            scheduleRenderRecovery()
+        }
     }
 
-    private func updateSurfaceSize() {
+    private func updateSurfaceSize(force: Bool = false) {
         let scale = window?.backingScaleFactor ?? 1.0
         let w = UInt32(bounds.width * scale)
         let h = UInt32(bounds.height * scale)
-        if w > 0, h > 0 {
-            surface?.setSize(width: w, height: h)
-        }
 
-        // Update the metal layer's drawable size
+        // Update the metal layer's drawable size even during live resize so
+        // AppKit's layer tree remains in sync with the view bounds.
         if let metalLayer = layer as? CAMetalLayer {
             metalLayer.drawableSize = CGSize(
                 width: bounds.width * scale,
                 height: bounds.height * scale
             )
+        }
+
+        guard w > 0, h > 0 else { return }
+
+        // Defer Ghostty's PTY/grid resize until the user finishes dragging the
+        // window. Continuously resizing the surface while AppKit is in live
+        // resize can leave the renderer/input loop wedged on some sequences.
+        guard force || !inLiveResize else { return }
+
+        if force || lastSurfacePixelSize?.width != w || lastSurfacePixelSize?.height != h {
+            surface?.setSize(width: w, height: h)
+            lastSurfacePixelSize = (w, h)
         }
     }
 
@@ -140,9 +195,60 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
     // MARK: - Drawing
 
     override func updateLayer() {
+        guard !inLiveResize else { return }
         guard let ghosttySurface = surface?.surface else { return }
         ghostty_surface_draw(ghosttySurface)
         surface?.needsDisplay = false
+    }
+
+    /// Draw the Ghostty surface immediately when a render action arrives.
+    ///
+    /// Relying on AppKit's invalidation scheduling is not reliable for this
+    /// layer-backed NSViewRepresentable after rapid SwiftUI tab/workspace
+    /// churn: input reaches the pty, but the CAMetalLayer may not be redrawn
+    /// until the view is detached and reattached. Drawing directly keeps the
+    /// terminal interactive while still marking the view/layer dirty for any
+    /// normal AppKit display pass.
+    func requestDisplay() {
+        needsDisplay = true
+        setNeedsDisplay(bounds)
+        layer?.setNeedsDisplay()
+
+        guard !inLiveResize else { return }
+        guard window != nil, let ghosttySurface = surface?.surface else { return }
+        ghostty_surface_draw(ghosttySurface)
+        surface?.needsDisplay = false
+    }
+
+    func scheduleRenderRecovery() {
+        renderRecoveryPass()
+
+        for delay in [0.016, 0.05, 0.15, 0.3] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.renderRecoveryPass()
+            }
+        }
+    }
+
+    private func renderRecoveryPass() {
+        guard let window, !inLiveResize else { return }
+        updateContentScale()
+        updateSurfaceSize(force: true)
+        surface?.setOcclusion(false)
+        surface?.setFocus(true)
+        if window.firstResponder !== self {
+            window.makeFirstResponder(self)
+        }
+        GhosttyApp.shared.tick()
+        surface?.refresh()
+        GhosttyApp.shared.tick()
+        requestDisplay()
+    }
+
+    private func startRedrawPump(duration: TimeInterval = 0) {
+        GhosttyApp.shared.tick()
+        surface?.refresh()
+        requestDisplay()
     }
 
     // MARK: - Tracking Area (for mouse move events)
@@ -203,6 +309,12 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
 
     override func becomeFirstResponder() -> Bool {
         surface?.setFocus(true)
+        if let surfaceId = surface?.id {
+            NotificationCenter.default.post(
+                name: .terminalSurfaceDidBecomeFirstResponder,
+                object: surfaceId
+            )
+        }
         return super.becomeFirstResponder()
     }
 
@@ -219,18 +331,14 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
             return
         }
 
-        let key = ghosttyKey(from: event.keyCode)
-        let mods = ghosttyMods(from: event.modifierFlags)
+        var keyInput = ghosttyKeyEvent(from: event, action: event.isARepeat ? GHOSTTY_ACTION_REPEAT : GHOSTTY_ACTION_PRESS)
 
-        // Check if this is a Ghostty-handled binding first
-        var keyInput = ghostty_input_key_s()
-        keyInput.action = GHOSTTY_ACTION_PRESS
-        keyInput.mods = mods
-        keyInput.keycode = UInt32(event.keyCode)
-        keyInput.composing = false
-
-        // Provide text if available
-        if let chars = event.characters, !chars.isEmpty {
+        // Provide printable text only. Control characters (e.g. Ctrl+C/Ctrl+S)
+        // must be encoded by Ghostty from keycode+mods; passing AppKit's raw
+        // control-character text makes Ghostty emit CSI-u sequences like
+        // "3;5u"/"19;5u" that readline and editors may insert literally.
+        if let chars = ghosttyText(from: event), !chars.isEmpty,
+           let firstByte = chars.utf8.first, firstByte >= 0x20 {
             chars.withCString { ptr in
                 keyInput.text = ptr
                 _ = ghostty_surface_key(ghosttySurface, keyInput)
@@ -238,6 +346,8 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
         } else {
             _ = ghostty_surface_key(ghosttySurface, keyInput)
         }
+
+        startRedrawPump()
     }
 
     override func keyUp(with event: NSEvent) {
@@ -246,16 +356,11 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
             return
         }
 
-        let mods = ghosttyMods(from: event.modifierFlags)
-
-        var keyInput = ghostty_input_key_s()
-        keyInput.action = GHOSTTY_ACTION_RELEASE
-        keyInput.mods = mods
-        keyInput.keycode = UInt32(event.keyCode)
-        keyInput.composing = false
+        var keyInput = ghosttyKeyEvent(from: event, action: GHOSTTY_ACTION_RELEASE)
         keyInput.text = nil
 
         _ = ghostty_surface_key(ghosttySurface, keyInput)
+        startRedrawPump(duration: 0.15)
     }
 
     override func flagsChanged(with event: NSEvent) {
@@ -264,23 +369,26 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
             return
         }
 
-        let mods = ghosttyMods(from: event.modifierFlags)
-        let key = ghosttyKey(from: event.keyCode)
-
         // Determine if this is a press or release based on whether the flag is set
         let isPress = isModifierPress(event: event)
 
-        var keyInput = ghostty_input_key_s()
-        keyInput.action = isPress ? GHOSTTY_ACTION_PRESS : GHOSTTY_ACTION_RELEASE
-        keyInput.mods = mods
-        keyInput.keycode = UInt32(event.keyCode)
-        keyInput.composing = false
+        var keyInput = ghosttyKeyEvent(from: event, action: isPress ? GHOSTTY_ACTION_PRESS : GHOSTTY_ACTION_RELEASE)
         keyInput.text = nil
 
-        // Suppress unused variable warnings
-        _ = key
-
         _ = ghostty_surface_key(ghosttySurface, keyInput)
+        startRedrawPump(duration: 0.15)
+    }
+
+    private func ghosttyKeyEvent(from event: NSEvent, action: ghostty_input_action_e) -> ghostty_input_key_s {
+        var keyInput = ghostty_input_key_s()
+        keyInput.action = action
+        keyInput.mods = ghosttyMods(from: event.modifierFlags)
+        keyInput.consumed_mods = ghosttyConsumedMods(from: event.modifierFlags)
+        keyInput.keycode = UInt32(event.keyCode)
+        keyInput.unshifted_codepoint = ghosttyUnshiftedCodepoint(from: event)
+        keyInput.composing = false
+        keyInput.text = nil
+        return keyInput
     }
 
     /// Determine if a flagsChanged event is a press or release.
@@ -315,6 +423,7 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
         string.withCString { ptr in
             ghostty_surface_text(ghosttySurface, ptr, UInt(string.utf8.count))
         }
+        startRedrawPump()
     }
 
     func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
@@ -331,11 +440,13 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
         text.withCString { ptr in
             ghostty_surface_preedit(ghosttySurface, ptr, UInt(text.utf8.count))
         }
+        startRedrawPump(duration: 0.15)
     }
 
     func unmarkText() {
         guard let ghosttySurface = surface?.surface else { return }
         ghostty_surface_preedit(ghosttySurface, nil, 0)
+        startRedrawPump(duration: 0.15)
     }
 
     func hasMarkedText() -> Bool { false }
@@ -379,6 +490,7 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
     // MARK: - Mouse Input
 
     override func mouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(self)
         handleMouseButton(GHOSTTY_MOUSE_PRESS, GHOSTTY_MOUSE_LEFT, event)
     }
 
@@ -673,6 +785,40 @@ func ghosttyKey(from keyCode: UInt16) -> ghostty_input_key_e {
 // MARK: - Modifier Mapping
 
 /// Convert NSEvent modifier flags to Ghostty modifier bitmask.
+func ghosttyText(from event: NSEvent) -> String? {
+    guard let characters = event.characters else { return nil }
+
+    if characters.count == 1,
+       let scalar = characters.unicodeScalars.first {
+        // AppKit reports Ctrl+letter as a single control character. Ghostty
+        // expects printable text plus Ctrl in the modifier mask so it can encode
+        // legacy terminal controls itself.
+        if scalar.value < 0x20 {
+            return event.characters(byApplyingModifiers: event.modifierFlags.subtracting(.control))
+        }
+
+        // Function keys are represented in the private-use area; don't send that
+        // pseudo-text to the terminal.
+        if scalar.value >= 0xF700 && scalar.value <= 0xF8FF {
+            return nil
+        }
+    }
+
+    return characters
+}
+
+func ghosttyUnshiftedCodepoint(from event: NSEvent) -> UInt32 {
+    guard event.type == .keyDown || event.type == .keyUp,
+          let chars = event.characters(byApplyingModifiers: []),
+          let codepoint = chars.unicodeScalars.first
+    else { return 0 }
+    return codepoint.value
+}
+
+func ghosttyConsumedMods(from flags: NSEvent.ModifierFlags) -> ghostty_input_mods_e {
+    ghosttyMods(from: flags.subtracting([.control, .command]))
+}
+
 func ghosttyMods(from flags: NSEvent.ModifierFlags) -> ghostty_input_mods_e {
     var mods = GHOSTTY_MODS_NONE.rawValue
 

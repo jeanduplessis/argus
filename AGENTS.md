@@ -79,3 +79,29 @@ ArgusCLI/
 - `ObservableObject` for reactive state. `Codable` for all persistence models.
 - Background queues for I/O (FSEvents, socket, agent sweep). Main thread only for UI.
 - Keyboard shortcuts: Cmd+N (new tab), Cmd+W (close tab), Cmd+T (new workspace), Cmd+1-8 (select workspace by global sidebar index), Cmd+9 (last workspace).
+
+<!-- AIT START -->
+# Agent Issue Tracker (ait)
+
+This repo uses `ait` CLI for structured, durable, repo-local issue tracking. 
+
+## Project State
+
+- Project data lives in `.ait/`.
+- The CLI is the mutation surface; do not edit `.ait/state.sqlite` or `.ait/issues.jsonl` directly.
+- Non-view commands return JSON envelopes: success is `{"ok": true, "data": ...}`; failure is `{"ok": false, "error": ...}`.
+- Mutating commands require an actor: pass `--actor agent` or set `AIT_ACTOR`.
+
+## Usage
+
+When working with `ait`, load and follow the `ait-cli` skill.
+
+Use the skill for creating, claiming, updating, closing, listing, inspecting, validating, or resuming issues; finding ready work; managing dependencies; and any workflow needing persistent issue state.
+
+## Safety Rules
+
+- Do not run bare `ait` in automation; it opens the TUI.
+- Do not initialize, import, export, or force-close unless requested or clearly required.
+- Use `ait check` before handoff and after unusual failures.
+- On command failure, report `error.code`, `error.message`, and next safe action.
+<!-- AIT END -->
