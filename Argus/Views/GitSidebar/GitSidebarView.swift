@@ -209,9 +209,15 @@ struct GitSidebarView: View {
 
             ScrollView {
                 VStack(spacing: 0) {
-                    fileSection(title: "Staged", sectionKey: "staged", count: summary.stagedCount, files: summary.stagedFiles, isExpanded: $stagedExpanded)
-                    fileSection(title: "Unstaged", sectionKey: "unstaged", count: summary.unstagedCount, files: summary.unstagedFiles, isExpanded: $unstagedExpanded)
-                    fileSection(title: "Untracked", sectionKey: "untracked", count: summary.untrackedCount, files: summary.untrackedFiles, isExpanded: $untrackedExpanded)
+                    if summary.stagedCount > 0 {
+                        fileSection(title: "Staged", sectionKey: "staged", count: summary.stagedCount, files: summary.stagedFiles, isExpanded: $stagedExpanded)
+                    }
+                    if summary.unstagedCount > 0 {
+                        fileSection(title: "Unstaged", sectionKey: "unstaged", count: summary.unstagedCount, files: summary.unstagedFiles, isExpanded: $unstagedExpanded)
+                    }
+                    if summary.untrackedCount > 0 {
+                        fileSection(title: "Untracked", sectionKey: "untracked", count: summary.untrackedCount, files: summary.untrackedFiles, isExpanded: $untrackedExpanded)
+                    }
                 }
             }
         }

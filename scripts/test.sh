@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$project_root"
+
+xcodebuild test \
+  -project Argus.xcodeproj \
+  -scheme Argus \
+  -destination "platform=macOS" \
+  CODE_SIGNING_ALLOWED=NO
+
+swift build --product argus
+swift run argus --version | grep -Fq "argus 0.1.0"
+swift run argus --help | grep -Fq "USAGE: argus"
+
+echo "Argus tests passed"

@@ -9,96 +9,171 @@
 /* Begin PBXBuildFile section */
 		0005F1BE34EC7C0DA1814AFC /* WorktreeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709721096373D93A263660AB /* WorktreeService.swift */; };
 		01330EDDF1BD8FFBBA86E045 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A268687E6FB693A77166E11 /* SidebarView.swift */; };
+		0372E54756482C36712CCD55 /* GitStatusAutoRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D08217127D0DB6ED44164BD /* GitStatusAutoRefreshTests.swift */; };
+		04DCE84FEB30B0CE57BD6213 /* SourceContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEDE6A5A2B6B85C812CEFAC /* SourceContract.swift */; };
+		06D940FC58CFA264CECE7332 /* LocalBranchPickerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDA50BB27255AFF560A99F86 /* LocalBranchPickerTests.swift */; };
 		0B8AAB5E791399EA83F83F18 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF5C0E9D5F6638CD5FEFE123 /* Project.swift */; };
+		0E12DBED45B56CCE6139ADA2 /* GitDiffStatParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31F5743E7A55EE9FBC908770 /* GitDiffStatParserTests.swift */; };
 		12D7A8C68E6686B8EB0BF266 /* SidebarState.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0B9ECA31DC779CDC60C200 /* SidebarState.swift */; };
+		15DFA75952566E938AECED46 /* GitPreviewPanelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D74EFE13FBE5E49414DB592 /* GitPreviewPanelTests.swift */; };
 		18CB9A2225E3B84398CD6CC0 /* GitSidebarPlaceholder.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEEC7DB717D1E63F5D12D2EF /* GitSidebarPlaceholder.swift */; };
-		BB0000000000000000000011 /* GitStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000011 /* GitStatus.swift */; };
-		BB0000000000000000000012 /* GitStatusParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000012 /* GitStatusParser.swift */; };
-		BB0000000000000000000019 /* GitStatusAutoRefreshController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000019 /* GitStatusAutoRefreshController.swift */; };
-		BB0000000000000000000020 /* GitPreviewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000020 /* GitPreviewService.swift */; };
-		BB0000000000000000000021 /* GitPreviewPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000021 /* GitPreviewPanel.swift */; };
-		BB0000000000000000000017 /* GitDiffStatParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000017 /* GitDiffStatParser.swift */; };
-		BB0000000000000000000013 /* GitStatusService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000013 /* GitStatusService.swift */; };
-		BB0000000000000000000014 /* GitSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000014 /* GitSidebarView.swift */; };
-		BB0000000000000000000015 /* GitStatusViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000015 /* GitStatusViewModel.swift */; };
-		BB0000000000000000000018 /* GitFileStatusStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000018 /* GitFileStatusStyle.swift */; };
+		19F52C9DA9B94C0CB6CBAA7C /* WorkspaceUIContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36AB7BEA90617BC349DB39F2 /* WorkspaceUIContractTests.swift */; };
+		1E8DB0ADCCBD53DF40A36B88 /* WorktreeBranchUniquenessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93BB47420C5E72E32FA26F97 /* WorktreeBranchUniquenessTests.swift */; };
 		2401E44539747B1C9FDBC5E9 /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 172F49E4DC138F5AEEE1E515 /* MainWindowView.swift */; };
 		250B3D2B9ACACC6A9F9C1B12 /* WorkspaceTitleFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC3870BE2DAE279DC4BF8974 /* WorkspaceTitleFormatter.swift */; };
+		260C169969B555F7E7CCAD81 /* GitStatusUIContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAEA40E4A41292D6EBE0E95B /* GitStatusUIContractTests.swift */; };
+		266AC714DABCBEEC0C9B1F0A /* GitStatusServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 765F5DFD4CF9D655D663E212 /* GitStatusServiceTests.swift */; };
 		297F533A5D3B631440E29B44 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 766D499B513D46D821809F08 /* AppDelegate.swift */; };
-		2A2C3E4F5A6B7C8D9E0F1A2B /* SessionSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* SessionSnapshot.swift */; };
-		2BE9A99F5027BA3CF54496D9 /* ContentAreaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B82A11967759AA4F1B34B47C /* ContentAreaView.swift */; }; 
+		2BE9A99F5027BA3CF54496D9 /* ContentAreaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B82A11967759AA4F1B34B47C /* ContentAreaView.swift */; };
+		344B25CC7C2ADD72466CD792 /* ExistingBranchPickerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D681607918630CD263C690CE /* ExistingBranchPickerTests.swift */; };
+		395203F465B0D6EDBD1BC9E3 /* GitStatusParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9E7D7DCF97A300FE8386B3A /* GitStatusParserTests.swift */; };
+		48E62BE8320ACBDE490E28A2 /* GitStatusAutoRefreshController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4CAD208D03EF627A5AADF06 /* GitStatusAutoRefreshController.swift */; };
 		4B7BD698C037E123F109CA97 /* NewWorkspaceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C01FB15CE585853A5C6581E /* NewWorkspaceSheet.swift */; };
+		4D1C3908D831F340E8ACEED0 /* TerminalDirectorySnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3194FA21992F916DD0D62855 /* TerminalDirectorySnapshotTests.swift */; };
 		50F6B25472890B2CE7A86800 /* ArgusApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10818EB6FE9BF83CFC040732 /* ArgusApp.swift */; };
+		542AA4D2D6CA471D8BB5AC79 /* GitStatusViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51F91E726725C5D06375AA8E /* GitStatusViewModelTests.swift */; };
+		5974AE95C0C64669D0C96C1E /* GitPreviewServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B61F2A403CEF604900074280 /* GitPreviewServiceTests.swift */; };
+		5B4BB7179424815BEF595AF7 /* ExistingWorktreeBranchChoiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3FB117AE6DF223AE2B1A0A0 /* ExistingWorktreeBranchChoiceTests.swift */; };
+		6A070C166FF0C9361AE775B5 /* GitDiffStatParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DB16A21820EB52A4A4D2ABD /* GitDiffStatParser.swift */; };
 		6A4C05C340641327AC48E31D /* TabBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29E4A93EB538D6AE1F188805 /* TabBarView.swift */; };
 		6F37A27F399CF7C90403678B /* WorkspaceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D91C4B07F7CA247F3E95F11A /* WorkspaceManager.swift */; };
 		70A03FBF810E62C0614FDCE9 /* TitlebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B4D60E83B20F24AA92F8F19 /* TitlebarView.swift */; };
 		731C90BF98E20510EDF3C7AB /* TerminalNSView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF781F36ADED8076735767AF /* TerminalNSView.swift */; };
+		760E71483559B9C4814A3C55 /* GitSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC41CF5BFC955D50F929F5A /* GitSidebarView.swift */; };
 		7881D1501D4005FC0371E618 /* Workspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EA1923AE8EFCF89F42CB0AC /* Workspace.swift */; };
+		84E9D9C430F370DBA6BC8373 /* GitStatusViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B65BCC437F1421231D69ACC /* GitStatusViewModel.swift */; };
+		8F194E2E27E6DCE202387006 /* TitlebarGitContextFormatterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A24DE4AA9295D21C06F5C39 /* TitlebarGitContextFormatterTests.swift */; };
 		92C213F4093831E8F18EAD07 /* OrphanedWorktreesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FA4A99862B8FD090D3E03DF /* OrphanedWorktreesSheet.swift */; };
+		9610F68F0273C22A7C5BA20B /* CurrentBranchDetectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D81A0F7652F3030290E53436 /* CurrentBranchDetectionTests.swift */; };
+		9679B7D72B5B733E06616895 /* GitStatusRootResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B72A806CCA50285C46D5FF9 /* GitStatusRootResolverTests.swift */; };
+		9922D80421D39D138E2E720C /* GitPreviewPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85FE34D951D91C6D8B321B40 /* GitPreviewPanel.swift */; };
+		99AE3FC1AB4F412A618B127C /* ProjectAndWorktreeUIContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFE0FA88546FBFAD28E1D952 /* ProjectAndWorktreeUIContractTests.swift */; };
 		9BFCE5E9F8D561CAA0CA6E19 /* ChromeColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F4253A4E13FA79C8E83E7C1 /* ChromeColors.swift */; };
+		A0C1428612E01868D6B2BD69 /* SessionReconciliationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D95862A281739942EE89A56D /* SessionReconciliationTests.swift */; };
+		A65C95F2982AA18D7D80D785 /* WorkspaceTitleFormatterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9BCAEFE4ACA1C2C2E921A6A /* WorkspaceTitleFormatterTests.swift */; };
+		AB121FB0384DC0B18B8FDC43 /* RepositoryRootNormalizationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A0B59D2D5F42C91DCDAECE1 /* RepositoryRootNormalizationTests.swift */; };
+		AEE3EB622810DCECC32D71FD /* GitPreviewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 470C27E1E483568C99FF880E /* GitPreviewService.swift */; };
+		B87E14DF8A9A133F597BC3E9 /* SidebarStatePersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85B710CD787E14321AB971B /* SidebarStatePersistenceTests.swift */; };
 		C5034845ED2A4C411E1AA5EA /* TerminalSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0DE49DF785BEEBDEBA739E8 /* TerminalSurface.swift */; };
 		CA9E20D4B9631A1BD8BA796C /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A66AF57A5A40B3722A56592 /* TerminalView.swift */; };
+		CABB52CC6A3EC4A1CC25627C /* SessionSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 088F13043584037475E77D04 /* SessionSnapshot.swift */; };
+		CB02BAC29DD3DD12EE0AF3FE /* GitStatusParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42040B76D2872AC71249796C /* GitStatusParser.swift */; };
 		CD3A7008FD8EA79C557C634C /* GhosttyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1902C84B53CB6CA56DE23B2 /* GhosttyApp.swift */; };
+		CEF870EB346EBD44B4FE2FB4 /* GitStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 564CED7FFF04C34E03455980 /* GitStatus.swift */; };
+		D8D1DE19F62552C5501E47BD /* BranchAvailabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F828578257356A65F90D274 /* BranchAvailabilityTests.swift */; };
 		DC862B0710F0629EAB8BDF7A /* SidebarLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D28191E019C7FB7E2AE020 /* SidebarLayout.swift */; };
+		DDE4A691BA635A503F286FEF /* TitlebarGitStatusViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E5DA20601C0F85B1927FF74 /* TitlebarGitStatusViewModelTests.swift */; };
+		DF61F03B0291C4801D0BA0FF /* GitStatusService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B9FAB1109B3A420ADD6DC4 /* GitStatusService.swift */; };
+		E20DFC66EAE40A5C68EC4F09 /* SidebarLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D753CE6E1FFD67B19A85930F /* SidebarLayoutTests.swift */; };
 		E3FCCA98DDAA416589EF30A8 /* NewProjectSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 704AC69ACE9114900992E244 /* NewProjectSheet.swift */; };
 		E4830742CCBF697A5503CDFB /* GhosttyConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93A28C47CFFC35C8515E0B8F /* GhosttyConfig.swift */; };
+		EAB3343A6EE57205E148A50E /* GitFileStatusStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C1ED524D3519A8D6A0A46D0 /* GitFileStatusStyle.swift */; };
+		EE31F58DE3DF374DB8E6C07E /* SessionSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EA813F930B12FDBB09C67C8 /* SessionSnapshotTests.swift */; };
 		EF04235849461CCB3B6C16E5 /* Panel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E5CB1EAA0A66B7411EB8C71 /* Panel.swift */; };
+		F46179E18E48775C783E104A /* ExistingBranchWorktreeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C0107B8A19AEA8B1CDB683C /* ExistingBranchWorktreeTests.swift */; };
 		F7B2935F162B1E42E5035113 /* SidebarDivider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B15831275B325CA2E8A4D69 /* SidebarDivider.swift */; };
 		FB0D3C8AFA0194B780E21889 /* TerminalPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6799AE81C5533761C5D201 /* TerminalPanel.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		9A697D2E46DFA1946C49CE17 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7317CB3691AAD002D5B8FA9F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 002B50BE8863B8871A1A0A2C;
+			remoteInfo = Argus;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		088F13043584037475E77D04 /* SessionSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSnapshot.swift; sourceTree = "<group>"; };
+		0A0B59D2D5F42C91DCDAECE1 /* RepositoryRootNormalizationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryRootNormalizationTests.swift; sourceTree = "<group>"; };
+		0EA813F930B12FDBB09C67C8 /* SessionSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSnapshotTests.swift; sourceTree = "<group>"; };
 		10818EB6FE9BF83CFC040732 /* ArgusApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArgusApp.swift; sourceTree = "<group>"; };
+		16B9FAB1109B3A420ADD6DC4 /* GitStatusService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusService.swift; sourceTree = "<group>"; };
 		172F49E4DC138F5AEEE1E515 /* MainWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
 		1A268687E6FB693A77166E11 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		240114454020A167A4D5C6A4 /* ArgusTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ArgusTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		29E4A93EB538D6AE1F188805 /* TabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarView.swift; sourceTree = "<group>"; };
 		2A66AF57A5A40B3722A56592 /* TerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalView.swift; sourceTree = "<group>"; };
+		2BC41CF5BFC955D50F929F5A /* GitSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitSidebarView.swift; sourceTree = "<group>"; };
 		2C6799AE81C5533761C5D201 /* TerminalPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalPanel.swift; sourceTree = "<group>"; };
+		3194FA21992F916DD0D62855 /* TerminalDirectorySnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalDirectorySnapshotTests.swift; sourceTree = "<group>"; };
+		31F5743E7A55EE9FBC908770 /* GitDiffStatParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitDiffStatParserTests.swift; sourceTree = "<group>"; };
+		36AB7BEA90617BC349DB39F2 /* WorkspaceUIContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceUIContractTests.swift; sourceTree = "<group>"; };
+		3D74EFE13FBE5E49414DB592 /* GitPreviewPanelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitPreviewPanelTests.swift; sourceTree = "<group>"; };
+		42040B76D2872AC71249796C /* GitStatusParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusParser.swift; sourceTree = "<group>"; };
+		470C27E1E483568C99FF880E /* GitPreviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitPreviewService.swift; sourceTree = "<group>"; };
+		4B65BCC437F1421231D69ACC /* GitStatusViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusViewModel.swift; sourceTree = "<group>"; };
+		4C1ED524D3519A8D6A0A46D0 /* GitFileStatusStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitFileStatusStyle.swift; sourceTree = "<group>"; };
+		4DB16A21820EB52A4A4D2ABD /* GitDiffStatParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitDiffStatParser.swift; sourceTree = "<group>"; };
 		4EA1923AE8EFCF89F42CB0AC /* Workspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Workspace.swift; sourceTree = "<group>"; };
 		4F4253A4E13FA79C8E83E7C1 /* ChromeColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromeColors.swift; sourceTree = "<group>"; };
 		4FA4A99862B8FD090D3E03DF /* OrphanedWorktreesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrphanedWorktreesSheet.swift; sourceTree = "<group>"; };
+		51F91E726725C5D06375AA8E /* GitStatusViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusViewModelTests.swift; sourceTree = "<group>"; };
+		564CED7FFF04C34E03455980 /* GitStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatus.swift; sourceTree = "<group>"; };
 		5B15831275B325CA2E8A4D69 /* SidebarDivider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarDivider.swift; sourceTree = "<group>"; };
 		5B4D60E83B20F24AA92F8F19 /* TitlebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitlebarView.swift; sourceTree = "<group>"; };
+		5F828578257356A65F90D274 /* BranchAvailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BranchAvailabilityTests.swift; sourceTree = "<group>"; };
+		6B72A806CCA50285C46D5FF9 /* GitStatusRootResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusRootResolverTests.swift; sourceTree = "<group>"; };
 		704AC69ACE9114900992E244 /* NewProjectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewProjectSheet.swift; sourceTree = "<group>"; };
 		709721096373D93A263660AB /* WorktreeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeService.swift; sourceTree = "<group>"; };
+		765F5DFD4CF9D655D663E212 /* GitStatusServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusServiceTests.swift; sourceTree = "<group>"; };
 		766D499B513D46D821809F08 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		7D08217127D0DB6ED44164BD /* GitStatusAutoRefreshTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusAutoRefreshTests.swift; sourceTree = "<group>"; };
 		7E5CB1EAA0A66B7411EB8C71 /* Panel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panel.swift; sourceTree = "<group>"; };
+		85FE34D951D91C6D8B321B40 /* GitPreviewPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitPreviewPanel.swift; sourceTree = "<group>"; };
 		86D4D33D9C23D6FB3D01EA36 /* Argus-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Argus-Bridging-Header.h"; sourceTree = "<group>"; };
 		8C01FB15CE585853A5C6581E /* NewWorkspaceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewWorkspaceSheet.swift; sourceTree = "<group>"; };
 		93A28C47CFFC35C8515E0B8F /* GhosttyConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhosttyConfig.swift; sourceTree = "<group>"; };
+		93BB47420C5E72E32FA26F97 /* WorktreeBranchUniquenessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeBranchUniquenessTests.swift; sourceTree = "<group>"; };
 		993038FF837D5E46395CF754 /* Argus.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Argus.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9A24DE4AA9295D21C06F5C39 /* TitlebarGitContextFormatterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitlebarGitContextFormatterTests.swift; sourceTree = "<group>"; };
+		9C0107B8A19AEA8B1CDB683C /* ExistingBranchWorktreeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExistingBranchWorktreeTests.swift; sourceTree = "<group>"; };
+		9E5DA20601C0F85B1927FF74 /* TitlebarGitStatusViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitlebarGitStatusViewModelTests.swift; sourceTree = "<group>"; };
 		A0DE49DF785BEEBDEBA739E8 /* TerminalSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSurface.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718293A4B5C /* SessionSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSnapshot.swift; sourceTree = "<group>"; };
-		AA0000000000000000000011 /* GitStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatus.swift; sourceTree = "<group>"; };
-		AA0000000000000000000012 /* GitStatusParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusParser.swift; sourceTree = "<group>"; };
-		AA0000000000000000000019 /* GitStatusAutoRefreshController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusAutoRefreshController.swift; sourceTree = "<group>"; };
-		AA0000000000000000000020 /* GitPreviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitPreviewService.swift; sourceTree = "<group>"; };
-		AA0000000000000000000021 /* GitPreviewPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitPreviewPanel.swift; sourceTree = "<group>"; };
-		AA0000000000000000000017 /* GitDiffStatParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitDiffStatParser.swift; sourceTree = "<group>"; };
-		AA0000000000000000000013 /* GitStatusService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusService.swift; sourceTree = "<group>"; };
-		AA0000000000000000000014 /* GitSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitSidebarView.swift; sourceTree = "<group>"; };
-		AA0000000000000000000015 /* GitStatusViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusViewModel.swift; sourceTree = "<group>"; };
-		AA0000000000000000000018 /* GitFileStatusStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitFileStatusStyle.swift; sourceTree = "<group>"; };
 		AF5C0E9D5F6638CD5FEFE123 /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
+		B61F2A403CEF604900074280 /* GitPreviewServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitPreviewServiceTests.swift; sourceTree = "<group>"; };
 		B82A11967759AA4F1B34B47C /* ContentAreaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentAreaView.swift; sourceTree = "<group>"; };
+		B85B710CD787E14321AB971B /* SidebarStatePersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarStatePersistenceTests.swift; sourceTree = "<group>"; };
 		BC0B9ECA31DC779CDC60C200 /* SidebarState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarState.swift; sourceTree = "<group>"; };
+		D3FB117AE6DF223AE2B1A0A0 /* ExistingWorktreeBranchChoiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExistingWorktreeBranchChoiceTests.swift; sourceTree = "<group>"; };
+		D681607918630CD263C690CE /* ExistingBranchPickerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExistingBranchPickerTests.swift; sourceTree = "<group>"; };
+		D753CE6E1FFD67B19A85930F /* SidebarLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarLayoutTests.swift; sourceTree = "<group>"; };
+		D81A0F7652F3030290E53436 /* CurrentBranchDetectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrentBranchDetectionTests.swift; sourceTree = "<group>"; };
 		D91C4B07F7CA247F3E95F11A /* WorkspaceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceManager.swift; sourceTree = "<group>"; };
+		D95862A281739942EE89A56D /* SessionReconciliationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionReconciliationTests.swift; sourceTree = "<group>"; };
 		DC3870BE2DAE279DC4BF8974 /* WorkspaceTitleFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTitleFormatter.swift; sourceTree = "<group>"; };
 		DEEC7DB717D1E63F5D12D2EF /* GitSidebarPlaceholder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitSidebarPlaceholder.swift; sourceTree = "<group>"; };
+		DFE0FA88546FBFAD28E1D952 /* ProjectAndWorktreeUIContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectAndWorktreeUIContractTests.swift; sourceTree = "<group>"; };
 		E1902C84B53CB6CA56DE23B2 /* GhosttyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhosttyApp.swift; sourceTree = "<group>"; };
 		E6D28191E019C7FB7E2AE020 /* SidebarLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarLayout.swift; sourceTree = "<group>"; };
+		E9BCAEFE4ACA1C2C2E921A6A /* WorkspaceTitleFormatterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTitleFormatterTests.swift; sourceTree = "<group>"; };
+		E9E7D7DCF97A300FE8386B3A /* GitStatusParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusParserTests.swift; sourceTree = "<group>"; };
+		EAEA40E4A41292D6EBE0E95B /* GitStatusUIContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusUIContractTests.swift; sourceTree = "<group>"; };
+		EDA50BB27255AFF560A99F86 /* LocalBranchPickerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalBranchPickerTests.swift; sourceTree = "<group>"; };
 		EF781F36ADED8076735767AF /* TerminalNSView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalNSView.swift; sourceTree = "<group>"; };
+		F4CAD208D03EF627A5AADF06 /* GitStatusAutoRefreshController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusAutoRefreshController.swift; sourceTree = "<group>"; };
+		FFEDE6A5A2B6B85C812CEFAC /* SourceContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceContract.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		0589F6E1A15387D609C393C2 /* TestSupport */ = {
+			isa = PBXGroup;
+			children = (
+				FFEDE6A5A2B6B85C812CEFAC /* SourceContract.swift */,
+			);
+			path = TestSupport;
+			sourceTree = "<group>";
+		};
 		061231AC08CCEFEFF787F838 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				AA0000000000000000000017 /* GitDiffStatParser.swift */,
-				AA0000000000000000000020 /* GitPreviewService.swift */,
-				AA0000000000000000000019 /* GitStatusAutoRefreshController.swift */,
-				AA0000000000000000000012 /* GitStatusParser.swift */,
-				AA0000000000000000000013 /* GitStatusService.swift */,
+				4DB16A21820EB52A4A4D2ABD /* GitDiffStatParser.swift */,
+				470C27E1E483568C99FF880E /* GitPreviewService.swift */,
+				F4CAD208D03EF627A5AADF06 /* GitStatusAutoRefreshController.swift */,
+				42040B76D2872AC71249796C /* GitStatusParser.swift */,
+				16B9FAB1109B3A420ADD6DC4 /* GitStatusService.swift */,
 				D91C4B07F7CA247F3E95F11A /* WorkspaceManager.swift */,
 				709721096373D93A263660AB /* WorktreeService.swift */,
 			);
@@ -123,6 +198,17 @@
 			path = Titlebar;
 			sourceTree = "<group>";
 		};
+		234C02C2B7CA13C56AF9B10C /* WorkspaceTests */ = {
+			isa = PBXGroup;
+			children = (
+				D753CE6E1FFD67B19A85930F /* SidebarLayoutTests.swift */,
+				B85B710CD787E14321AB971B /* SidebarStatePersistenceTests.swift */,
+				E9BCAEFE4ACA1C2C2E921A6A /* WorkspaceTitleFormatterTests.swift */,
+				36AB7BEA90617BC349DB39F2 /* WorkspaceUIContractTests.swift */,
+			);
+			path = WorkspaceTests;
+			sourceTree = "<group>";
+		};
 		2712C23DDD306584A3E3FE64 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
@@ -135,6 +221,7 @@
 			isa = PBXGroup;
 			children = (
 				5EBA3B7DBE997BEE1E0BC4D6 /* Argus */,
+				FF1EA9BFA94072E6B134224B /* Tests */,
 				47BC0BB82D5E0F1DEC663EAD /* Products */,
 			);
 			sourceTree = "<group>";
@@ -149,10 +236,27 @@
 			path = Dialogs;
 			sourceTree = "<group>";
 		};
+		3D941654DC03361D12ECA34D /* WorktreeTests */ = {
+			isa = PBXGroup;
+			children = (
+				5F828578257356A65F90D274 /* BranchAvailabilityTests.swift */,
+				D81A0F7652F3030290E53436 /* CurrentBranchDetectionTests.swift */,
+				D681607918630CD263C690CE /* ExistingBranchPickerTests.swift */,
+				9C0107B8A19AEA8B1CDB683C /* ExistingBranchWorktreeTests.swift */,
+				D3FB117AE6DF223AE2B1A0A0 /* ExistingWorktreeBranchChoiceTests.swift */,
+				EDA50BB27255AFF560A99F86 /* LocalBranchPickerTests.swift */,
+				DFE0FA88546FBFAD28E1D952 /* ProjectAndWorktreeUIContractTests.swift */,
+				0A0B59D2D5F42C91DCDAECE1 /* RepositoryRootNormalizationTests.swift */,
+				93BB47420C5E72E32FA26F97 /* WorktreeBranchUniquenessTests.swift */,
+			);
+			path = WorktreeTests;
+			sourceTree = "<group>";
+		};
 		47BC0BB82D5E0F1DEC663EAD /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				993038FF837D5E46395CF754 /* Argus.app */,
+				240114454020A167A4D5C6A4 /* ArgusTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -168,11 +272,39 @@
 			path = Sidebar;
 			sourceTree = "<group>";
 		};
+		5A9A933A49AF33D015325453 /* GitStatusTests */ = {
+			isa = PBXGroup;
+			children = (
+				31F5743E7A55EE9FBC908770 /* GitDiffStatParserTests.swift */,
+				3D74EFE13FBE5E49414DB592 /* GitPreviewPanelTests.swift */,
+				B61F2A403CEF604900074280 /* GitPreviewServiceTests.swift */,
+				7D08217127D0DB6ED44164BD /* GitStatusAutoRefreshTests.swift */,
+				E9E7D7DCF97A300FE8386B3A /* GitStatusParserTests.swift */,
+				6B72A806CCA50285C46D5FF9 /* GitStatusRootResolverTests.swift */,
+				765F5DFD4CF9D655D663E212 /* GitStatusServiceTests.swift */,
+				EAEA40E4A41292D6EBE0E95B /* GitStatusUIContractTests.swift */,
+				51F91E726725C5D06375AA8E /* GitStatusViewModelTests.swift */,
+				9A24DE4AA9295D21C06F5C39 /* TitlebarGitContextFormatterTests.swift */,
+				9E5DA20601C0F85B1927FF74 /* TitlebarGitStatusViewModelTests.swift */,
+			);
+			path = GitStatusTests;
+			sourceTree = "<group>";
+		};
+		5B8768D3865D39498AE00F20 /* GitSidebar */ = {
+			isa = PBXGroup;
+			children = (
+				4C1ED524D3519A8D6A0A46D0 /* GitFileStatusStyle.swift */,
+				85FE34D951D91C6D8B321B40 /* GitPreviewPanel.swift */,
+				2BC41CF5BFC955D50F929F5A /* GitSidebarView.swift */,
+				4B65BCC437F1421231D69ACC /* GitStatusViewModel.swift */,
+			);
+			path = GitSidebar;
+			sourceTree = "<group>";
+		};
 		5EBA3B7DBE997BEE1E0BC4D6 /* Argus */ = {
 			isa = PBXGroup;
 			children = (
 				C6DB148AAFCDFCDA89FF048B /* App */,
-				E5807BC3B490838812E48F72 /* Browser */,
 				AF471715D166EF51AE46868F /* Ghostty */,
 				CC6D83B5411485CCF6AA5211 /* Models */,
 				2712C23DDD306584A3E3FE64 /* Resources */,
@@ -182,6 +314,16 @@
 			path = Argus;
 			sourceTree = "<group>";
 		};
+		8C7BD9172011E305ED604B71 /* SessionTests */ = {
+			isa = PBXGroup;
+			children = (
+				D95862A281739942EE89A56D /* SessionReconciliationTests.swift */,
+				0EA813F930B12FDBB09C67C8 /* SessionSnapshotTests.swift */,
+				3194FA21992F916DD0D62855 /* TerminalDirectorySnapshotTests.swift */,
+			);
+			path = SessionTests;
+			sourceTree = "<group>";
+		};
 		93BAB8A8D25F41D7072B4882 /* Views */ = {
 			isa = PBXGroup;
 			children = (
@@ -189,22 +331,11 @@
 				172F49E4DC138F5AEEE1E515 /* MainWindowView.swift */,
 				093DB2EEF3C9C140E7F21D78 /* Content */,
 				3C4D6F0861163112D2366F61 /* Dialogs */,
-				AA0000000000000000000016 /* GitSidebar */,
+				5B8768D3865D39498AE00F20 /* GitSidebar */,
 				598F65DDB5FF917F250CA120 /* Sidebar */,
 				189BC93B4D0838FFEB42D693 /* Titlebar */,
 			);
 			path = Views;
-			sourceTree = "<group>";
-		};
-		AA0000000000000000000016 /* GitSidebar */ = {
-			isa = PBXGroup;
-			children = (
-				AA0000000000000000000018 /* GitFileStatusStyle.swift */,
-				AA0000000000000000000021 /* GitPreviewPanel.swift */,
-				AA0000000000000000000014 /* GitSidebarView.swift */,
-				AA0000000000000000000015 /* GitStatusViewModel.swift */,
-			);
-			path = GitSidebar;
 			sourceTree = "<group>";
 		};
 		AF471715D166EF51AE46868F /* Ghostty */ = {
@@ -231,10 +362,10 @@
 		CC6D83B5411485CCF6AA5211 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				AA0000000000000000000011 /* GitStatus.swift */,
+				564CED7FFF04C34E03455980 /* GitStatus.swift */,
 				7E5CB1EAA0A66B7411EB8C71 /* Panel.swift */,
 				AF5C0E9D5F6638CD5FEFE123 /* Project.swift */,
-				A1B2C3D4E5F60718293A4B5C /* SessionSnapshot.swift */,
+				088F13043584037475E77D04 /* SessionSnapshot.swift */,
 				2C6799AE81C5533761C5D201 /* TerminalPanel.swift */,
 				4EA1923AE8EFCF89F42CB0AC /* Workspace.swift */,
 				DC3870BE2DAE279DC4BF8974 /* WorkspaceTitleFormatter.swift */,
@@ -242,11 +373,16 @@
 			path = Models;
 			sourceTree = "<group>";
 		};
-		E5807BC3B490838812E48F72 /* Browser */ = {
+		FF1EA9BFA94072E6B134224B /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				5A9A933A49AF33D015325453 /* GitStatusTests */,
+				8C7BD9172011E305ED604B71 /* SessionTests */,
+				0589F6E1A15387D609C393C2 /* TestSupport */,
+				234C02C2B7CA13C56AF9B10C /* WorkspaceTests */,
+				3D941654DC03361D12ECA34D /* WorktreeTests */,
 			);
-			path = Browser;
+			path = Tests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -268,6 +404,24 @@
 			productName = Argus;
 			productReference = 993038FF837D5E46395CF754 /* Argus.app */;
 			productType = "com.apple.product-type.application";
+		};
+		7018B6232434537CE0537423 /* ArgusTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3699B055297D7AF9F565A4AF /* Build configuration list for PBXNativeTarget "ArgusTests" */;
+			buildPhases = (
+				91DA4C143CDB1B8B66F5218F /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4CB5D5DE75D0B272299F3DB1 /* PBXTargetDependency */,
+			);
+			name = ArgusTests;
+			packageProductDependencies = (
+			);
+			productName = ArgusTests;
+			productReference = 240114454020A167A4D5C6A4 /* ArgusTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -298,6 +452,7 @@
 			projectRoot = "";
 			targets = (
 				002B50BE8863B8871A1A0A2C /* Argus */,
+				7018B6232434537CE0537423 /* ArgusTests */,
 			);
 		};
 /* End PBXProject section */
@@ -313,27 +468,27 @@
 				2BE9A99F5027BA3CF54496D9 /* ContentAreaView.swift in Sources */,
 				CD3A7008FD8EA79C557C634C /* GhosttyApp.swift in Sources */,
 				E4830742CCBF697A5503CDFB /* GhosttyConfig.swift in Sources */,
+				6A070C166FF0C9361AE775B5 /* GitDiffStatParser.swift in Sources */,
+				EAB3343A6EE57205E148A50E /* GitFileStatusStyle.swift in Sources */,
+				9922D80421D39D138E2E720C /* GitPreviewPanel.swift in Sources */,
+				AEE3EB622810DCECC32D71FD /* GitPreviewService.swift in Sources */,
 				18CB9A2225E3B84398CD6CC0 /* GitSidebarPlaceholder.swift in Sources */,
-				BB0000000000000000000017 /* GitDiffStatParser.swift in Sources */,
-				BB0000000000000000000018 /* GitFileStatusStyle.swift in Sources */,
-				BB0000000000000000000021 /* GitPreviewPanel.swift in Sources */,
-				BB0000000000000000000014 /* GitSidebarView.swift in Sources */,
-				BB0000000000000000000011 /* GitStatus.swift in Sources */,
-				BB0000000000000000000019 /* GitStatusAutoRefreshController.swift in Sources */,
-				BB0000000000000000000012 /* GitStatusParser.swift in Sources */,
-				BB0000000000000000000020 /* GitPreviewService.swift in Sources */,
-				BB0000000000000000000013 /* GitStatusService.swift in Sources */,
-				BB0000000000000000000015 /* GitStatusViewModel.swift in Sources */,
+				760E71483559B9C4814A3C55 /* GitSidebarView.swift in Sources */,
+				CEF870EB346EBD44B4FE2FB4 /* GitStatus.swift in Sources */,
+				48E62BE8320ACBDE490E28A2 /* GitStatusAutoRefreshController.swift in Sources */,
+				CB02BAC29DD3DD12EE0AF3FE /* GitStatusParser.swift in Sources */,
+				DF61F03B0291C4801D0BA0FF /* GitStatusService.swift in Sources */,
+				84E9D9C430F370DBA6BC8373 /* GitStatusViewModel.swift in Sources */,
 				2401E44539747B1C9FDBC5E9 /* MainWindowView.swift in Sources */,
 				E3FCCA98DDAA416589EF30A8 /* NewProjectSheet.swift in Sources */,
 				4B7BD698C037E123F109CA97 /* NewWorkspaceSheet.swift in Sources */,
 				92C213F4093831E8F18EAD07 /* OrphanedWorktreesSheet.swift in Sources */,
 				EF04235849461CCB3B6C16E5 /* Panel.swift in Sources */,
 				0B8AAB5E791399EA83F83F18 /* Project.swift in Sources */,
+				CABB52CC6A3EC4A1CC25627C /* SessionSnapshot.swift in Sources */,
 				F7B2935F162B1E42E5035113 /* SidebarDivider.swift in Sources */,
 				DC862B0710F0629EAB8BDF7A /* SidebarLayout.swift in Sources */,
 				12D7A8C68E6686B8EB0BF266 /* SidebarState.swift in Sources */,
-				2A2C3E4F5A6B7C8D9E0F1A2B /* SessionSnapshot.swift in Sources */,
 				01330EDDF1BD8FFBBA86E045 /* SidebarView.swift in Sources */,
 				6A4C05C340641327AC48E31D /* TabBarView.swift in Sources */,
 				731C90BF98E20510EDF3C7AB /* TerminalNSView.swift in Sources */,
@@ -348,9 +503,72 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		91DA4C143CDB1B8B66F5218F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D8D1DE19F62552C5501E47BD /* BranchAvailabilityTests.swift in Sources */,
+				9610F68F0273C22A7C5BA20B /* CurrentBranchDetectionTests.swift in Sources */,
+				344B25CC7C2ADD72466CD792 /* ExistingBranchPickerTests.swift in Sources */,
+				F46179E18E48775C783E104A /* ExistingBranchWorktreeTests.swift in Sources */,
+				5B4BB7179424815BEF595AF7 /* ExistingWorktreeBranchChoiceTests.swift in Sources */,
+				0E12DBED45B56CCE6139ADA2 /* GitDiffStatParserTests.swift in Sources */,
+				15DFA75952566E938AECED46 /* GitPreviewPanelTests.swift in Sources */,
+				5974AE95C0C64669D0C96C1E /* GitPreviewServiceTests.swift in Sources */,
+				0372E54756482C36712CCD55 /* GitStatusAutoRefreshTests.swift in Sources */,
+				395203F465B0D6EDBD1BC9E3 /* GitStatusParserTests.swift in Sources */,
+				9679B7D72B5B733E06616895 /* GitStatusRootResolverTests.swift in Sources */,
+				266AC714DABCBEEC0C9B1F0A /* GitStatusServiceTests.swift in Sources */,
+				260C169969B555F7E7CCAD81 /* GitStatusUIContractTests.swift in Sources */,
+				542AA4D2D6CA471D8BB5AC79 /* GitStatusViewModelTests.swift in Sources */,
+				06D940FC58CFA264CECE7332 /* LocalBranchPickerTests.swift in Sources */,
+				99AE3FC1AB4F412A618B127C /* ProjectAndWorktreeUIContractTests.swift in Sources */,
+				AB121FB0384DC0B18B8FDC43 /* RepositoryRootNormalizationTests.swift in Sources */,
+				A0C1428612E01868D6B2BD69 /* SessionReconciliationTests.swift in Sources */,
+				EE31F58DE3DF374DB8E6C07E /* SessionSnapshotTests.swift in Sources */,
+				E20DFC66EAE40A5C68EC4F09 /* SidebarLayoutTests.swift in Sources */,
+				B87E14DF8A9A133F597BC3E9 /* SidebarStatePersistenceTests.swift in Sources */,
+				04DCE84FEB30B0CE57BD6213 /* SourceContract.swift in Sources */,
+				4D1C3908D831F340E8ACEED0 /* TerminalDirectorySnapshotTests.swift in Sources */,
+				8F194E2E27E6DCE202387006 /* TitlebarGitContextFormatterTests.swift in Sources */,
+				DDE4A691BA635A503F286FEF /* TitlebarGitStatusViewModelTests.swift in Sources */,
+				A65C95F2982AA18D7D80D785 /* WorkspaceTitleFormatterTests.swift in Sources */,
+				19F52C9DA9B94C0CB6CBAA7C /* WorkspaceUIContractTests.swift in Sources */,
+				1E8DB0ADCCBD53DF40A36B88 /* WorktreeBranchUniquenessTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		4CB5D5DE75D0B272299F3DB1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 002B50BE8863B8871A1A0A2C /* Argus */;
+			targetProxy = 9A697D2E46DFA1946C49CE17 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		55EDABAF78678A396082F14B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/Frameworks/GhosttyKit.xcframework/macos-arm64_x86_64/Headers",
+				);
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.argus.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Argus.app/Contents/MacOS/Argus";
+			};
+			name = Debug;
+		};
 		817E98607284AC7FDD69D7AF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -566,9 +784,38 @@
 			};
 			name = Debug;
 		};
+		C1CA5C2DBB48CD287ECD69AE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/Frameworks/GhosttyKit.xcframework/macos-arm64_x86_64/Headers",
+				);
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.argus.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Argus.app/Contents/MacOS/Argus";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		3699B055297D7AF9F565A4AF /* Build configuration list for PBXNativeTarget "ArgusTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				55EDABAF78678A396082F14B /* Debug */,
+				C1CA5C2DBB48CD287ECD69AE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		3B224A7D049AF079B1F594AC /* Build configuration list for PBXProject "Argus" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

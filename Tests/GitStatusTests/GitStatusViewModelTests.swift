@@ -1,0 +1,518 @@
+import AppKit
+import Foundation
+import Testing
+
+@testable import Argus
+
+@Suite
+struct GitStatusViewModelTests {
+  @Test
+  func coveredBehaviors() async {
+    await manualRefreshPublishesLoadingThenLoadedState()
+    await initializingRepositoryPublishesCleanRefreshedStatus()
+    await copyPathWritesDisplayedFilePathWithoutGitMutation()
+    await fileOperationUsesResolvedRootAndPublishesRefreshedStatus()
+    await canceledDestructiveFileOperationDoesNotMutateState()
+    await confirmedDestructiveFileOperationRunsAndRefreshes()
+    await sectionBulkOperationUsesSectionScopeForCappedResults()
+    await destructiveSectionBulkOperationConfirmsTotalSectionCount()
+    await previewUsesResolvedRootAndPresentsOutput()
+    await previewFailureIsPresentedWithoutReplacingStatusState()
+    await automaticRefreshUsesSameLoadingRefreshPath()
+  }
+
+  @MainActor
+  private func manualRefreshPublishesLoadingThenLoadedState() async {
+    let service = FakeStatusService(
+      result: .loaded(
+        GitStatusSummary(
+          rootPath: "/tmp/worktree",
+          branchName: "main",
+          upstreamName: nil,
+          aheadCount: 0,
+          behindCount: 0,
+          stagedCount: 0,
+          unstagedCount: 0,
+          untrackedCount: 0
+        )))
+    let viewModel = GitStatusViewModel(service: service)
+    let context = GitStatusRootContext(
+      kind: .worktree,
+      currentDirectory: "/tmp/worktree/subdir",
+      worktreePath: "/tmp/worktree",
+      projectRepositoryPath: "/tmp/repo"
+    )
+
+    await viewModel.refresh(context: context)
+
+    assertEqual(service.requestedRoots, ["/tmp/worktree"], "refresh uses resolved worktree root")
+    assertEqual(viewModel.state, service.result, "refresh publishes loaded state")
+  }
+
+  @MainActor
+  private func initializingRepositoryPublishesCleanRefreshedStatus() async {
+    let loaded = GitStatusLoadState.loaded(
+      GitStatusSummary(
+        rootPath: "/tmp/new-repo",
+        branchName: "main",
+        upstreamName: nil,
+        aheadCount: 0,
+        behindCount: 0,
+        stagedCount: 0,
+        unstagedCount: 0,
+        untrackedCount: 0
+      ))
+    let service = FakeStatusService(
+      result: .notRepository(rootPath: "/tmp/new-repo"), initializeResult: loaded)
+    let viewModel = GitStatusViewModel(service: service)
+    let context = GitStatusRootContext(
+      kind: .standalone,
+      currentDirectory: "/tmp/new-repo",
+      worktreePath: nil,
+      projectRepositoryPath: nil
+    )
+
+    await viewModel.initializeRepository(context: context)
+
+    assertEqual(service.initializedRoots, ["/tmp/new-repo"], "initialize uses resolved root")
+    assertEqual(viewModel.state, loaded, "successful initialize publishes refreshed clean status")
+  }
+
+  @MainActor
+  private func copyPathWritesDisplayedFilePathWithoutGitMutation() async {
+    let clipboard = RecordingPathClipboard()
+    let service = FakeStatusService(
+      result: .loaded(
+        GitStatusSummary(
+          rootPath: "/tmp/repo",
+          branchName: "main",
+          upstreamName: nil,
+          aheadCount: 0,
+          behindCount: 0
+        )))
+    let viewModel = GitStatusViewModel(service: service, pathClipboard: clipboard)
+
+    viewModel.copyPath("Sources/App/File.swift")
+
+    assertEqual(
+      clipboard.copiedPaths, ["Sources/App/File.swift"], "copy-path copies the displayed row path")
+    assertEqual(service.operationRequests.isEmpty, true, "copy-path does not run a git operation")
+    assertEqual(service.requestedRoots.isEmpty, true, "copy-path does not refresh git state")
+  }
+
+  @MainActor
+  private func fileOperationUsesResolvedRootAndPublishesRefreshedStatus() async {
+    let refreshed = GitStatusLoadState.loaded(
+      GitStatusSummary(
+        rootPath: "/tmp/worktree",
+        branchName: "main",
+        upstreamName: nil,
+        aheadCount: 0,
+        behindCount: 0,
+        stagedCount: 1,
+        unstagedCount: 0,
+        untrackedCount: 0
+      ))
+    let service = FakeStatusService(result: .idle, operationResult: refreshed)
+    let viewModel = GitStatusViewModel(service: service)
+    let context = GitStatusRootContext(
+      kind: .worktree,
+      currentDirectory: "/tmp/worktree/subdir",
+      worktreePath: "/tmp/worktree",
+      projectRepositoryPath: nil
+    )
+
+    await viewModel.performFileOperation(.stage, path: "file.txt", context: context)
+
+    assertEqual(
+      service.operationRequests.map { "\($0.0)-\($0.1)-\($0.2)" }, ["stage-/tmp/worktree-file.txt"],
+      "file operation uses resolved root and row path")
+    assertEqual(viewModel.state, refreshed, "file operation publishes refreshed status immediately")
+  }
+
+  @MainActor
+  private func canceledDestructiveFileOperationDoesNotMutateState() async {
+    let service = FakeStatusService(result: .idle)
+    let confirmation = RecordingFileOperationConfirmer(shouldConfirm: false)
+    let viewModel = GitStatusViewModel(service: service, fileOperationConfirmer: confirmation)
+    let context = GitStatusRootContext(
+      kind: .standalone,
+      currentDirectory: "/tmp/repo",
+      worktreePath: nil,
+      projectRepositoryPath: nil
+    )
+
+    await viewModel.confirmAndPerformFileOperation(.discard, paths: ["file.txt"], context: context)
+
+    assertEqual(confirmation.requests, [.discard], "destructive operation asks for confirmation")
+    assertEqual(
+      service.bulkOperationRequests.isEmpty, true,
+      "canceled destructive operation does not call git")
+    assertEqual(
+      viewModel.state, .idle, "canceled destructive operation leaves sidebar state unchanged")
+  }
+
+  @MainActor
+  private func confirmedDestructiveFileOperationRunsAndRefreshes() async {
+    let refreshed = GitStatusLoadState.loaded(
+      GitStatusSummary(
+        rootPath: "/tmp/repo",
+        branchName: "main",
+        upstreamName: nil,
+        aheadCount: 0,
+        behindCount: 0
+      ))
+    let service = FakeStatusService(result: .idle, operationResult: refreshed)
+    let confirmation = RecordingFileOperationConfirmer(shouldConfirm: true)
+    let viewModel = GitStatusViewModel(service: service, fileOperationConfirmer: confirmation)
+    let context = GitStatusRootContext(
+      kind: .standalone,
+      currentDirectory: "/tmp/repo",
+      worktreePath: nil,
+      projectRepositoryPath: nil
+    )
+
+    await viewModel.confirmAndPerformFileOperation(
+      .delete, paths: ["scratch.txt"], context: context)
+
+    assertEqual(confirmation.requests, [.delete], "confirmed delete asks for confirmation")
+    assertEqual(
+      service.bulkOperationRequests.map { "\($0.0)-\($0.1)-\($0.2.joined(separator: ","))" },
+      ["delete-/tmp/repo-scratch.txt"], "confirmed delete runs as a bulk operation")
+    assertEqual(
+      viewModel.state, refreshed, "confirmed destructive operation publishes refreshed status")
+  }
+
+  @MainActor
+  private func sectionBulkOperationUsesSectionScopeForCappedResults() async {
+    let refreshed = GitStatusLoadState.loaded(
+      GitStatusSummary(
+        rootPath: "/tmp/repo",
+        branchName: "main",
+        upstreamName: nil,
+        aheadCount: 0,
+        behindCount: 0
+      ))
+    let service = FakeStatusService(result: .idle, operationResult: refreshed)
+    let viewModel = GitStatusViewModel(service: service)
+    let context = GitStatusRootContext(
+      kind: .standalone,
+      currentDirectory: "/tmp/repo",
+      worktreePath: nil,
+      projectRepositoryPath: nil
+    )
+
+    await viewModel.confirmAndPerformSectionFileOperation(
+      .stage, sectionKey: "untracked", pathCount: 501, context: context)
+
+    assertEqual(
+      service.bulkOperationRequests.isEmpty, true,
+      "capped section bulk actions do not operate only on displayed file paths")
+    assertEqual(
+      service.sectionOperationRequests.map { "\($0.0)-\($0.1)-\($0.2)" },
+      ["stage-/tmp/repo-untracked"], "bulk action operates on the whole git section")
+    assertEqual(viewModel.state, refreshed, "section bulk operation publishes refreshed status")
+  }
+
+  @MainActor
+  private func destructiveSectionBulkOperationConfirmsTotalSectionCount() async {
+    let service = FakeStatusService(result: .idle)
+    let confirmation = RecordingFileOperationConfirmer(shouldConfirm: true)
+    let viewModel = GitStatusViewModel(service: service, fileOperationConfirmer: confirmation)
+    let context = GitStatusRootContext(
+      kind: .standalone,
+      currentDirectory: "/tmp/repo",
+      worktreePath: nil,
+      projectRepositoryPath: nil
+    )
+
+    await viewModel.confirmAndPerformSectionFileOperation(
+      .delete, sectionKey: "untracked", pathCount: 501, context: context)
+
+    assertEqual(
+      confirmation.requests, [.delete], "destructive section action asks for confirmation")
+    assertEqual(
+      confirmation.pathCountRequests, [501],
+      "destructive section confirmation uses total section count, not capped row count")
+    assertEqual(
+      service.sectionOperationRequests.map { "\($0.0)-\($0.1)-\($0.2)" },
+      ["delete-/tmp/repo-untracked"],
+      "confirmed destructive section action operates on whole section")
+  }
+
+  @MainActor
+  private func previewUsesResolvedRootAndPresentsOutput() async {
+    let service = FakeStatusService(result: .idle)
+    let previewService = RecordingPreviewService(
+      result: .loaded(GitPreview(kind: .diff, path: "file.txt", output: "diff output")))
+    let presenter = RecordingPreviewPresenter()
+    let viewModel = GitStatusViewModel(
+      service: service, previewService: previewService, previewPresenter: presenter)
+    let context = GitStatusRootContext(
+      kind: .worktree,
+      currentDirectory: "/tmp/worktree/subdir",
+      worktreePath: "/tmp/worktree",
+      projectRepositoryPath: nil
+    )
+    let file = GitFileChange(path: "file.txt", status: .modified, sectionKey: "unstaged")
+
+    await viewModel.showPreview(kind: .diff, file: file, context: context, parentWindow: nil)
+
+    assertEqual(
+      previewService.requests.map { "\($0.0)-\($0.1)-\($0.2.path)" },
+      ["diff-/tmp/worktree-file.txt"], "preview uses resolved status root and selected row")
+    assertEqual(
+      presenter.presentedPreviews,
+      [GitPreview(kind: .diff, path: "file.txt", output: "diff output")],
+      "loaded preview is presented")
+    assertEqual(viewModel.state, .idle, "preview does not replace git status state")
+  }
+
+  @MainActor
+  private func previewFailureIsPresentedWithoutReplacingStatusState() async {
+    let current = GitStatusLoadState.loaded(
+      GitStatusSummary(
+        rootPath: "/tmp/repo", branchName: "main", upstreamName: nil, aheadCount: 0, behindCount: 0)
+    )
+    let service = FakeStatusService(result: current)
+    let previewService = RecordingPreviewService(
+      result: .failed(kind: .blame, path: "missing.txt", message: "fatal: no such path"))
+    let presenter = RecordingPreviewPresenter()
+    let viewModel = GitStatusViewModel(
+      service: service, previewService: previewService, previewPresenter: presenter)
+    let context = GitStatusRootContext(
+      kind: .standalone, currentDirectory: "/tmp/repo", worktreePath: nil,
+      projectRepositoryPath: nil)
+    await viewModel.refresh(context: context)
+
+    await viewModel.showPreview(
+      kind: .blame,
+      file: GitFileChange(path: "missing.txt", status: .modified, sectionKey: "unstaged"),
+      context: context, parentWindow: nil)
+
+    assertEqual(
+      presenter.presentedFailures, ["blame-missing.txt-fatal: no such path"],
+      "preview failure is presented non-destructively")
+    assertEqual(viewModel.state, current, "preview failure does not replace loaded status state")
+  }
+
+  @MainActor
+  private func automaticRefreshUsesSameLoadingRefreshPath() async {
+    let loaded = GitStatusLoadState.loaded(
+      GitStatusSummary(
+        rootPath: "/tmp/worktree",
+        branchName: "main",
+        upstreamName: nil,
+        aheadCount: 0,
+        behindCount: 0
+      ))
+    var observedLoading = false
+    let service = ObservingStatusService(result: loaded) {
+      observedLoading = true
+    }
+    let viewModel = GitStatusViewModel(service: service)
+    let watcher = ViewModelTestWatcher()
+    let scheduler = ViewModelTestScheduler()
+    let controller = GitStatusAutoRefreshController(
+      watcher: watcher,
+      scheduler: scheduler,
+      now: { Date(timeIntervalSince1970: 100) }
+    )
+    let context = GitStatusRootContext(
+      kind: .worktree,
+      currentDirectory: "/tmp/worktree/subdir",
+      worktreePath: "/tmp/worktree",
+      projectRepositoryPath: nil
+    )
+
+    controller.start(rootPath: "/tmp/worktree") {
+      await viewModel.refresh(context: context)
+    }
+    watcher.emit(paths: ["/tmp/worktree/file.txt"])
+    await scheduler.runScheduled()
+
+    assertEqual(
+      observedLoading, true, "automatic refresh exposes loading state before service returns")
+    assertEqual(viewModel.state, loaded, "automatic refresh publishes final status")
+  }
+
+  private func assertEqual<T: Equatable>(_ actual: T, _ expected: T, _ message: String) {
+    #expect(actual == expected, Comment(rawValue: message))
+  }
+}
+
+private final class ObservingStatusService: GitStatusProviding, @unchecked Sendable {
+  let result: GitStatusLoadState
+  let onStart: @MainActor () -> Void
+
+  init(result: GitStatusLoadState, onStart: @escaping @MainActor () -> Void) {
+    self.result = result
+    self.onStart = onStart
+  }
+
+  func status(rootPath: String) async -> GitStatusLoadState {
+    await MainActor.run { onStart() }
+    return result
+  }
+
+  func initializeRepository(rootPath: String) async -> GitStatusLoadState {
+    result
+  }
+
+  func performFileOperation(_ operation: GitStatusFileOperation, rootPath: String, path: String)
+    async -> GitStatusLoadState
+  {
+    result
+  }
+
+  func performBulkFileOperation(
+    _ operation: GitStatusFileOperation, rootPath: String, paths: [String]
+  ) async -> GitStatusLoadState {
+    result
+  }
+}
+
+private final class ViewModelTestWatcher: GitStatusFileWatching, @unchecked Sendable {
+  var onEvents: (@MainActor @Sendable ([String]) -> Void)?
+
+  func start(rootPath: String, onEvents: @escaping @MainActor @Sendable ([String]) -> Void) {
+    self.onEvents = onEvents
+  }
+
+  func stop() {}
+
+  @MainActor
+  func emit(paths: [String]) {
+    onEvents?(paths)
+  }
+}
+
+@MainActor
+private final class ViewModelTestScheduler: GitStatusRefreshScheduling {
+  private var operation: (@MainActor @Sendable () async -> Void)?
+
+  func schedule(
+    after delay: TimeInterval, operation: @escaping @MainActor @Sendable () async -> Void
+  ) {
+    self.operation = operation
+  }
+
+  func cancel() {
+    operation = nil
+  }
+
+  func runScheduled() async {
+    await operation?()
+  }
+}
+
+private final class RecordingFileOperationConfirmer: GitStatusFileOperationConfirming {
+  let shouldConfirm: Bool
+  private(set) var requests: [GitStatusFileOperation] = []
+  private(set) var pathCountRequests: [Int] = []
+
+  init(shouldConfirm: Bool) {
+    self.shouldConfirm = shouldConfirm
+  }
+
+  func confirm(operation: GitStatusFileOperation, paths: [String]) -> Bool {
+    requests.append(operation)
+    pathCountRequests.append(paths.count)
+    return shouldConfirm
+  }
+
+  func confirm(operation: GitStatusFileOperation, pathCount: Int) -> Bool {
+    requests.append(operation)
+    pathCountRequests.append(pathCount)
+    return shouldConfirm
+  }
+}
+
+private final class RecordingPathClipboard: GitStatusPathCopying {
+  private(set) var copiedPaths: [String] = []
+
+  func copyPath(_ path: String) {
+    copiedPaths.append(path)
+  }
+}
+
+private final class RecordingPreviewPresenter: GitPreviewPresenting {
+  private(set) var presentedPreviews: [GitPreview] = []
+  private(set) var presentedFailures: [String] = []
+
+  func show(preview: GitPreview, parentWindow: NSWindow?) {
+    presentedPreviews.append(preview)
+  }
+
+  func showFailure(kind: GitPreviewKind, path: String, message: String, parentWindow: NSWindow?) {
+    presentedFailures.append("\(kind)-\(path)-\(message)")
+  }
+}
+
+private final class RecordingPreviewService: GitPreviewProviding, @unchecked Sendable {
+  let result: GitPreviewLoadState
+  private(set) var requests: [(GitPreviewKind, String, GitFileChange)] = []
+
+  init(result: GitPreviewLoadState) {
+    self.result = result
+  }
+
+  func preview(kind: GitPreviewKind, rootPath: String, file: GitFileChange) async
+    -> GitPreviewLoadState
+  {
+    requests.append((kind, rootPath, file))
+    return result
+  }
+}
+
+private final class FakeStatusService: GitStatusProviding, @unchecked Sendable {
+  let result: GitStatusLoadState
+  let initializeResult: GitStatusLoadState
+  let operationResult: GitStatusLoadState
+  private(set) var requestedRoots: [String] = []
+  private(set) var initializedRoots: [String] = []
+  private(set) var operationRequests: [(GitStatusFileOperation, String, String)] = []
+  private(set) var bulkOperationRequests: [(GitStatusFileOperation, String, [String])] = []
+  private(set) var sectionOperationRequests: [(GitStatusFileOperation, String, String)] = []
+
+  init(
+    result: GitStatusLoadState,
+    initializeResult: GitStatusLoadState? = nil,
+    operationResult: GitStatusLoadState? = nil
+  ) {
+    self.result = result
+    self.initializeResult = initializeResult ?? result
+    self.operationResult = operationResult ?? result
+  }
+
+  func status(rootPath: String) async -> GitStatusLoadState {
+    requestedRoots.append(rootPath)
+    return result
+  }
+
+  func initializeRepository(rootPath: String) async -> GitStatusLoadState {
+    initializedRoots.append(rootPath)
+    return initializeResult
+  }
+
+  func performFileOperation(_ operation: GitStatusFileOperation, rootPath: String, path: String)
+    async -> GitStatusLoadState
+  {
+    operationRequests.append((operation, rootPath, path))
+    return operationResult
+  }
+
+  func performBulkFileOperation(
+    _ operation: GitStatusFileOperation, rootPath: String, paths: [String]
+  ) async -> GitStatusLoadState {
+    bulkOperationRequests.append((operation, rootPath, paths))
+    return operationResult
+  }
+
+  func performSectionFileOperation(
+    _ operation: GitStatusFileOperation, rootPath: String, sectionKey: String
+  ) async -> GitStatusLoadState {
+    sectionOperationRequests.append((operation, rootPath, sectionKey))
+    return operationResult
+  }
+}

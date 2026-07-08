@@ -295,7 +295,7 @@ final class Workspace: Identifiable, ObservableObject {
             panelOrder.append(panel.id)
         }
         tabLayouts[panel.id] = .leaf(panel.id)
-        activePanelId = panel.id
+        selectPanel(panel.id)
 
         return panel
     }

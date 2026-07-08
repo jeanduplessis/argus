@@ -112,7 +112,7 @@ final class TerminalSurface: ObservableObject, Identifiable {
                   notifId == surfaceId
             else { return }
             self?.needsDisplay = true
-            self?._hostedView?.requestDisplay()
+            self?._hostedView?.needsDisplay = true
         }
 
         let mouseShapeObserver = NotificationCenter.default.addObserver(
@@ -135,14 +135,10 @@ final class TerminalSurface: ObservableObject, Identifiable {
     // MARK: - Surface Lifecycle
 
     /// Creates the Ghostty surface. Called when the NSView is added to a window.
-    func createSurface(attachedTo view: TerminalNSView? = nil) {
+    func createSurface() {
         guard surface == nil, !surfaceCreated else { return }
         guard GhosttyApp.shared.app != nil else {
             NSLog("TerminalSurface: Cannot create surface — GhosttyApp not initialized")
-            return
-        }
-        guard let platformView = view ?? _hostedView else {
-            NSLog("TerminalSurface: Cannot create surface — no TerminalNSView is attached")
             return
         }
 
@@ -152,19 +148,20 @@ final class TerminalSurface: ObservableObject, Identifiable {
         var config = ghostty_surface_config_new()
         config.platform_tag = GHOSTTY_PLATFORM_MACOS
 
-        // Set the platform NSView. Ghostty requires this for the embedded
-        // macOS surface; creating without it leaves a non-functional renderer.
-        config.platform = ghostty_platform_u(
-            macos: ghostty_platform_macos_s(
-                nsview: Unmanaged.passUnretained(platformView).toOpaque()
+        // Set the platform NSView
+        if let view = _hostedView {
+            config.platform = ghostty_platform_u(
+                macos: ghostty_platform_macos_s(
+                    nsview: Unmanaged.passUnretained(view).toOpaque()
+                )
             )
-        )
+        }
 
         // Set userdata to this surface instance so callbacks can find us
         config.userdata = Unmanaged.passUnretained(self).toOpaque()
 
         // Scale factor
-        let scale = platformView.window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2.0
+        let scale = _hostedView?.window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2.0
         config.scale_factor = Double(scale)
 
         // Working directory
@@ -212,7 +209,6 @@ final class TerminalSurface: ObservableObject, Identifiable {
         }
 
         if surface == nil {
-            surfaceCreated = false
             NSLog("TerminalSurface: ghostty_surface_new returned nil")
         }
     }

@@ -17,8 +17,6 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
     weak var surface: TerminalSurface?
     private var trackingArea: NSTrackingArea?
     private var currentCursor: NSCursor = .iBeam
-    private weak var attachedWindow: NSWindow?
-    private var lastSurfacePixelSize: (width: UInt32, height: UInt32)?
 
     // MARK: - NSView Configuration
 
@@ -70,43 +68,24 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
         super.viewDidMoveToWindow()
 
         if window != nil {
-            attachSurfaceToWindow(force: true)
-        } else {
-            attachedWindow = nil
-            surface?.setFocus(false)
-            surface?.setOcclusion(true)
+            surface?.createSurface()
+            updateContentScale()
+            updateSurfaceSize()
+            updateTrackingArea()
+
+            if let surface = surface?.surface,
+               let screen = window?.screen,
+               let displayId = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
+            {
+                ghostty_surface_set_display_id(surface, displayId)
+            }
         }
-    }
-
-    func attachSurfaceToWindow(force: Bool = false) {
-        guard let currentWindow = window else { return }
-        let needsSurface = surface?.surface == nil
-        let windowChanged = attachedWindow !== currentWindow
-        guard force || needsSurface || windowChanged else { return }
-
-        attachedWindow = currentWindow
-        surface?.createSurface(attachedTo: self)
-        surface?.setOcclusion(false)
-        updateContentScale()
-        updateSurfaceSize(force: true)
-        updateTrackingArea()
-
-        if let surface = surface?.surface,
-           let screen = currentWindow.screen,
-           let displayId = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
-        {
-            ghostty_surface_set_display_id(surface, displayId)
-        }
-
-        currentWindow.makeFirstResponder(self)
-        scheduleRenderRecovery()
     }
 
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         updateContentScale()
-        updateSurfaceSize(force: true)
-        scheduleRenderRecovery()
+        updateSurfaceSize()
     }
 
     override func viewDidMoveToSuperview() {
@@ -114,71 +93,37 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
         updateTrackingArea()
     }
 
-    override func viewWillStartLiveResize() {
-        super.viewWillStartLiveResize()
-        surface?.setFocus(false)
-        surface?.setOcclusion(true)
-    }
-
     override func viewDidEndLiveResize() {
         super.viewDidEndLiveResize()
-        updateContentScale()
-        updateSurfaceSize(force: true)
-        surface?.setOcclusion(false)
-        surface?.setFocus(true)
-        window?.makeFirstResponder(self)
-        surface?.refresh()
-
-        // The SwiftUI content tree also remounts this representable after the
-        // window resize notification, matching the tab-switch workaround that
-        // reliably restores Ghostty's embedded Metal surface.
-        scheduleRenderRecovery()
+        updateSurfaceSize()
     }
 
     // MARK: - Sizing
 
     override func setFrameSize(_ newSize: NSSize) {
-        let oldSize = frame.size
         super.setFrameSize(newSize)
         updateSurfaceSize()
-        if oldSize != newSize, newSize.width > 0, newSize.height > 0, !inLiveResize {
-            scheduleRenderRecovery()
-        }
     }
 
     override func setBoundsSize(_ newSize: NSSize) {
-        let oldSize = bounds.size
         super.setBoundsSize(newSize)
         updateSurfaceSize()
-        if oldSize != newSize, newSize.width > 0, newSize.height > 0, !inLiveResize {
-            scheduleRenderRecovery()
-        }
     }
 
-    private func updateSurfaceSize(force: Bool = false) {
+    private func updateSurfaceSize() {
         let scale = window?.backingScaleFactor ?? 1.0
         let w = UInt32(bounds.width * scale)
         let h = UInt32(bounds.height * scale)
+        if w > 0, h > 0 {
+            surface?.setSize(width: w, height: h)
+        }
 
-        // Update the metal layer's drawable size even during live resize so
-        // AppKit's layer tree remains in sync with the view bounds.
+        // Update the metal layer's drawable size
         if let metalLayer = layer as? CAMetalLayer {
             metalLayer.drawableSize = CGSize(
                 width: bounds.width * scale,
                 height: bounds.height * scale
             )
-        }
-
-        guard w > 0, h > 0 else { return }
-
-        // Defer Ghostty's PTY/grid resize until the user finishes dragging the
-        // window. Continuously resizing the surface while AppKit is in live
-        // resize can leave the renderer/input loop wedged on some sequences.
-        guard force || !inLiveResize else { return }
-
-        if force || lastSurfacePixelSize?.width != w || lastSurfacePixelSize?.height != h {
-            surface?.setSize(width: w, height: h)
-            lastSurfacePixelSize = (w, h)
         }
     }
 
@@ -195,60 +140,9 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
     // MARK: - Drawing
 
     override func updateLayer() {
-        guard !inLiveResize else { return }
         guard let ghosttySurface = surface?.surface else { return }
         ghostty_surface_draw(ghosttySurface)
         surface?.needsDisplay = false
-    }
-
-    /// Draw the Ghostty surface immediately when a render action arrives.
-    ///
-    /// Relying on AppKit's invalidation scheduling is not reliable for this
-    /// layer-backed NSViewRepresentable after rapid SwiftUI tab/workspace
-    /// churn: input reaches the pty, but the CAMetalLayer may not be redrawn
-    /// until the view is detached and reattached. Drawing directly keeps the
-    /// terminal interactive while still marking the view/layer dirty for any
-    /// normal AppKit display pass.
-    func requestDisplay() {
-        needsDisplay = true
-        setNeedsDisplay(bounds)
-        layer?.setNeedsDisplay()
-
-        guard !inLiveResize else { return }
-        guard window != nil, let ghosttySurface = surface?.surface else { return }
-        ghostty_surface_draw(ghosttySurface)
-        surface?.needsDisplay = false
-    }
-
-    func scheduleRenderRecovery() {
-        renderRecoveryPass()
-
-        for delay in [0.016, 0.05, 0.15, 0.3] {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                self?.renderRecoveryPass()
-            }
-        }
-    }
-
-    private func renderRecoveryPass() {
-        guard let window, !inLiveResize else { return }
-        updateContentScale()
-        updateSurfaceSize(force: true)
-        surface?.setOcclusion(false)
-        surface?.setFocus(true)
-        if window.firstResponder !== self {
-            window.makeFirstResponder(self)
-        }
-        GhosttyApp.shared.tick()
-        surface?.refresh()
-        GhosttyApp.shared.tick()
-        requestDisplay()
-    }
-
-    private func startRedrawPump(duration: TimeInterval = 0) {
-        GhosttyApp.shared.tick()
-        surface?.refresh()
-        requestDisplay()
     }
 
     // MARK: - Tracking Area (for mouse move events)
@@ -347,7 +241,6 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
             _ = ghostty_surface_key(ghosttySurface, keyInput)
         }
 
-        startRedrawPump()
     }
 
     override func keyUp(with event: NSEvent) {
@@ -360,7 +253,6 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
         keyInput.text = nil
 
         _ = ghostty_surface_key(ghosttySurface, keyInput)
-        startRedrawPump(duration: 0.15)
     }
 
     override func flagsChanged(with event: NSEvent) {
@@ -376,7 +268,6 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
         keyInput.text = nil
 
         _ = ghostty_surface_key(ghosttySurface, keyInput)
-        startRedrawPump(duration: 0.15)
     }
 
     private func ghosttyKeyEvent(from event: NSEvent, action: ghostty_input_action_e) -> ghostty_input_key_s {
@@ -423,7 +314,6 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
         string.withCString { ptr in
             ghostty_surface_text(ghosttySurface, ptr, UInt(string.utf8.count))
         }
-        startRedrawPump()
     }
 
     func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
@@ -440,13 +330,11 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
         text.withCString { ptr in
             ghostty_surface_preedit(ghosttySurface, ptr, UInt(text.utf8.count))
         }
-        startRedrawPump(duration: 0.15)
     }
 
     func unmarkText() {
         guard let ghosttySurface = surface?.surface else { return }
         ghostty_surface_preedit(ghosttySurface, nil, 0)
-        startRedrawPump(duration: 0.15)
     }
 
     func hasMarkedText() -> Bool { false }

@@ -54,3 +54,21 @@ targets:
         CODE_SIGN_STYLE: Manual
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited)"
     dependencies: []
+
+  ArgusTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests
+        excludes:
+          - "**/.DS_Store"
+    dependencies:
+      - target: Argus
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.argus.tests
+        GENERATE_INFOPLIST_FILE: YES
+        HEADER_SEARCH_PATHS:
+          - "$(PROJECT_DIR)/Frameworks/GhosttyKit.xcframework/macos-arm64_x86_64/Headers"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Argus.app/Contents/MacOS/Argus"
+        BUNDLE_LOADER: "$(TEST_HOST)"
