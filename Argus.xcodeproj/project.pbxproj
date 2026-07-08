@@ -7,10 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0005F1BE34EC7C0DA1814AFC /* WorktreeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709721096373D93A263660AB /* WorktreeService.swift */; };
-		01330EDDF1BD8FFBBA86E045 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A268687E6FB693A77166E11 /* SidebarView.swift */; };
-		0372E54756482C36712CCD55 /* GitStatusAutoRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D08217127D0DB6ED44164BD /* GitStatusAutoRefreshTests.swift */; };
-		04DCE84FEB30B0CE57BD6213 /* SourceContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEDE6A5A2B6B85C812CEFAC /* SourceContract.swift */; };
+			0005F1BE34EC7C0DA1814AFC /* WorktreeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709721096373D93A263660AB /* WorktreeService.swift */; };
+			01330EDDF1BD8FFBBA86E045 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A268687E6FB693A77166E11 /* SidebarView.swift */; };
+			0372E54756482C36712CCD55 /* GitStatusAutoRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D08217127D0DB6ED44164BD /* GitStatusAutoRefreshTests.swift */; };
+			03B95B3D03BB4B7CA585B562 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3E060519B50E44D6A79CA625 /* Assets.xcassets */; };
+			04DCE84FEB30B0CE57BD6213 /* SourceContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEDE6A5A2B6B85C812CEFAC /* SourceContract.swift */; };
 		06D940FC58CFA264CECE7332 /* LocalBranchPickerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDA50BB27255AFF560A99F86 /* LocalBranchPickerTests.swift */; };
 		0B8AAB5E791399EA83F83F18 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF5C0E9D5F6638CD5FEFE123 /* Project.swift */; };
 		0E12DBED45B56CCE6139ADA2 /* GitDiffStatParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31F5743E7A55EE9FBC908770 /* GitDiffStatParserTests.swift */; };
@@ -101,8 +102,9 @@
 		3194FA21992F916DD0D62855 /* TerminalDirectorySnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalDirectorySnapshotTests.swift; sourceTree = "<group>"; };
 		31F5743E7A55EE9FBC908770 /* GitDiffStatParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitDiffStatParserTests.swift; sourceTree = "<group>"; };
 		36AB7BEA90617BC349DB39F2 /* WorkspaceUIContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceUIContractTests.swift; sourceTree = "<group>"; };
-		3D74EFE13FBE5E49414DB592 /* GitPreviewPanelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitPreviewPanelTests.swift; sourceTree = "<group>"; };
-		42040B76D2872AC71249796C /* GitStatusParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusParser.swift; sourceTree = "<group>"; };
+			3D74EFE13FBE5E49414DB592 /* GitPreviewPanelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitPreviewPanelTests.swift; sourceTree = "<group>"; };
+			3E060519B50E44D6A79CA625 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+			42040B76D2872AC71249796C /* GitStatusParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusParser.swift; sourceTree = "<group>"; };
 		470C27E1E483568C99FF880E /* GitPreviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitPreviewService.swift; sourceTree = "<group>"; };
 		4B65BCC437F1421231D69ACC /* GitStatusViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusViewModel.swift; sourceTree = "<group>"; };
 		4C1ED524D3519A8D6A0A46D0 /* GitFileStatusStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitFileStatusStyle.swift; sourceTree = "<group>"; };
@@ -209,12 +211,13 @@
 			path = WorkspaceTests;
 			sourceTree = "<group>";
 		};
-		2712C23DDD306584A3E3FE64 /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				86D4D33D9C23D6FB3D01EA36 /* Argus-Bridging-Header.h */,
-			);
-			path = Resources;
+			2712C23DDD306584A3E3FE64 /* Resources */ = {
+				isa = PBXGroup;
+				children = (
+					3E060519B50E44D6A79CA625 /* Assets.xcassets */,
+					86D4D33D9C23D6FB3D01EA36 /* Argus-Bridging-Header.h */,
+				);
+				path = Resources;
 			sourceTree = "<group>";
 		};
 		325E76CB57DF9FB54CCFB2D9 = {
@@ -391,9 +394,10 @@
 		002B50BE8863B8871A1A0A2C /* Argus */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = FF0C19A31823396699079CE5 /* Build configuration list for PBXNativeTarget "Argus" */;
-			buildPhases = (
-				004BE561CD917026C622A9E8 /* Sources */,
-			);
+				buildPhases = (
+					004BE561CD917026C622A9E8 /* Sources */,
+					8A3D9C0BC4B74A078F89D728 /* Resources */,
+				);
 			buildRules = (
 			);
 			dependencies = (
@@ -456,6 +460,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+			8A3D9C0BC4B74A078F89D728 /* Resources */ = {
+				isa = PBXResourcesBuildPhase;
+				buildActionMask = 2147483647;
+				files = (
+					03B95B3D03BB4B7CA585B562 /* Assets.xcassets in Resources */,
+				);
+				runOnlyForDeploymentPostprocessing = 0;
+			};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		004BE561CD917026C622A9E8 /* Sources */ = {

@@ -1,7 +1,64 @@
 import Testing
 
+@testable import Argus
+
 @Suite
 struct GitStatusUIContractTests {
+  @Test
+  func fileTreeGroupsAndCompactsDirectoryPaths() throws {
+    let files = [
+      GitFileChange(
+        path: "Argus/Services/GitStatusService.swift",
+        status: .modified,
+        sectionKey: "unstaged"),
+      GitFileChange(
+        path: "Argus/Views/GitSidebar/GitSidebarView.swift",
+        status: .modified,
+        sectionKey: "unstaged"),
+      GitFileChange(
+        path: "Argus/Views/GitSidebar/GitStatusViewModel.swift",
+        status: .modified,
+        sectionKey: "unstaged"),
+      GitFileChange(
+        path: "Tests/GitStatusTests/GitStatusViewModelTests.swift",
+        status: .modified,
+        sectionKey: "unstaged"),
+    ]
+
+    let nodes = GitFileTree.makeNodes(files: files)
+
+    #expect(nodes.map(\.name) == ["Argus", "Tests / GitStatusTests"])
+    #expect(nodes[0].children.map(\.name) == ["Services", "Views / GitSidebar"])
+    #expect(nodes[0].children[0].children.map(\.name) == ["GitStatusService.swift"])
+    #expect(nodes[0].children[1].children.map(\.name) == [
+      "GitSidebarView.swift", "GitStatusViewModel.swift",
+    ])
+    #expect(nodes[1].children.first?.file?.path ==
+      "Tests/GitStatusTests/GitStatusViewModelTests.swift")
+  }
+
+  @Test
+  func collapsedDirectoryHidesOnlyItsDescendants() throws {
+    let files = [
+      GitFileChange(
+        path: "Argus/Services/GitStatusService.swift",
+        status: .modified,
+        sectionKey: "unstaged"),
+      GitFileChange(
+        path: "README.md",
+        status: .modified,
+        sectionKey: "unstaged"),
+    ]
+    let nodes = GitFileTree.makeNodes(files: files)
+    let argusId = try #require(nodes.first(where: { $0.name == "Argus / Services" })?.id)
+
+    let rows = GitFileTree.visibleRows(
+      nodes: nodes,
+      collapsedDirectoryIds: [argusId])
+
+    #expect(rows.map(\.name) == ["Argus / Services", "README.md"])
+  }
+
   @Test
   func fileRowsExposeSectionAppropriateActions() throws {
     let view = try SourceContract("Argus/Views/GitSidebar/GitSidebarView.swift")
@@ -15,6 +72,53 @@ struct GitStatusUIContractTests {
         "viewModel.copyPath(file.path)",
         "case .fileOperationFailed(_, let message):",
       ], "git file row actions")
+  }
+
+  @Test
+  func branchBarShowsChangeTotalsAndTogglesAllSections() throws {
+    let view = try SourceContract("Argus/Views/GitSidebar/GitSidebarView.swift")
+    let branchBar = try view.section(
+      after: "private func branchBar(",
+      before: "private func upstreamText")
+
+    for expected in [
+      "summary.totalFileCount", "totalDiffStats(summary)",
+      "totals.additions", "totals.deletions",
+      "setAllSectionsExpanded(allCollapsed, summary: summary)",
+      "Collapse All", "Expand All",
+      ".cursor(.pointingHand)",
+    ] {
+      #expect(branchBar.contains(expected))
+    }
+  }
+
+  @Test
+  func fileRowHoverKeepsLayoutAndHitAreaStable() throws {
+    let view = try SourceContract("Argus/Views/GitSidebar/GitSidebarView.swift")
+    let fileRow = try view.section(
+      after: "private func fileRow(",
+      before: "private func treeRowLeadingPadding")
+
+    #expect(fileRow.contains("ZStack(alignment: .trailing)"))
+    #expect(fileRow.contains(".frame(maxWidth: .infinity, alignment: .leading)"))
+    #expect(fileRow.contains(".contentShape(Rectangle())"))
+    #expect(fileRow.contains(".allowsHitTesting(hoveredFileId == file.id)"))
+    #expect(fileRow.contains("hoveredFileActionId == actionHoverId"))
+    #expect(fileRow.contains(".cursor(.pointingHand)"))
+  }
+
+  @Test
+  func sectionBulkActionsShowHoverFeedbackAndPointerCursor() throws {
+    let view = try SourceContract("Argus/Views/GitSidebar/GitSidebarView.swift")
+    let fileSection = try view.section(
+      after: "private func fileSection(",
+      before: "private func directoryRow")
+
+    #expect(fileSection.contains("hoveredSectionActionId == actionHoverId"))
+    #expect(fileSection.contains("RoundedRectangle(cornerRadius: 4"))
+    #expect(fileSection.contains("Color.primary.opacity(0.1)"))
+    #expect(fileSection.contains(".onHover { isHovering in"))
+    #expect(fileSection.contains(".cursor(.pointingHand)"))
   }
 
   @Test

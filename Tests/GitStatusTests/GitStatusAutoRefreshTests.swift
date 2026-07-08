@@ -8,9 +8,11 @@ struct GitStatusAutoRefreshTests {
   @Test
   func coveredBehaviors() async throws {
     await ignoresGitInternalEvents()
+    await refreshesForCommitMetadataEvents()
     await switchesWatchedRootWithoutStoppingBeforeFirstStart()
     await schedulesRefreshAfterDebounceForWorktreeEvents()
     await suppressesFilesystemEventsDuringPostRefreshCooldown()
+    try watchesLinkedWorktreeGitDirectory()
     try await startsAndStopsFSEventsWatcherForRoot()
   }
 
@@ -32,6 +34,26 @@ struct GitStatusAutoRefreshTests {
 
     assertEqual(scheduler.scheduledDelays, [], ".git events do not schedule refresh")
     assertEqual(refreshCount, 0, ".git events do not refresh")
+  }
+
+  @MainActor
+  private func refreshesForCommitMetadataEvents() async {
+    let watcher = RecordingGitStatusFileWatcher()
+    let scheduler = RecordingGitStatusRefreshScheduler()
+    let controller = GitStatusAutoRefreshController(
+      watcher: watcher,
+      scheduler: scheduler,
+      now: { Date(timeIntervalSince1970: 100) }
+    )
+    var refreshCount = 0
+    controller.start(rootPath: "/repo") {
+      refreshCount += 1
+    }
+
+    watcher.emit(paths: ["/repo/.git/logs/HEAD"])
+    await scheduler.runScheduled()
+
+    assertEqual(refreshCount, 1, "commit metadata events refresh status")
   }
 
   @MainActor
@@ -109,6 +131,23 @@ struct GitStatusAutoRefreshTests {
         GitStatusAutoRefreshController.debounceInterval,
         GitStatusAutoRefreshController.debounceInterval,
       ], "events after cooldown schedule again")
+  }
+
+  private func watchesLinkedWorktreeGitDirectory() throws {
+    let base = FileManager.default.temporaryDirectory
+      .appendingPathComponent("argus-linked-worktree-\(UUID().uuidString)", isDirectory: true)
+    let worktree = base.appendingPathComponent("worktree", isDirectory: true)
+    let gitDirectory = base.appendingPathComponent("repository/.git/worktrees/feature", isDirectory: true)
+    try FileManager.default.createDirectory(at: worktree, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: gitDirectory, withIntermediateDirectories: true)
+    try "gitdir: ../repository/.git/worktrees/feature\n".write(
+      to: worktree.appendingPathComponent(".git"), atomically: true, encoding: .utf8)
+    defer { try? FileManager.default.removeItem(at: base) }
+
+    assertEqual(
+      FSEventsGitStatusFileWatcher.watchedPaths(for: worktree.path),
+      [worktree.standardizedFileURL.path, gitDirectory.standardizedFileURL.path],
+      "linked worktrees watch their external git directory for commit metadata")
   }
 
   @MainActor

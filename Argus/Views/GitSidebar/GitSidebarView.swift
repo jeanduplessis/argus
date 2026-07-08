@@ -1,6 +1,157 @@
 import AppKit
 import SwiftUI
 
+struct GitFileTreeNode: Identifiable, Equatable {
+    enum Content: Equatable {
+        case directory(children: [GitFileTreeNode])
+        case file(GitFileChange)
+    }
+
+    let id: String
+    let name: String
+    let path: String
+    let content: Content
+
+    var children: [GitFileTreeNode] {
+        guard case .directory(let children) = content else { return [] }
+        return children
+    }
+
+    var file: GitFileChange? {
+        guard case .file(let file) = content else { return nil }
+        return file
+    }
+}
+
+struct GitFileTreeRow: Identifiable, Equatable {
+    enum Content: Equatable {
+        case directory(GitFileTreeNode)
+        case file(GitFileChange)
+    }
+
+    let id: String
+    let name: String
+    let depth: Int
+    let content: Content
+}
+
+enum GitFileTree {
+    static func makeNodes(files: [GitFileChange]) -> [GitFileTreeNode] {
+        var root = DirectoryBuilder()
+        for file in files {
+            let components = file.path.split(separator: "/").map(String.init)
+            guard !components.isEmpty else { continue }
+            root.insert(file: file, components: components[...])
+        }
+        return root.nodes(prefix: "", sectionKey: files.first?.sectionKey ?? "")
+    }
+
+    static func visibleRows(
+        nodes: [GitFileTreeNode],
+        collapsedDirectoryIds: Set<String>
+    ) -> [GitFileTreeRow] {
+        rows(nodes: nodes, depth: 0, collapsedDirectoryIds: collapsedDirectoryIds)
+    }
+
+    private static func rows(
+        nodes: [GitFileTreeNode],
+        depth: Int,
+        collapsedDirectoryIds: Set<String>
+    ) -> [GitFileTreeRow] {
+        nodes.flatMap { node in
+            switch node.content {
+            case .directory(let children):
+                let directoryRow = GitFileTreeRow(
+                    id: node.id,
+                    name: node.name,
+                    depth: depth,
+                    content: .directory(node)
+                )
+                guard !collapsedDirectoryIds.contains(node.id) else { return [directoryRow] }
+                return [directoryRow] + rows(
+                    nodes: children,
+                    depth: depth + 1,
+                    collapsedDirectoryIds: collapsedDirectoryIds
+                )
+            case .file(let file):
+                return [
+                    GitFileTreeRow(
+                        id: node.id,
+                        name: node.name,
+                        depth: depth,
+                        content: .file(file)
+                    )
+                ]
+            }
+        }
+    }
+
+    private struct DirectoryBuilder {
+        var directories: [String: DirectoryBuilder] = [:]
+        var files: [GitFileChange] = []
+
+        mutating func insert(file: GitFileChange, components: ArraySlice<String>) {
+            guard let component = components.first else { return }
+            guard components.count > 1 else {
+                files.append(file)
+                return
+            }
+
+            var directory = directories[component, default: DirectoryBuilder()]
+            directory.insert(file: file, components: components.dropFirst())
+            directories[component] = directory
+        }
+
+        func nodes(prefix: String, sectionKey: String) -> [GitFileTreeNode] {
+            let directoryNodes = directories.keys.sorted().map { directoryName in
+                compactedDirectoryNode(
+                    name: directoryName,
+                    builder: directories[directoryName]!,
+                    prefix: prefix,
+                    sectionKey: sectionKey
+                )
+            }
+            let fileNodes = files.sorted { $0.path.localizedStandardCompare($1.path) == .orderedAscending }
+                .map { file in
+                    GitFileTreeNode(
+                        id: file.id,
+                        name: file.path.split(separator: "/").last.map(String.init) ?? file.path,
+                        path: file.path,
+                        content: .file(file)
+                    )
+                }
+            return directoryNodes + fileNodes
+        }
+
+        private func compactedDirectoryNode(
+            name: String,
+            builder: DirectoryBuilder,
+            prefix: String,
+            sectionKey: String
+        ) -> GitFileTreeNode {
+            var names = [name]
+            var path = prefix.isEmpty ? name : "\(prefix)/\(name)"
+            var directory = builder
+
+            while directory.files.isEmpty, directory.directories.count == 1,
+                  let nextName = directory.directories.keys.first,
+                  let nextDirectory = directory.directories[nextName]
+            {
+                names.append(nextName)
+                path += "/\(nextName)"
+                directory = nextDirectory
+            }
+
+            return GitFileTreeNode(
+                id: "\(sectionKey):directory:\(path)",
+                name: names.joined(separator: " / "),
+                path: path,
+                content: .directory(children: directory.nodes(prefix: path, sectionKey: sectionKey))
+            )
+        }
+    }
+}
+
 private enum GitFileRowAction: String, Identifiable {
     case stage
     case unstage
@@ -108,18 +259,18 @@ struct GitSidebarView: View {
     @State private var stagedExpanded = true
     @State private var unstagedExpanded = true
     @State private var untrackedExpanded = true
+    @State private var collapsedDirectoryIds: Set<String> = []
     @State private var hoveredFileId: String?
+    @State private var hoveredFileActionId: String?
+    @State private var hoveredSectionActionId: String?
 
     var body: some View {
         VStack(spacing: 0) {
             header
 
-            Divider()
-
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .padding(.top, 28)
         .background(VisualEffectView(material: .sidebar, blendingMode: .behindWindow))
         .task {
             startAutoRefresh()
@@ -137,10 +288,19 @@ struct GitSidebarView: View {
     private var header: some View {
         HStack(spacing: 8) {
             Image(systemName: "arrow.triangle.branch")
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.secondary)
+                .frame(width: 18)
             Text("Git Status")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
             Spacer()
+            ZStack {
+                if viewModel.isRefreshing {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
+            .frame(width: 12, height: 12)
             Button {
                 Task { await refresh() }
             } label: {
@@ -149,8 +309,12 @@ struct GitSidebarView: View {
             .buttonStyle(.plain)
             .help("Refresh git status")
         }
-        .padding(.horizontal, 12)
-        .padding(.bottom, 8)
+        .padding(.leading, 18)
+        .padding(.trailing, 16)
+        .frame(height: 44)
+        .overlay(alignment: .bottom) {
+            ChromeColors.separator.frame(height: 1)
+        }
     }
 
     @ViewBuilder
@@ -190,7 +354,7 @@ struct GitSidebarView: View {
     }
 
     private func statusContent(_ summary: GitStatusSummary) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             branchBar(summary)
 
             if summary.isClean {
@@ -198,6 +362,7 @@ struct GitSidebarView: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.green)
                     .padding(.horizontal, 12)
+                    .padding(.top, 10)
             }
 
             if summary.isFileDisplayCapped {
@@ -205,6 +370,7 @@ struct GitSidebarView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 12)
+                    .padding(.top, 10)
             }
 
             ScrollView {
@@ -221,28 +387,79 @@ struct GitSidebarView: View {
                 }
             }
         }
-        .padding(.top, 10)
     }
 
     private func branchBar(_ summary: GitStatusSummary) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                Image(systemName: "arrow.triangle.branch")
-                Text(summary.branchName ?? "Detached HEAD")
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Spacer(minLength: 0)
-            }
-            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+        let totals = totalDiffStats(summary)
+        let allCollapsed = allSectionsCollapsed(summary)
+
+        return HStack(spacing: 6) {
+            Image(systemName: "arrow.triangle.branch")
+            Text(summary.branchName ?? "Detached HEAD")
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .layoutPriority(1)
+
+            Text("\(summary.totalFileCount) \(summary.totalFileCount == 1 ? "file" : "files")")
+                .foregroundColor(.secondary)
+                .fixedSize()
+            Text("+\(totals.additions)")
+                .foregroundColor(.green)
+                .fixedSize()
+            Text("-\(totals.deletions)")
+                .foregroundColor(.red)
+                .fixedSize()
 
             if let upstreamName = summary.upstreamName {
                 Text(upstreamText(summary, upstreamName: upstreamName))
-                    .font(.system(size: 11))
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundColor(.secondary)
                     .lineLimit(1)
+                    .truncationMode(.middle)
             }
+
+            Spacer(minLength: 0)
+
+            Button {
+                setAllSectionsExpanded(allCollapsed, summary: summary)
+            } label: {
+                Image(systemName: allCollapsed
+                    ? "arrow.up.and.line.horizontal.and.arrow.down"
+                    : "arrow.down.and.line.horizontal.and.arrow.up")
+                    .frame(width: 20, height: 20)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .cursor(.pointingHand)
+            .help(allCollapsed ? "Expand All" : "Collapse All")
+            .accessibilityLabel(allCollapsed ? "Expand all file sections" : "Collapse all file sections")
         }
+        .font(.system(size: 12, weight: .semibold, design: .monospaced))
         .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, minHeight: 30, maxHeight: 30, alignment: .leading)
+        .overlay(alignment: .bottom) {
+            ChromeColors.separator.frame(height: 1)
+        }
+    }
+
+    private func totalDiffStats(_ summary: GitStatusSummary) -> (additions: Int, deletions: Int) {
+        let files = summary.stagedFiles + summary.unstagedFiles + summary.untrackedFiles
+        return files.reduce(into: (additions: 0, deletions: 0)) { totals, file in
+            totals.additions += file.additions ?? 0
+            totals.deletions += file.deletions ?? 0
+        }
+    }
+
+    private func allSectionsCollapsed(_ summary: GitStatusSummary) -> Bool {
+        (summary.stagedCount == 0 || !stagedExpanded)
+            && (summary.unstagedCount == 0 || !unstagedExpanded)
+            && (summary.untrackedCount == 0 || !untrackedExpanded)
+    }
+
+    private func setAllSectionsExpanded(_ isExpanded: Bool, summary: GitStatusSummary) {
+        if summary.stagedCount > 0 { stagedExpanded = isExpanded }
+        if summary.unstagedCount > 0 { unstagedExpanded = isExpanded }
+        if summary.untrackedCount > 0 { untrackedExpanded = isExpanded }
     }
 
     private func upstreamText(_ summary: GitStatusSummary, upstreamName: String) -> String {
@@ -278,13 +495,29 @@ struct GitSidebarView: View {
                 Spacer()
 
                 ForEach(sectionActions(title: title, count: count)) { action in
+                    let actionHoverId = "\(sectionKey):\(action.id)"
                     Button {
                         Task { await confirmAndPerformSectionFileOperation(action.operation, sectionKey: sectionKey, pathCount: count) }
                     } label: {
                         Text(action.title)
                             .font(.system(size: 10, weight: .medium))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background {
+                                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                    .fill(hoveredSectionActionId == actionHoverId ? Color.primary.opacity(0.1) : Color.clear)
+                            }
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .onHover { isHovering in
+                        if isHovering {
+                            hoveredSectionActionId = actionHoverId
+                        } else if hoveredSectionActionId == actionHoverId {
+                            hoveredSectionActionId = nil
+                        }
+                    }
+                    .cursor(.pointingHand)
                     .help(action.title)
                 }
                 Text("\(count)")
@@ -295,27 +528,81 @@ struct GitSidebarView: View {
             .padding(.vertical, 7)
 
             if isExpanded.wrappedValue {
-                ForEach(files) { file in
-                    fileRow(file)
+                ForEach(
+                    GitFileTree.visibleRows(
+                        nodes: GitFileTree.makeNodes(files: files),
+                        collapsedDirectoryIds: collapsedDirectoryIds
+                    )
+                ) { row in
+                    switch row.content {
+                    case .directory(let directory):
+                        directoryRow(directory, depth: row.depth)
+                    case .file(let file):
+                        fileRow(file, name: row.name, depth: row.depth)
+                    }
                 }
             }
         }
     }
 
-    private func fileRow(_ file: GitFileChange) -> some View {
+    private func directoryRow(_ directory: GitFileTreeNode, depth: Int) -> some View {
+        let isExpanded = !collapsedDirectoryIds.contains(directory.id)
+
+        return Button {
+            if isExpanded {
+                collapsedDirectoryIds.insert(directory.id)
+            } else {
+                collapsedDirectoryIds.remove(directory.id)
+            }
+        } label: {
+            HStack(spacing: 7) {
+                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(width: 12)
+                Text(directory.name)
+                    .font(.system(size: 11))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.leading, treeRowLeadingPadding(depth: depth))
+        .padding(.trailing, 12)
+        .padding(.vertical, 3)
+        .accessibilityLabel("\(directory.name) folder")
+        .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+    }
+
+    private func fileRow(_ file: GitFileChange, name: String, depth: Int) -> some View {
         HStack(spacing: 7) {
             Image(systemName: file.status.systemImage)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(file.status.tintColor)
                 .frame(width: 14)
-            Text(file.path)
+            Text(name)
                 .font(.system(size: 11))
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 6)
-            if hoveredFileId == file.id {
+            ZStack(alignment: .trailing) {
+                HStack(spacing: 5) {
+                    if let additions = file.additions {
+                        Text("+\(additions)")
+                            .foregroundColor(.green)
+                    }
+                    if let deletions = file.deletions {
+                        Text("-\(deletions)")
+                            .foregroundColor(.red)
+                    }
+                }
+                .opacity(hoveredFileId == file.id ? 0 : 1)
+
                 HStack(spacing: 5) {
                     ForEach(fileActions(for: file)) { action in
+                        let actionHoverId = "\(file.id):\(action.id)"
                         Button {
                             switch action {
                             case .stage, .unstage:
@@ -331,29 +618,44 @@ struct GitSidebarView: View {
                             }
                         } label: {
                             Image(systemName: action.systemImage)
+                                .frame(width: 20, height: 20)
+                                .background {
+                                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                        .fill(hoveredFileActionId == actionHoverId ? Color.primary.opacity(0.1) : Color.clear)
+                                }
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .onHover { isHovering in
+                            if isHovering {
+                                hoveredFileActionId = actionHoverId
+                            } else if hoveredFileActionId == actionHoverId {
+                                hoveredFileActionId = nil
+                            }
+                        }
+                        .cursor(.pointingHand)
                         .help(action.title)
                     }
                 }
-            } else {
-                if let additions = file.additions {
-                    Text("+\(additions)")
-                        .foregroundColor(.green)
-                }
-                if let deletions = file.deletions {
-                    Text("-\(deletions)")
-                        .foregroundColor(.red)
-                }
+                .opacity(hoveredFileId == file.id ? 1 : 0)
+                .allowsHitTesting(hoveredFileId == file.id)
+                .accessibilityHidden(hoveredFileId != file.id)
             }
         }
         .font(.system(size: 10, weight: .medium, design: .monospaced))
-        .padding(.leading, 24)
+        .padding(.leading, treeRowLeadingPadding(depth: depth))
         .padding(.trailing, 12)
         .padding(.vertical, 3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
         .onHover { isHovering in
             hoveredFileId = isHovering ? file.id : nil
         }
+        .accessibilityLabel(file.path)
+    }
+
+    private func treeRowLeadingPadding(depth: Int) -> CGFloat {
+        12 + CGFloat(depth * 16)
     }
 
     private func fileActions(for file: GitFileChange) -> [GitFileRowAction] {

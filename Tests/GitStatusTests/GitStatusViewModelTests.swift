@@ -15,6 +15,7 @@ struct GitStatusViewModelTests {
     await canceledDestructiveFileOperationDoesNotMutateState()
     await confirmedDestructiveFileOperationRunsAndRefreshes()
     await sectionBulkOperationUsesSectionScopeForCappedResults()
+    await sectionBulkOperationKeepsLoadedContentVisibleWhileRefreshing()
     await destructiveSectionBulkOperationConfirmsTotalSectionCount()
     await previewUsesResolvedRootAndPresentsOutput()
     await previewFailureIsPresentedWithoutReplacingStatusState()
@@ -215,6 +216,39 @@ struct GitStatusViewModelTests {
   }
 
   @MainActor
+  private func sectionBulkOperationKeepsLoadedContentVisibleWhileRefreshing() async {
+    let current = GitStatusLoadState.loaded(
+      GitStatusSummary(
+        rootPath: "/tmp/repo",
+        branchName: "main",
+        upstreamName: nil,
+        aheadCount: 0,
+        behindCount: 0,
+        unstagedCount: 1
+      ))
+    let service = SuspendingSectionStatusService(result: current)
+    let viewModel = GitStatusViewModel(service: service)
+    let context = GitStatusRootContext(
+      kind: .standalone,
+      currentDirectory: "/tmp/repo",
+      worktreePath: nil,
+      projectRepositoryPath: nil
+    )
+    await viewModel.refresh(context: context)
+
+    let operation = Task {
+      await viewModel.performSectionFileOperation(
+        .stage, sectionKey: "unstaged", context: context)
+    }
+    await service.waitUntilOperationStarts()
+
+    assertEqual(viewModel.state, current, "bulk operation keeps loaded sidebar content visible")
+    assertEqual(viewModel.isRefreshing, true, "bulk operation shows non-disruptive refresh progress")
+    await service.finishOperation()
+    await operation.value
+  }
+
+  @MainActor
   private func destructiveSectionBulkOperationConfirmsTotalSectionCount() async {
     let service = FakeStatusService(result: .idle)
     let confirmation = RecordingFileOperationConfirmer(shouldConfirm: true)
@@ -369,6 +403,46 @@ private final class ObservingStatusService: GitStatusProviding, @unchecked Senda
     _ operation: GitStatusFileOperation, rootPath: String, paths: [String]
   ) async -> GitStatusLoadState {
     result
+  }
+}
+
+private actor SuspendingSectionStatusService: GitStatusProviding {
+  let result: GitStatusLoadState
+  private var operationContinuation: CheckedContinuation<GitStatusLoadState, Never>?
+  private var startContinuation: CheckedContinuation<Void, Never>?
+
+  init(result: GitStatusLoadState) {
+    self.result = result
+  }
+
+  func status(rootPath: String) async -> GitStatusLoadState { result }
+  func initializeRepository(rootPath: String) async -> GitStatusLoadState { result }
+  func performFileOperation(_ operation: GitStatusFileOperation, rootPath: String, path: String)
+    async -> GitStatusLoadState { result }
+  func performBulkFileOperation(
+    _ operation: GitStatusFileOperation, rootPath: String, paths: [String]
+  ) async -> GitStatusLoadState { result }
+
+  func performSectionFileOperation(
+    _ operation: GitStatusFileOperation, rootPath: String, sectionKey: String
+  ) async -> GitStatusLoadState {
+    return await withCheckedContinuation { continuation in
+      operationContinuation = continuation
+      startContinuation?.resume()
+      startContinuation = nil
+    }
+  }
+
+  func waitUntilOperationStarts() async {
+    if operationContinuation != nil { return }
+    await withCheckedContinuation { continuation in
+      startContinuation = continuation
+    }
+  }
+
+  func finishOperation() {
+    operationContinuation?.resume(returning: result)
+    operationContinuation = nil
   }
 }
 

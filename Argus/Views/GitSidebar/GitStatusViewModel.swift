@@ -52,6 +52,7 @@ final class AlertGitStatusFileOperationConfirmer: GitStatusFileOperationConfirmi
 final class GitStatusViewModel: ObservableObject {
     @Published private(set) var state: GitStatusLoadState = .idle
     @Published private(set) var stateWorkspaceId: UUID?
+    @Published private(set) var isRefreshing = false
 
     private let service: any GitStatusProviding
     private let resolver: GitStatusRootResolver
@@ -85,8 +86,10 @@ final class GitStatusViewModel: ObservableObject {
     }
 
     func refresh(workspaceId: UUID?, context: GitStatusRootContext) async {
+        let isSameWorkspace = stateWorkspaceId == workspaceId
         stateWorkspaceId = workspaceId
-        state = .loading
+        beginRefresh(preservingLoadedState: isSameWorkspace)
+        defer { isRefreshing = false }
         let rootPath = resolver.root(for: context)
         state = await service.status(rootPath: rootPath)
     }
@@ -97,7 +100,8 @@ final class GitStatusViewModel: ObservableObject {
     }
 
     func initializeRepository(context: GitStatusRootContext) async {
-        state = .loading
+        beginRefresh()
+        defer { isRefreshing = false }
         let rootPath = resolver.root(for: context)
         state = await service.initializeRepository(rootPath: rootPath)
     }
@@ -111,7 +115,8 @@ final class GitStatusViewModel: ObservableObject {
         path: String,
         context: GitStatusRootContext
     ) async {
-        state = .loading
+        beginRefresh()
+        defer { isRefreshing = false }
         let rootPath = resolver.root(for: context)
         state = await service.performFileOperation(operation, rootPath: rootPath, path: path)
     }
@@ -121,7 +126,8 @@ final class GitStatusViewModel: ObservableObject {
         paths: [String],
         context: GitStatusRootContext
     ) async {
-        state = .loading
+        beginRefresh()
+        defer { isRefreshing = false }
         let rootPath = resolver.root(for: context)
         state = await service.performBulkFileOperation(operation, rootPath: rootPath, paths: paths)
     }
@@ -131,9 +137,16 @@ final class GitStatusViewModel: ObservableObject {
         sectionKey: String,
         context: GitStatusRootContext
     ) async {
-        state = .loading
+        beginRefresh()
+        defer { isRefreshing = false }
         let rootPath = resolver.root(for: context)
         state = await service.performSectionFileOperation(operation, rootPath: rootPath, sectionKey: sectionKey)
+    }
+
+    private func beginRefresh(preservingLoadedState: Bool = true) {
+        isRefreshing = true
+        if preservingLoadedState, case .loaded = state { return }
+        state = .loading
     }
 
     func confirmAndPerformFileOperation(
