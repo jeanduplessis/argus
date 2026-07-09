@@ -13,8 +13,21 @@ struct WorkspaceUIContractTests {
 
     try SourceContract("Argus/Views/MainWindowView.swift").containsAll(
       [
-        "GeometryReader", "SidebarLayout.leftMaxWidth",
+        "GeometryReader",
+        "SidebarLayout.liveLeftMaxWidth(",
+        "SidebarLayout.liveRightMaxWidth(",
+        "SidebarLayout.centerMinWidth",
+        "clampSidebarWidths(windowWidth:",
       ], "main window layout")
+    try SourceContract("Argus/Views/Sidebar/SidebarState.swift").containsAll(
+      [
+        "static func clampWidths(",
+        "windowWidth - centerMinWidth",
+        "case (true, true):",
+        "leftMinWidth + rightMinWidth",
+        "static func liveLeftMaxWidth(",
+        "static func liveRightMaxWidth(",
+      ], "coupled responsive sidebar bounds")
     try SourceContract("Argus/Views/Content/ContentAreaView.swift").contains(
       "TitlebarView()",
       "content column must mount the custom titlebar"
@@ -38,6 +51,34 @@ struct WorkspaceUIContractTests {
   }
 
   @Test
+  func responsiveSidebarsPreserveTheCenterColumn() {
+    let windowWidth: CGFloat = 800
+    let widths = SidebarLayout.clampWidths(
+      leftWidth: 300,
+      rightWidth: 400,
+      windowWidth: windowWidth,
+      leftVisible: true,
+      rightVisible: true)
+    let availableSidebarWidth = windowWidth
+      - SidebarLayout.centerMinWidth
+      - (2 * SidebarLayout.dividerWidth)
+
+    #expect(widths.left + widths.right <= availableSidebarWidth + 0.001)
+    #expect(widths.left >= SidebarLayout.leftMinWidth)
+    #expect(widths.right >= SidebarLayout.rightMinWidth)
+
+    let constrained = SidebarLayout.clampWidths(
+      leftWidth: 200,
+      rightWidth: 250,
+      windowWidth: 500,
+      leftVisible: true,
+      rightVisible: true)
+    #expect(
+      constrained.left + constrained.right
+        <= 500 - SidebarLayout.centerMinWidth - (2 * SidebarLayout.dividerWidth) + 0.001)
+  }
+
+  @Test
   func newTerminalSelectionUsesTheNormalFocusLifecycle() throws {
     let workspace = try SourceContract("Argus/Models/Workspace.swift")
     let addTerminal = try workspace.section(
@@ -51,6 +92,24 @@ struct WorkspaceUIContractTests {
     try SourceContract("Argus/Views/Content/ContentAreaView.swift").contains(
       ".id(terminalPanel.surface.id)",
       "terminal content must be keyed by surface id"
+    )
+  }
+
+  @Test
+  func terminalTabActivationReconcilesResolvedGeometry() throws {
+    try SourceContract("Argus/Views/Content/ContentAreaView.swift").containsAll(
+      [
+        "GeometryReader { geometry in",
+        "targetSize: geometry.size",
+      ], "terminal panes must pass resolved SwiftUI geometry to AppKit")
+    try SourceContract("Argus/Ghostty/TerminalView.swift").containsAll(
+      [
+        "nsView.synchronizeSurfaceGeometry(to: targetSize)",
+        "nsView.surface?.refresh()",
+      ], "active terminal mounts must reconcile geometry and redraw")
+    try SourceContract("Argus/Ghostty/TerminalNSView.swift").contains(
+      "func synchronizeSurfaceGeometry(to targetSize: CGSize? = nil)",
+      "terminal geometry must synchronize Ghostty and its Metal drawable"
     )
   }
 
@@ -93,7 +152,12 @@ struct WorkspaceUIContractTests {
         "enum PanelSplitDirection", "case vertical", "case horizontal",
         "indirect enum PanelLayoutNode", "case split(direction:",
         "func splitActiveTerminal(direction: PanelSplitDirection)",
+        "func closeTab(_ tabId: UUID)",
+        "func closePane(_ panelId: UUID)",
+        "guard oldLayout.leaves.count > 1 else",
+        "closeTab(tabId)",
         "func closeActivePaneOrTab()",
+        "closePane(activePanelId)",
       ], "workspace split-pane model")
     let splitBody = try workspace.section(
       after: "func splitActiveTerminal(direction: PanelSplitDirection)",
@@ -106,6 +170,12 @@ struct WorkspaceUIContractTests {
       "func splitActiveTerminal(direction: PanelSplitDirection)",
       "workspace manager must expose split commands"
     )
+    try SourceContract("Argus/Services/WorkspaceManager.swift").containsAll(
+      [
+        "workspace.closePane(surfaceId)",
+        "workspace.closeActivePaneOrTab()",
+        "workspace.closeTab(panelId)",
+      ], "close commands preserve Pane and Top-level Tab scope")
     try SourceContract("Argus/Views/Content/ContentAreaView.swift").containsAll(
       ["PanelSplitLayoutView", "workspace.activeTabLayout"],
       "content area must render the active split tree"
@@ -150,6 +220,15 @@ struct WorkspaceUIContractTests {
         "Button(\"Close\", role: .destructive, action: onClose)",
         "Button(\"Rename\", action: onRename)",
         "workspace.renameTerminalPanel(renamePanelId, title: renameText)",
+        "workspace.closeTab(panelId)",
+        "Button(action: onSelect)",
+        ".help(\"Select \\(title)\")",
+        ".accessibilityLabel(title)",
+        ".accessibilityValue(tabAccessibilityValue)",
+        ".accessibilityAddTraits(isActive ? .isSelected : [])",
+        "Button(\"Move Left\", action: onMoveLeft)",
+        "Button(\"Move Right\", action: onMoveRight)",
+        ".accessibilityLabel(\"Close \\(title)\")",
       ], "tab bar must render and rename explicit terminal titles")
     tabBar.excludes(
       "Text(panel.displayTitle)",
@@ -178,12 +257,67 @@ struct WorkspaceUIContractTests {
       [
         "workspaceManager.selectedWorkspace",
         "workspaceManager.project(for: workspace.id)",
-        "workspace.workspaceType.icon",
         "project.displayName",
         "workspace.displayTitle",
         "gitContext.visibleText",
         "Text(\"/\")",
       ], "custom titlebar breadcrumb")
+    titlebar.excludes(
+      "workspace.workspaceType.icon",
+      "titlebar breadcrumb must not duplicate Workspace type icon")
+    try SourceContract("Argus/Views/MainWindowView.swift").containsAll(
+      [
+        "@ObservedObject private var ghosttyApp = GhosttyApp.shared",
+        ".background(ChromeColors.contentBackground)",
+        ".environment(\\.colorScheme, ghosttyApp.chromePalette.isDark ? .dark : .light)",
+      ], "Ghostty-derived window chrome")
+  }
+
+  @Test
+  func freshWorkspaceAndRepositoryActionsUseExplicitLabels() throws {
+    try SourceContract("Argus/Models/Workspace.swift").containsAll(
+      [
+        "init(id: UUID = UUID(), title: String = \"Terminal\"",
+        "title: String = \"Terminal\"",
+        "return title.isEmpty ? \"Terminal\" : title",
+      ], "fresh Workspace labels")
+    try SourceContract("Argus/Services/WorkspaceManager.swift").contains(
+      "title: title ?? \"Terminal\"",
+      "new Workspace uses Terminal label")
+    try SourceContract("Argus/Views/GitSidebar/GitSidebarView.swift").containsAll(
+      [
+        "Text(\"Initialize Git Repository\")",
+        "Text(\"Refresh Changes\")",
+      ], "verb-object Changes labels")
+  }
+
+  @Test
+  func browserAndAgentStatusUseNormalAccessibleTabLifecycle() throws {
+    try SourceContract("Argus/Models/Panel.swift").containsAll(
+      [
+        "case browser",
+        "var isLoading: Bool { get }",
+      ], "Browser Panel participates in shared Panel state")
+    try SourceContract("Argus/Models/Workspace.swift").containsAll(
+      [
+        "func addBrowserPanel(url: URL? = nil)",
+        "panelOrder.insert(panel.id, at: activeIndex + 1)",
+        "selectPanel(panel.id)",
+        "observeBrowserPanel(panel)",
+      ], "Browser Panel insertion and observation")
+    try SourceContract("Argus/Views/Content/ContentAreaView.swift").containsAll(
+      [
+        "case .browser:",
+        "BrowserView(panel: browserPanel, isActive: isActive)",
+      ], "Browser Panel center-tab routing")
+    try SourceContract("Argus/Views/Content/TabBarView.swift").containsAll(
+      [
+        "Button(\"New Browser Tab\")",
+        "if panel.isLoading",
+        "else if let agentStatus",
+        "else if let icon = panel.displayIcon",
+        "values.append(\"Agent status: \\(agentStatus.state.label)\")",
+      ], "loading, Agent Status, and default tab icon precedence")
   }
 
   @Test

@@ -190,6 +190,21 @@ enum GitStatusFileOperation: Equatable, Sendable {
             return "Unstage \(itemText)?"
         }
     }
+
+    func confirmationMessage(paths: [String]) -> String {
+        guard !paths.isEmpty else { return confirmationMessage(pathCount: 0) }
+        let pathList = paths.map { "\"\($0)\"" }.joined(separator: "\n")
+        switch self {
+        case .discard:
+            return "This will permanently discard unstaged changes in:\n\n\(pathList)"
+        case .delete:
+            return "This will permanently delete from disk:\n\n\(pathList)"
+        case .stage:
+            return "Stage:\n\n\(pathList)"
+        case .unstage:
+            return "Unstage:\n\n\(pathList)"
+        }
+    }
 }
 
 /// User-visible load state for the git sidebar.

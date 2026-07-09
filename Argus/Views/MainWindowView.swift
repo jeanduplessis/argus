@@ -13,6 +13,7 @@ private struct NewWorkspaceSheetRequest: Identifiable {
 
 struct MainWindowView: View {
     @EnvironmentObject var workspaceManager: WorkspaceManager
+    @ObservedObject private var ghosttyApp = GhosttyApp.shared
     @StateObject private var sidebarState = SidebarState()
     @StateObject private var gitSidebarState = GitSidebarState()
     @StateObject private var gitStatusViewModel = GitStatusViewModel()
@@ -33,9 +34,21 @@ struct MainWindowView: View {
     @State private var closeWorkspaceId: UUID?
     @State private var closeWorkspaceTitle = ""
     @State private var closeWorkspaceWorktreePath = ""
+    @State private var windowWidth: CGFloat = 600
 
     var body: some View {
         GeometryReader { geometry in
+            let leftMaxWidth = SidebarLayout.liveLeftMaxWidth(
+                windowWidth: geometry.size.width,
+                rightWidth: gitSidebarState.width,
+                rightVisible: gitSidebarState.isVisible
+            )
+            let rightMaxWidth = SidebarLayout.liveRightMaxWidth(
+                windowWidth: geometry.size.width,
+                leftWidth: sidebarState.width,
+                leftVisible: sidebarState.isVisible
+            )
+
             HStack(spacing: 0) {
                 // Left sidebar
                 if sidebarState.isVisible {
@@ -43,23 +56,27 @@ struct MainWindowView: View {
                         .frame(width: sidebarState.width)
                     SidebarDivider(
                         position: $sidebarState.width,
-                        minValue: SidebarLayout.leftMinWidth,
-                        maxValue: SidebarLayout.leftMaxWidth(forWindowWidth: geometry.size.width)
+                        minValue: min(SidebarLayout.leftMinWidth, leftMaxWidth),
+                        maxValue: leftMaxWidth
                     )
                 }
 
                 // Content area fills remaining space and draws into the
                 // transparent titlebar, matching the compact cmux-style chrome.
                 ContentAreaView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(
+                        minWidth: SidebarLayout.centerMinWidth,
+                        maxWidth: .infinity,
+                        maxHeight: .infinity
+                    )
                     .background(ChromeColors.contentBackground)
 
                 // Right side panel
                 if gitSidebarState.isVisible {
                     GitSidebarDivider(
                         position: $gitSidebarState.width,
-                        minValue: 180,
-                        maxValue: 600
+                        minValue: min(SidebarLayout.rightMinWidth, rightMaxWidth),
+                        maxValue: rightMaxWidth
                     )
                     RightSidebarView()
                         .frame(width: gitSidebarState.width)
@@ -67,16 +84,12 @@ struct MainWindowView: View {
             }
             .ignoresSafeArea(.container, edges: .top)
             .onAppear {
-                sidebarState.width = SidebarLayout.clampLeftWidth(
-                    sidebarState.width,
-                    windowWidth: geometry.size.width
-                )
+                windowWidth = geometry.size.width
+                clampSidebarWidths(windowWidth: geometry.size.width)
             }
             .onChange(of: geometry.size.width) { _, newWidth in
-                sidebarState.width = SidebarLayout.clampLeftWidth(
-                    sidebarState.width,
-                    windowWidth: newWidth
-                )
+                windowWidth = newWidth
+                clampSidebarWidths(windowWidth: newWidth)
             }
         }
         .frame(minWidth: 600, maxWidth: .infinity, minHeight: 400, maxHeight: .infinity)
@@ -84,11 +97,14 @@ struct MainWindowView: View {
         .environmentObject(sidebarState)
         .environmentObject(gitSidebarState)
         .environmentObject(gitStatusViewModel)
+        .environment(\.colorScheme, ghosttyApp.chromePalette.isDark ? .dark : .light)
         .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
             sidebarState.toggle()
+            clampSidebarWidths(windowWidth: windowWidth)
         }
         .onReceive(NotificationCenter.default.publisher(for: .toggleGitSidebar)) { _ in
             gitSidebarState.toggle()
+            clampSidebarWidths(windowWidth: windowWidth)
         }
         // Sheet: New Project
         .sheet(isPresented: $showNewProjectSheet) {
@@ -202,6 +218,22 @@ struct MainWindowView: View {
         if !allOrphans.isEmpty {
             orphanedWorktrees = allOrphans
             showOrphanedWorktreesSheet = true
+        }
+    }
+
+    private func clampSidebarWidths(windowWidth: CGFloat) {
+        let widths = SidebarLayout.clampWidths(
+            leftWidth: sidebarState.width,
+            rightWidth: gitSidebarState.width,
+            windowWidth: windowWidth,
+            leftVisible: sidebarState.isVisible,
+            rightVisible: gitSidebarState.isVisible
+        )
+        if sidebarState.width != widths.left {
+            sidebarState.width = widths.left
+        }
+        if gitSidebarState.width != widths.right {
+            gitSidebarState.width = widths.right
         }
     }
 }

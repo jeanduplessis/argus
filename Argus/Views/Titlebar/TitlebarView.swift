@@ -18,11 +18,6 @@ struct TitlebarView: View {
                 let project = workspaceManager.project(for: workspace.id)
                 let gitContext = gitStatusViewModel.titlebarGitContext(for: workspace.id)
 
-                Image(systemName: workspace.workspaceType.icon)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.blue)
-                    .frame(width: 18)
-
                 Text(titleContext(for: workspace, project: project))
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.primary)

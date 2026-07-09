@@ -6,6 +6,82 @@
 
 import SwiftUI
 
+extension SidebarLayout {
+    static var centerMinWidth: CGFloat { 320 }
+    static var rightMinWidth: CGFloat { 180 }
+    static var rightMaxWidth: CGFloat { 600 }
+    static var dividerWidth: CGFloat { 1 }
+
+    static func clampWidths(
+        leftWidth: CGFloat,
+        rightWidth: CGFloat,
+        windowWidth: CGFloat,
+        leftVisible: Bool,
+        rightVisible: Bool
+    ) -> (left: CGFloat, right: CGFloat) {
+        var left = clampLeftWidth(leftWidth, windowWidth: windowWidth)
+        var right = min(max(rightWidth, rightMinWidth), rightMaxWidth)
+        let visibleDividerCount = CGFloat((leftVisible ? 1 : 0) + (rightVisible ? 1 : 0))
+        let available = max(
+            0,
+            windowWidth - centerMinWidth - (visibleDividerCount * dividerWidth)
+        )
+
+        switch (leftVisible, rightVisible) {
+        case (true, true):
+            let minimumTotal = leftMinWidth + rightMinWidth
+            guard available >= minimumTotal else {
+                let scale = minimumTotal > 0 ? available / minimumTotal : 0
+                return (leftMinWidth * scale, rightMinWidth * scale)
+            }
+
+            let overflow = max(0, left + right - available)
+            let leftReducible = left - leftMinWidth
+            let rightReducible = right - rightMinWidth
+            let totalReducible = leftReducible + rightReducible
+            if overflow > 0, totalReducible > 0 {
+                let leftReduction = overflow * (leftReducible / totalReducible)
+                left -= leftReduction
+                right -= overflow - leftReduction
+            }
+        case (true, false):
+            left = min(left, available)
+        case (false, true):
+            right = min(right, available)
+        case (false, false):
+            break
+        }
+
+        return (left, right)
+    }
+
+    static func liveLeftMaxWidth(
+        windowWidth: CGFloat,
+        rightWidth: CGFloat,
+        rightVisible: Bool
+    ) -> CGFloat {
+        let dividerCount: CGFloat = rightVisible ? 2 : 1
+        let available = windowWidth
+            - centerMinWidth
+            - (dividerCount * dividerWidth)
+            - (rightVisible ? rightWidth : 0)
+        return min(leftMaxWidth(forWindowWidth: windowWidth), max(0, available))
+    }
+
+    static func liveRightMaxWidth(
+        windowWidth: CGFloat,
+        leftWidth: CGFloat,
+        leftVisible: Bool
+    ) -> CGFloat {
+        let dividerCount: CGFloat = leftVisible ? 2 : 1
+        let available = windowWidth
+            - centerMinWidth
+            - (dividerCount * dividerWidth)
+            - (leftVisible ? leftWidth : 0)
+        return min(rightMaxWidth, max(0, available))
+    }
+}
+
 /// State for the left (workspace) sidebar.
 @MainActor
 final class SidebarState: ObservableObject {

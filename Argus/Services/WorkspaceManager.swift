@@ -229,7 +229,7 @@ final class WorkspaceManager: ObservableObject {
     /// panel from its workspace.
     private func handleSurfaceClosed(_ surfaceId: UUID) {
         guard let workspace = workspace(containingPanel: surfaceId) else { return }
-        workspace.removePanel(surfaceId)
+        workspace.closePane(surfaceId)
 
         // An empty workspace is equivalent to a closed workspace.
         if workspace.panelOrder.isEmpty {
@@ -309,7 +309,7 @@ final class WorkspaceManager: ObservableObject {
 
         // Close all panels in the workspace before removal.
         for panelId in workspace.panelOrder {
-            workspace.removePanel(panelId)
+            workspace.closeTab(panelId)
         }
 
         // Remove from parent project.
@@ -417,7 +417,7 @@ final class WorkspaceManager: ObservableObject {
                 }
                 // Close all panels.
                 for panelId in workspace.panelOrder {
-                    workspace.removePanel(panelId)
+                    workspace.closeTab(panelId)
                 }
             }
         }
@@ -647,6 +647,16 @@ final class WorkspaceManager: ObservableObject {
     func addTab(workingDirectory: String? = nil) -> TerminalPanel? {
         guard let workspace = selectedWorkspace else { return nil }
         return workspace.addTerminalPanel(workingDirectory: workingDirectory)
+    }
+
+    /// Adds a Browser Panel as a top-level tab in the Selected Workspace.
+    @discardableResult
+    func addBrowserTab(url: URL? = nil) -> BrowserPanel? {
+        selectedWorkspace?.addBrowserPanel(url: url)
+    }
+
+    func requestFindInActiveBrowser() {
+        (selectedWorkspace?.activePanel as? BrowserPanel)?.requestFind()
     }
 
     /// Splits the active terminal pane in the selected workspace.

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct GitFileTreeNode: Identifiable, Equatable {
@@ -165,17 +166,17 @@ private enum GitFileRowAction: String, Identifiable {
     var title: String {
         switch self {
         case .stage:
-            return "Stage"
+            return "Stage File"
         case .unstage:
-            return "Unstage"
+            return "Unstage File"
         case .discard:
-            return "Discard"
+            return "Discard Changes"
         case .delete:
-            return "Delete"
+            return "Delete File"
         case .diff:
-            return "Diff"
+            return "View Diff"
         case .blame:
-            return "Blame"
+            return "View Blame"
         case .copyPath:
             return "Copy Path"
         }
@@ -227,13 +228,13 @@ private enum GitFileSectionAction: String, Identifiable {
     var title: String {
         switch self {
         case .stageAll:
-            return "Stage All"
+            return "Stage All Files"
         case .unstageAll:
-            return "Unstage All"
+            return "Unstage All Files"
         case .discardAll:
-            return "Discard All"
+            return "Discard All Changes"
         case .deleteAll:
-            return "Delete All"
+            return "Delete All Untracked Files"
         }
     }
 
@@ -249,6 +250,10 @@ private enum GitFileSectionAction: String, Identifiable {
             return .delete
         }
     }
+
+    var isDestructive: Bool {
+        operation.requiresConfirmation
+    }
 }
 
 struct GitSidebarView: View {
@@ -260,16 +265,18 @@ struct GitSidebarView: View {
     @State private var unstagedExpanded = true
     @State private var untrackedExpanded = true
     @State private var collapsedDirectoryIds: Set<String> = []
+    @State private var hoveredDirectoryId: String?
     @State private var hoveredFileId: String?
     @State private var hoveredFileActionId: String?
     @State private var hoveredSectionActionId: String?
+    @FocusState private var focusedFileId: String?
 
     init(showsHeader: Bool = true) {
         self.showsHeader = showsHeader
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        return VStack(spacing: 0) {
             if showsHeader {
                 header
             }
@@ -283,12 +290,24 @@ struct GitSidebarView: View {
             }
         }
         .task {
-            startAutoRefresh()
-            await refresh()
+            guard let owner = selectedSnapshotOwner else {
+                viewModel.clearSelection()
+                autoRefreshController.stop()
+                return
+            }
+            viewModel.activate(owner)
+            startAutoRefresh(owner: owner)
+            await refresh(owner: owner)
         }
         .onChange(of: workspaceManager.selectedWorkspaceId) { _, _ in
-            startAutoRefresh()
-            Task { await refresh() }
+            guard let owner = selectedSnapshotOwner else {
+                viewModel.clearSelection()
+                autoRefreshController.stop()
+                return
+            }
+            viewModel.activate(owner)
+            startAutoRefresh(owner: owner)
+            Task { await refresh(owner: owner) }
         }
         .onDisappear {
             autoRefreshController.stop()
@@ -312,12 +331,16 @@ struct GitSidebarView: View {
             }
             .frame(width: 12, height: 12)
             Button {
-                Task { await refresh() }
+                guard let owner = selectedSnapshotOwner else { return }
+                Task { await refresh(owner: owner) }
             } label: {
                 Image(systemName: "arrow.clockwise")
             }
             .buttonStyle(.plain)
-            .help("Refresh git status")
+            .disabled(viewModel.isRefreshing || selectedSnapshotOwner == nil)
+            .cursor(viewModel.isRefreshing || selectedSnapshotOwner == nil ? .arrow : .pointingHand)
+            .help("Refresh changes")
+            .accessibilityLabel("Refresh changes")
         }
         .padding(.leading, 18)
         .padding(.trailing, 16)
@@ -329,6 +352,23 @@ struct GitSidebarView: View {
 
     @ViewBuilder
     private var content: some View {
+        if let owner = selectedSnapshotOwner, viewModel.ownsSnapshot(owner) {
+            ownedContent(owner: owner)
+        } else if selectedSnapshotOwner == nil {
+            emptyMessage("Select a workspace", systemImage: "folder")
+        } else {
+            VStack(spacing: 8) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Loading changes")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func ownedContent(owner: GitStatusSnapshotOwner) -> some View {
         switch viewModel.state {
         case .idle:
             emptyMessage("Select a workspace", systemImage: "folder")
@@ -341,7 +381,7 @@ struct GitSidebarView: View {
                     .foregroundColor(.secondary)
             }
         case .loaded(let summary):
-            statusContent(summary)
+            statusContent(summary, owner: owner)
         case .notRepository(let rootPath):
             notRepositoryContent(rootPath: rootPath)
         case .repositoryInitializationFailed(let rootPath, let message):
@@ -363,7 +403,7 @@ struct GitSidebarView: View {
         }
     }
 
-    private func statusContent(_ summary: GitStatusSummary) -> some View {
+    private func statusContent(_ summary: GitStatusSummary, owner: GitStatusSnapshotOwner) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             branchBar(summary)
 
@@ -385,15 +425,9 @@ struct GitSidebarView: View {
 
             ScrollView {
                 VStack(spacing: 0) {
-                    if summary.stagedCount > 0 {
-                        fileSection(title: "Staged", sectionKey: "staged", count: summary.stagedCount, files: summary.stagedFiles, isExpanded: $stagedExpanded)
-                    }
-                    if summary.unstagedCount > 0 {
-                        fileSection(title: "Unstaged", sectionKey: "unstaged", count: summary.unstagedCount, files: summary.unstagedFiles, isExpanded: $unstagedExpanded)
-                    }
-                    if summary.untrackedCount > 0 {
-                        fileSection(title: "Untracked", sectionKey: "untracked", count: summary.untrackedCount, files: summary.untrackedFiles, isExpanded: $untrackedExpanded)
-                    }
+                    fileSection(title: "Staged", sectionKey: "staged", count: summary.stagedCount, files: summary.stagedFiles, isExpanded: $stagedExpanded, owner: owner)
+                    fileSection(title: "Unstaged", sectionKey: "unstaged", count: summary.unstagedCount, files: summary.unstagedFiles, isExpanded: $unstagedExpanded, owner: owner)
+                    fileSection(title: "Untracked", sectionKey: "untracked", count: summary.untrackedCount, files: summary.untrackedFiles, isExpanded: $untrackedExpanded, owner: owner)
                 }
             }
         }
@@ -461,15 +495,13 @@ struct GitSidebarView: View {
     }
 
     private func allSectionsCollapsed(_ summary: GitStatusSummary) -> Bool {
-        (summary.stagedCount == 0 || !stagedExpanded)
-            && (summary.unstagedCount == 0 || !unstagedExpanded)
-            && (summary.untrackedCount == 0 || !untrackedExpanded)
+        !stagedExpanded && !unstagedExpanded && !untrackedExpanded
     }
 
     private func setAllSectionsExpanded(_ isExpanded: Bool, summary: GitStatusSummary) {
-        if summary.stagedCount > 0 { stagedExpanded = isExpanded }
-        if summary.unstagedCount > 0 { unstagedExpanded = isExpanded }
-        if summary.untrackedCount > 0 { untrackedExpanded = isExpanded }
+        stagedExpanded = isExpanded
+        unstagedExpanded = isExpanded
+        untrackedExpanded = isExpanded
     }
 
     private func upstreamText(_ summary: GitStatusSummary, upstreamName: String) -> String {
@@ -484,9 +516,14 @@ struct GitSidebarView: View {
         sectionKey: String,
         count: Int,
         files: [GitFileChange],
-        isExpanded: Binding<Bool>
+        isExpanded: Binding<Bool>,
+        owner: GitStatusSnapshotOwner
     ) -> some View {
-        VStack(spacing: 0) {
+        let actions = sectionActions(title: title, count: count)
+        let visibleAction = actions.first(where: { !$0.isDestructive })
+        let destructiveActions = actions.filter(\.isDestructive)
+
+        return VStack(spacing: 0) {
             HStack {
                 Button {
                     isExpanded.wrappedValue.toggle()
@@ -501,13 +538,17 @@ struct GitSidebarView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .cursor(.pointingHand)
+                .help("\(isExpanded.wrappedValue ? "Collapse" : "Expand") \(title) section")
+                .accessibilityLabel("\(isExpanded.wrappedValue ? "Collapse" : "Expand") \(title) section")
+                .accessibilityValue("\(count) \(count == 1 ? "change" : "changes")")
 
                 Spacer()
 
-                ForEach(sectionActions(title: title, count: count)) { action in
+                if let action = visibleAction {
                     let actionHoverId = "\(sectionKey):\(action.id)"
                     Button {
-                        Task { await confirmAndPerformSectionFileOperation(action.operation, sectionKey: sectionKey, pathCount: count) }
+                        Task { await confirmAndPerformSectionFileOperation(action.operation, sectionKey: sectionKey, pathCount: count, owner: owner) }
                     } label: {
                         Text(action.title)
                             .font(.system(size: 10, weight: .medium))
@@ -520,6 +561,7 @@ struct GitSidebarView: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .disabled(!viewModel.canPerformActions(for: owner))
                     .onHover { isHovering in
                         if isHovering {
                             hoveredSectionActionId = actionHoverId
@@ -527,8 +569,28 @@ struct GitSidebarView: View {
                             hoveredSectionActionId = nil
                         }
                     }
-                    .cursor(.pointingHand)
+                    .cursor(viewModel.canPerformActions(for: owner) ? .pointingHand : .arrow)
                     .help(action.title)
+                }
+
+                if !destructiveActions.isEmpty {
+                    Menu {
+                        ForEach(destructiveActions) { action in
+                            Button(action.title, role: .destructive) {
+                                Task { await confirmAndPerformSectionFileOperation(action.operation, sectionKey: sectionKey, pathCount: count, owner: owner) }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .frame(width: 20, height: 20)
+                            .contentShape(Rectangle())
+                    }
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                    .disabled(!viewModel.canPerformActions(for: owner))
+                    .help("More \(title.lowercased()) actions")
+                    .accessibilityLabel("More \(title.lowercased()) actions")
                 }
                 Text("\(count)")
                     .font(.system(size: 11, weight: .medium))
@@ -548,8 +610,23 @@ struct GitSidebarView: View {
                     case .directory(let directory):
                         directoryRow(directory, depth: row.depth)
                     case .file(let file):
-                        fileRow(file, name: row.name, depth: row.depth)
+                        fileRow(file, name: row.name, depth: row.depth, owner: owner)
                     }
+                }
+            }
+        }
+        .contextMenu {
+            ForEach(actions) { action in
+                if action.isDestructive {
+                    Button(action.title, role: .destructive) {
+                        Task { await confirmAndPerformSectionFileOperation(action.operation, sectionKey: sectionKey, pathCount: count, owner: owner) }
+                    }
+                    .disabled(!viewModel.canPerformActions(for: owner))
+                } else {
+                    Button(action.title) {
+                        Task { await confirmAndPerformSectionFileOperation(action.operation, sectionKey: sectionKey, pathCount: count, owner: owner) }
+                    }
+                    .disabled(!viewModel.canPerformActions(for: owner))
                 }
             }
         }
@@ -582,16 +659,38 @@ struct GitSidebarView: View {
         .padding(.leading, treeRowLeadingPadding(depth: depth))
         .padding(.trailing, 12)
         .padding(.vertical, 3)
-        .accessibilityLabel("\(directory.name) folder")
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(hoveredDirectoryId == directory.id ? ChromeColors.hoveredTabFill : Color.clear)
+        }
+        .onHover { isHovering in
+            if isHovering {
+                hoveredDirectoryId = directory.id
+            } else if hoveredDirectoryId == directory.id {
+                hoveredDirectoryId = nil
+            }
+        }
+        .cursor(.pointingHand)
+        .help("\(isExpanded ? "Collapse" : "Expand") directory \(directory.path)")
+        .accessibilityLabel("\(isExpanded ? "Collapse" : "Expand") directory \(directory.path)")
         .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
     }
 
-    private func fileRow(_ file: GitFileChange, name: String, depth: Int) -> some View {
-        HStack(spacing: 7) {
-            Circle()
-                .fill(file.status.tintColor)
-                .frame(width: 5.5, height: 5.5)
+    private func fileRow(
+        _ file: GitFileChange,
+        name: String,
+        depth: Int,
+        owner: GitStatusSnapshotOwner
+    ) -> some View {
+        let revealsActions = hoveredFileId == file.id || focusedFileId == file.id
+
+        return HStack(spacing: 7) {
+            Image(systemName: file.status.systemImage)
+                .foregroundColor(file.status.tintColor)
+                .font(.system(size: 10, weight: .semibold))
                 .frame(width: 14)
+                .accessibilityHidden(true)
             Text(name)
                 .font(.system(size: 11))
                 .lineLimit(1)
@@ -608,24 +707,13 @@ struct GitSidebarView: View {
                             .foregroundColor(.red)
                     }
                 }
-                .opacity(hoveredFileId == file.id ? 0 : 1)
+                .opacity(revealsActions ? 0 : 1)
 
                 HStack(spacing: 5) {
                     ForEach(fileActions(for: file)) { action in
                         let actionHoverId = "\(file.id):\(action.id)"
                         Button {
-                            switch action {
-                            case .stage, .unstage:
-                                Task { await performFileOperation(action.operation, path: file.path) }
-                            case .discard, .delete:
-                                Task { await confirmAndPerformFileOperation(action.operation, paths: [file.path]) }
-                            case .diff:
-                                Task { await showPreview(kind: .diff, file: file) }
-                            case .blame:
-                                Task { await showPreview(kind: .blame, file: file) }
-                            case .copyPath:
-                                viewModel.copyPath(file.path)
-                            }
+                            perform(action, for: file, owner: owner)
                         } label: {
                             Image(systemName: action.systemImage)
                                 .frame(width: 20, height: 20)
@@ -636,6 +724,7 @@ struct GitSidebarView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .disabled(!viewModel.canPerformActions(for: owner))
                         .onHover { isHovering in
                             if isHovering {
                                 hoveredFileActionId = actionHoverId
@@ -643,13 +732,14 @@ struct GitSidebarView: View {
                                 hoveredFileActionId = nil
                             }
                         }
-                        .cursor(.pointingHand)
+                        .cursor(viewModel.canPerformActions(for: owner) ? .pointingHand : .arrow)
                         .help(action.title)
+                        .accessibilityLabel(action.title)
                     }
                 }
-                .opacity(hoveredFileId == file.id ? 1 : 0)
-                .allowsHitTesting(hoveredFileId == file.id)
-                .accessibilityHidden(hoveredFileId != file.id)
+                .opacity(revealsActions ? 1 : 0)
+                .allowsHitTesting(revealsActions)
+                .accessibilityHidden(!revealsActions)
             }
         }
         .font(.system(size: 10, weight: .medium, design: .monospaced))
@@ -662,6 +752,8 @@ struct GitSidebarView: View {
                 .fill(hoveredFileId == file.id ? ChromeColors.hoveredTabFill : Color.clear)
         }
         .contentShape(Rectangle())
+        .focusable()
+        .focused($focusedFileId, equals: file.id)
         .onHover { isHovering in
             if isHovering {
                 hoveredFileId = file.id
@@ -670,6 +762,29 @@ struct GitSidebarView: View {
             }
         }
         .accessibilityLabel(file.path)
+        .accessibilityValue(fileAccessibilityValue(file))
+        .accessibilityActions {
+            ForEach(fileActions(for: file)) { action in
+                Button(action.title) {
+                    perform(action, for: file, owner: owner)
+                }
+            }
+        }
+        .contextMenu {
+            ForEach(fileActions(for: file)) { action in
+                if action == .discard || action == .delete {
+                    Button(action.title, role: .destructive) {
+                        perform(action, for: file, owner: owner)
+                    }
+                    .disabled(!viewModel.canPerformActions(for: owner))
+                } else {
+                    Button(action.title) {
+                        perform(action, for: file, owner: owner)
+                    }
+                    .disabled(!viewModel.canPerformActions(for: owner))
+                }
+            }
+        }
     }
 
     private func treeRowLeadingPadding(depth: Int) -> CGFloat {
@@ -687,6 +802,34 @@ struct GitSidebarView: View {
         default:
             return [.copyPath]
         }
+    }
+
+    private func perform(
+        _ action: GitFileRowAction,
+        for file: GitFileChange,
+        owner: GitStatusSnapshotOwner
+    ) {
+        guard selectedSnapshotOwner == owner, viewModel.canPerformActions(for: owner) else { return }
+        switch action {
+        case .stage, .unstage:
+            Task { await performFileOperation(action.operation, path: file.path, owner: owner) }
+        case .discard, .delete:
+            Task { await confirmAndPerformFileOperation(action.operation, paths: [file.path], owner: owner) }
+        case .diff:
+            Task { await showPreview(kind: .diff, file: file, owner: owner) }
+        case .blame:
+            Task { await showPreview(kind: .blame, file: file, owner: owner) }
+        case .copyPath:
+            viewModel.copyPath(file.path)
+        }
+    }
+
+    private func fileAccessibilityValue(_ file: GitFileChange) -> String {
+        var values = [file.status.displayName]
+        if let originalPath = file.originalPath { values.append("from \(originalPath)") }
+        if let additions = file.additions { values.append("\(additions) lines added") }
+        if let deletions = file.deletions { values.append("\(deletions) lines removed") }
+        return values.joined(separator: ", ")
     }
 
     private func sectionActions(title: String, count: Int) -> [GitFileSectionAction] {
@@ -728,9 +871,10 @@ struct GitSidebarView: View {
             Button {
                 Task { await initializeRepository() }
             } label: {
-                Text("Initialize Repository")
+                Text("Initialize Git Repository")
             }
             .controlSize(.small)
+            .disabled(viewModel.isRefreshing)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -739,7 +883,7 @@ struct GitSidebarView: View {
         VStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle")
                 .foregroundColor(.orange)
-            Text("File operation failed")
+            Text("Git file operation failed")
                 .font(.system(size: 13, weight: .medium))
             Text(message)
                 .font(.system(size: 11))
@@ -747,11 +891,13 @@ struct GitSidebarView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 12)
             Button {
-                Task { await refresh() }
+                guard let owner = selectedSnapshotOwner else { return }
+                Task { await refresh(owner: owner) }
             } label: {
-                Text("Refresh")
+                Text("Refresh Changes")
             }
             .controlSize(.small)
+            .disabled(viewModel.isRefreshing)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -768,65 +914,83 @@ struct GitSidebarView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func refresh() async {
-        guard let workspace = workspaceManager.selectedWorkspace,
-              let context = statusContext()
-        else { return }
-        await viewModel.refresh(workspaceId: workspace.id, context: context)
+    private func refresh(owner: GitStatusSnapshotOwner) async {
+        guard selectedSnapshotOwner == owner else { return }
+        await viewModel.refresh(owner: owner)
     }
 
     private func initializeRepository() async {
-        guard let context = statusContext() else { return }
-        await viewModel.initializeRepository(context: context)
+        guard let owner = selectedSnapshotOwner, viewModel.ownsSnapshot(owner) else { return }
+        await viewModel.initializeRepository(owner: owner)
     }
 
-    private func performFileOperation(_ operation: GitStatusFileOperation?, path: String) async {
-        guard let operation, let context = statusContext() else { return }
-        await viewModel.performFileOperation(operation, path: path, context: context)
+    private func performFileOperation(
+        _ operation: GitStatusFileOperation?,
+        path: String,
+        owner: GitStatusSnapshotOwner
+    ) async {
+        guard let operation, selectedSnapshotOwner == owner else { return }
+        await viewModel.performFileOperation(operation, path: path, owner: owner)
     }
 
-    private func confirmAndPerformFileOperation(_ operation: GitStatusFileOperation?, paths: [String]) async {
-        guard let operation, let context = statusContext() else { return }
-        await viewModel.confirmAndPerformFileOperation(operation, paths: paths, context: context)
+    private func confirmAndPerformFileOperation(
+        _ operation: GitStatusFileOperation?,
+        paths: [String],
+        owner: GitStatusSnapshotOwner
+    ) async {
+        guard let operation, selectedSnapshotOwner == owner else { return }
+        await viewModel.confirmAndPerformFileOperation(operation, paths: paths, owner: owner)
     }
 
-    private func confirmAndPerformSectionFileOperation(_ operation: GitStatusFileOperation, sectionKey: String, pathCount: Int) async {
-        guard let context = statusContext() else { return }
-        await viewModel.confirmAndPerformSectionFileOperation(operation, sectionKey: sectionKey, pathCount: pathCount, context: context)
+    private func confirmAndPerformSectionFileOperation(
+        _ operation: GitStatusFileOperation,
+        sectionKey: String,
+        pathCount: Int,
+        owner: GitStatusSnapshotOwner
+    ) async {
+        guard selectedSnapshotOwner == owner else { return }
+        await viewModel.confirmAndPerformSectionFileOperation(
+            operation,
+            sectionKey: sectionKey,
+            pathCount: pathCount,
+            owner: owner
+        )
     }
 
-    private func showPreview(kind: GitPreviewKind, file: GitFileChange) async {
-        guard let workspace = workspaceManager.selectedWorkspace,
-              let context = statusContext()
-        else { return }
+    private func showPreview(
+        kind: GitPreviewKind,
+        file: GitFileChange,
+        owner: GitStatusSnapshotOwner
+    ) async {
+        guard selectedSnapshotOwner == owner else { return }
 
-        let workspaceId = workspace.id
-        let rootPath = viewModel.rootPath(for: context)
-        let result = await viewModel.loadPreview(kind: kind, file: file, context: context)
-        guard let sourceWorkspace = workspaceManager.workspaces.first(where: { $0.id == workspaceId }) else {
+        let result = await viewModel.loadPreview(kind: kind, file: file, owner: owner)
+        guard let sourceWorkspace = workspaceManager.workspaces.first(where: { $0.id == owner.workspaceId }) else {
             return
         }
 
         switch result {
         case .loaded(let preview):
-            sourceWorkspace.openGitPreviewPanel(rootPath: rootPath, preview: preview)
+            sourceWorkspace.openGitPreviewPanel(rootPath: owner.rootPath, preview: preview)
         case .failed(let kind, let path, let message):
             sourceWorkspace.openGitPreviewPanel(
-                rootPath: rootPath,
+                rootPath: owner.rootPath,
                 preview: GitPreview(kind: kind, path: path, content: .ansiText(message))
             )
         }
     }
 
-    private func startAutoRefresh() {
-        guard let context = statusContext() else {
-            autoRefreshController.stop()
-            return
+    private func startAutoRefresh(owner: GitStatusSnapshotOwner) {
+        autoRefreshController.start(rootPath: owner.rootPath) {
+            await refresh(owner: owner)
         }
-        let rootPath = viewModel.rootPath(for: context)
-        autoRefreshController.start(rootPath: rootPath) {
-            await refresh()
-        }
+    }
+
+    private var selectedSnapshotOwner: GitStatusSnapshotOwner? {
+        guard let workspace = workspaceManager.selectedWorkspace,
+              let context = statusContext()
+        else { return nil }
+        return viewModel.owner(workspaceId: workspace.id, context: context)
     }
 
     private func statusContext() -> GitStatusRootContext? {

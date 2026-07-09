@@ -21,6 +21,7 @@ public protocol Panel: AnyObject, Identifiable, ObservableObject where ID == UUI
     var displayTitle: String { get }
     var displayIcon: String? { get }
     var isDirty: Bool { get }
+    var isLoading: Bool { get }
 
     /// Tear down the panel's resources and release its surface.
     func close()
@@ -33,6 +34,7 @@ public protocol Panel: AnyObject, Identifiable, ObservableObject where ID == UUI
 extension Panel {
     public var displayIcon: String? { nil }
     public var isDirty: Bool { false }
+    public var isLoading: Bool { false }
 }
 
 /// Lightweight panel for a file opened from the Files sidebar.
@@ -47,7 +49,11 @@ final class FilePanel: Panel, ObservableObject {
     @Published private(set) var rootPath: String
     @Published private(set) var relativePath: String
 
-    init(id: UUID = UUID(), rootPath: String, relativePath: String) {
+    init(
+        id: UUID = UUID(),
+        rootPath: String,
+        relativePath: String
+    ) {
         self.id = id
         self.rootPath = URL(fileURLWithPath: rootPath).standardizedFileURL.path
         self.relativePath = relativePath
@@ -85,7 +91,11 @@ final class GitPreviewPanel: Panel, ObservableObject {
 
     @Published private(set) var preview: GitPreview
 
-    init(id: UUID = UUID(), rootPath: String, preview: GitPreview) {
+    init(
+        id: UUID = UUID(),
+        rootPath: String,
+        preview: GitPreview
+    ) {
         self.id = id
         self.rootPath = URL(fileURLWithPath: rootPath).standardizedFileURL.path
         self.preview = preview

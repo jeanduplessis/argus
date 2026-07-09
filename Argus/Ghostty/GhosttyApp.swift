@@ -6,6 +6,7 @@
 // this single app instance.
 
 import AppKit
+import Combine
 import Foundation
 
 // MARK: - Notifications
@@ -29,14 +30,16 @@ extension Notification.Name {
 
 // MARK: - GhosttyApp
 
-final class GhosttyApp {
+final class GhosttyApp: ObservableObject {
 
     nonisolated(unsafe) static let shared = GhosttyApp()
 
     private(set) var app: ghostty_app_t?
     private(set) var config: ghostty_config_t?
     private(set) var defaultBackgroundColor: NSColor = .windowBackgroundColor
+    private(set) var defaultForegroundColor: NSColor = .textColor
     private(set) var defaultBackgroundOpacity: Double = 1.0
+    @Published private(set) var chromePalette = ChromePalette.fallback
     private var appObservers: [NSObjectProtocol] = []
 
     private init() {
@@ -127,8 +130,8 @@ final class GhosttyApp {
             }
         }
 
-        // 3. Extract background color from config for window theming
-        extractBackgroundColor(from: cfg)
+        // 3. Extract terminal colors for window and content chrome.
+        extractChromePalette(from: cfg)
 
         // 4. Create runtime config with callbacks
         var runtimeConfig = ghostty_runtime_config_s()
@@ -170,22 +173,41 @@ final class GhosttyApp {
         appObservers.append(contentsOf: [activateObserver, deactivateObserver])
     }
 
-    /// Extract the background color from the Ghostty config for window chrome.
-    private func extractBackgroundColor(from config: ghostty_config_t) {
-        var color = ghostty_config_color_s(r: 0, g: 0, b: 0)
-        if ghostty_config_get(config, &color, "background", 10) {
-            defaultBackgroundColor = NSColor(
-                srgbRed: CGFloat(color.r) / 255.0,
-                green: CGFloat(color.g) / 255.0,
-                blue: CGFloat(color.b) / 255.0,
-                alpha: 1.0
-            )
-        }
+    /// Extract terminal colors from the finalized Ghostty config for shared chrome.
+    private func extractChromePalette(from config: ghostty_config_t) {
+        let background = configColor(named: "background", from: config)
+            ?? NSColor.windowBackgroundColor
+        let foreground = configColor(named: "foreground", from: config)
+            ?? (background.isDark ? NSColor.white : NSColor.black)
+
+        defaultBackgroundColor = background
+        defaultForegroundColor = foreground
 
         var opacity: Double = 1.0
         if ghostty_config_get(config, &opacity, "background-opacity", 18) {
             defaultBackgroundOpacity = opacity
+        } else {
+            defaultBackgroundOpacity = 1.0
         }
+
+        chromePalette = ChromePalette(
+            background: background,
+            foreground: foreground,
+            revision: chromePalette.revision &+ 1
+        )
+    }
+
+    private func configColor(named name: String, from config: ghostty_config_t) -> NSColor? {
+        var color = ghostty_config_color_s(r: 0, g: 0, b: 0)
+        guard ghostty_config_get(config, &color, name, UInt(name.utf8.count)) else {
+            return nil
+        }
+        return NSColor(
+            srgbRed: CGFloat(color.r) / 255.0,
+            green: CGFloat(color.g) / 255.0,
+            blue: CGFloat(color.b) / 255.0,
+            alpha: 1.0
+        )
     }
 
     // MARK: - Public API
@@ -197,6 +219,7 @@ final class GhosttyApp {
     }
 
     /// Reload configuration from disk and apply it.
+    @MainActor
     func reloadConfiguration(source: String = "user") {
         guard let app else { return }
 
@@ -207,7 +230,8 @@ final class GhosttyApp {
         ghostty_config_load_recursive_files(newConfig)
         ghostty_config_finalize(newConfig)
 
-        extractBackgroundColor(from: newConfig)
+        GhosttyConfig.invalidateCache()
+        extractChromePalette(from: newConfig)
         ghostty_app_update_config(app, newConfig)
 
         // Replace our stored config
@@ -216,8 +240,10 @@ final class GhosttyApp {
         }
         self.config = newConfig
 
-        // Invalidate the Swift-side config cache
-        GhosttyConfig.invalidateCache()
+        for window in NSApp.windows {
+            window.backgroundColor = defaultBackgroundColor
+            window.contentView?.needsDisplay = true
+        }
     }
 
     /// Create a new surface config with defaults.
@@ -373,6 +399,12 @@ private func ghosttyActionCallback(
         NSSound.beep()
         return true
 
+    case GHOSTTY_ACTION_RELOAD_CONFIG:
+        DispatchQueue.main.async {
+            GhosttyApp.shared.reloadConfiguration(source: "ghostty")
+        }
+        return true
+
     case GHOSTTY_ACTION_CLOSE_TAB:
         guard let surfaceId else { return false }
         DispatchQueue.main.async {
@@ -394,7 +426,6 @@ private func ghosttyActionCallback(
          GHOSTTY_ACTION_INSPECTOR,
          GHOSTTY_ACTION_DESKTOP_NOTIFICATION,
          GHOSTTY_ACTION_OPEN_CONFIG,
-         GHOSTTY_ACTION_RELOAD_CONFIG,
          GHOSTTY_ACTION_CONFIG_CHANGE,
          GHOSTTY_ACTION_CLOSE_ALL_WINDOWS,
          GHOSTTY_ACTION_CLOSE_WINDOW,

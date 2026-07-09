@@ -104,7 +104,7 @@ final class TerminalPanel: Panel, ObservableObject {
     // MARK: - Panel lifecycle
 
     func focus() {
-        surface.setFocus(true)
+        surface.requestFocus()
     }
 
     func unfocus() {

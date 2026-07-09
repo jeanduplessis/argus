@@ -246,6 +246,16 @@ final class TerminalSurface: ObservableObject, Identifiable {
         ghostty_surface_set_focus(surface, focused)
     }
 
+    /// Restores both Ghostty focus and AppKit first-responder ownership when visible.
+    func requestFocus() {
+        setFocus(true)
+        guard let view = _hostedView,
+              let window = view.window,
+              window.firstResponder !== view
+        else { return }
+        window.makeFirstResponder(view)
+    }
+
     /// Update the surface size (in pixels, at backing scale).
     func setSize(width: UInt32, height: UInt32) {
         guard let surface else { return }

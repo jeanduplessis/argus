@@ -128,6 +128,25 @@ struct GitStatusUIContractTests {
   }
 
   @Test
+  func workspaceFileRequestsIncludeWorkspaceIdentityAndNormalizedRoot() {
+    let firstWorkspaceId = UUID()
+    let secondWorkspaceId = UUID()
+    let first = WorkspaceFileTreeRequest(
+      workspaceId: firstWorkspaceId,
+      rootPath: "/tmp/argus/../workspace")
+    let sameWorkspaceAndRoot = WorkspaceFileTreeRequest(
+      workspaceId: firstWorkspaceId,
+      rootPath: "/tmp/workspace")
+    let differentWorkspace = WorkspaceFileTreeRequest(
+      workspaceId: secondWorkspaceId,
+      rootPath: "/tmp/workspace")
+
+    #expect(first == sameWorkspaceAndRoot)
+    #expect(first != differentWorkspace)
+    #expect(first.rootPath == "/tmp/workspace")
+  }
+
+  @Test
   func rightSidebarHostsFilesAndChangesPanels() throws {
     let rightView = try SourceContract("Argus/Views/GitSidebar/RightSidebarView.swift")
     rightView.containsAll(
@@ -136,7 +155,9 @@ struct GitStatusUIContractTests {
         "case files", "case changes",
         "return \"Files\"", "return \"Changes\"",
         "WorkspaceFilesView(",
+        "workspaceId: workspaceManager.selectedWorkspace?.id",
         "rootPath: workspaceManager.selectedWorkspace?.currentDirectory",
+        "WorkspaceFileTreeRequest(",
         "GitSidebarView(showsHeader: false)",
         "private var changesCount: Int?",
         "summary.totalFileCount",
@@ -165,7 +186,8 @@ struct GitStatusUIContractTests {
         "contentsOfDirectory",
         ".skipsPackageDescendants",
         "name == \".git\"",
-        ".task(id: rootPath)",
+        ".id(request)",
+        "snapshot.request == request",
         "expandedDirectoryIds",
         "WorkspaceFileTree.visibleRows(",
       ], "files panel traversal")
@@ -184,8 +206,8 @@ struct GitStatusUIContractTests {
         "toggleWorkspaceDirectory(directory, rootPath: rootPath)",
         "openWorkspaceDirectory(directory, rootPath: rootPath)",
         "copyWorkspaceItem(directory, rootPath: rootPath)",
-        "deleteWorkspaceItem(directory, rootPath: rootPath)",
-        "renameWorkspaceItem(directory, rootPath: rootPath)",
+        "guard let initiatingRequest = request else { return }",
+        "initiatingRequest: initiatingRequest",
         "private func workspaceFileRow(",
         "return Button {",
         "selectFile(file)",
@@ -195,13 +217,17 @@ struct GitStatusUIContractTests {
         ".simultaneousGesture(TapGesture(count: 2).onEnded {",
         "openWorkspaceFile(file, rootPath: rootPath)",
         ".contextMenu {",
-        "Button(\"Open\")",
-        "Button(\"Copy\")",
-        "Button(\"Delete\", role: .destructive)",
-        "Button(\"Rename\")",
+        "Button(\"Open Folder\")",
+        "Button(\"Copy Folder\")",
+        "Button(\"Delete Folder\", role: .destructive)",
+        "Button(\"Rename Folder\")",
+        "Button(\"Open File\")",
+        "Button(\"Copy File\")",
+        "Button(\"Delete File\", role: .destructive)",
+        "Button(\"Rename File\")",
         "copyWorkspaceItem(file, rootPath: rootPath)",
-        "deleteWorkspaceItem(file, rootPath: rootPath)",
-        "renameWorkspaceItem(file, rootPath: rootPath)",
+        "$0.id == initiatingRequest.workspaceId",
+        "sourceWorkspace.openFilePanel(",
       ], "files panel row interactions")
     rightView.containsAll(
       [
@@ -210,6 +236,10 @@ struct GitStatusUIContractTests {
         "NSPasteboard.general",
         "confirmDelete(path: String)",
         "promptRename(currentName: String)",
+        "func deleteFileWithConfirmation(request: WorkspaceFileTreeRequest, path: String)",
+        "func renameFileWithPrompt(request: WorkspaceFileTreeRequest, path: String)",
+        "activeRequest == request",
+        "viewModel.isCurrent(initiatingRequest)",
         "resolvedItemURL(rootPath: String, path: String)",
         "removeItem(at:",
         "moveItem(at:",
@@ -365,10 +395,38 @@ struct GitStatusUIContractTests {
         "case \"staged\":", ".unstage",
         "case \"unstaged\":", "case \"untracked\":", ".stage",
         ".copyPath",
-        "await performFileOperation(action.operation, path: file.path)",
+        "return \"Stage File\"", "return \"Unstage File\"",
+        "return \"Discard Changes\"", "return \"Delete File\"",
+        "return \"View Diff\"", "return \"View Blame\"", "return \"Copy Path\"",
+        "perform(action, for: file, owner: owner)",
+        "await performFileOperation(action.operation, path: file.path, owner: owner)",
         "viewModel.copyPath(file.path)",
         "case .fileOperationFailed(_, let message):",
+        "Image(systemName: file.status.systemImage)",
+        ".foregroundColor(file.status.tintColor)",
+        ".accessibilityValue(fileAccessibilityValue(file))",
+        ".accessibilityActions {",
+        ".contextMenu {",
       ], "git file row actions")
+  }
+
+  @Test
+  func gitFileStatusesExposeDistinctIconsAndAccessibleNames() {
+    let expectedStyles: [(GitFileStatus, String, String)] = [
+      (.added, "doc.badge.plus", "Added"),
+      (.modified, "pencil", "Modified"),
+      (.deleted, "trash", "Deleted"),
+      (.renamed, "arrow.right", "Renamed"),
+      (.copied, "doc.on.doc", "Copied"),
+      (.typeChanged, "wrench.and.screwdriver", "Type changed"),
+      (.untracked, "questionmark.circle", "Untracked"),
+      (.unmerged, "exclamationmark.triangle", "Merge conflict"),
+    ]
+
+    for (status, icon, accessibleName) in expectedStyles {
+      #expect(status.systemImage == icon)
+      #expect(status.displayName == accessibleName)
+    }
   }
 
   @Test
@@ -400,9 +458,33 @@ struct GitStatusUIContractTests {
     #expect(fileRow.contains(".frame(maxWidth: .infinity, alignment: .leading)"))
     #expect(fileRow.contains(".contentShape(Rectangle())"))
     #expect(fileRow.contains("hoveredFileId == file.id ? ChromeColors.hoveredTabFill : Color.clear"))
-    #expect(fileRow.contains(".allowsHitTesting(hoveredFileId == file.id)"))
+    #expect(fileRow.contains("let revealsActions = hoveredFileId == file.id || focusedFileId == file.id"))
+    #expect(fileRow.contains(".allowsHitTesting(revealsActions)"))
+    #expect(fileRow.contains(".accessibilityHidden(!revealsActions)"))
+    #expect(fileRow.contains(".focusable()"))
     #expect(fileRow.contains("hoveredFileActionId == actionHoverId"))
-    #expect(fileRow.contains(".cursor(.pointingHand)"))
+    #expect(fileRow.contains(".cursor(viewModel.canPerformActions(for: owner) ? .pointingHand : .arrow)"))
+  }
+
+  @Test
+  func directoryRowsShowFileEquivalentHoverFeedback() throws {
+    let filesView = try SourceContract("Argus/Views/GitSidebar/RightSidebarView.swift")
+    let filesDirectoryRow = try filesView.section(
+      after: "private func workspaceDirectoryRow(",
+      before: "private func workspaceFileRow(")
+    let changesView = try SourceContract("Argus/Views/GitSidebar/GitSidebarView.swift")
+    let changesDirectoryRow = try changesView.section(
+      after: "private func directoryRow(",
+      before: "private func fileRow(")
+
+    for expected in [
+      ".frame(maxWidth: .infinity, alignment: .leading)",
+      "ChromeColors.hoveredTabFill",
+      ".onHover { isHovering in",
+    ] {
+      #expect(filesDirectoryRow.contains(expected))
+      #expect(changesDirectoryRow.contains(expected))
+    }
   }
 
   @Test
@@ -427,12 +509,35 @@ struct GitStatusUIContractTests {
         "case discard", "case delete",
         "case \"unstaged\":", ".discard",
         "case \"untracked\":", ".delete",
-        "await confirmAndPerformFileOperation(action.operation, paths: [file.path])",
+        "await confirmAndPerformFileOperation(action.operation, paths: [file.path], owner: owner)",
         "sectionActions(title: String, count: Int)",
-        "Stage All", "Unstage All", "Discard All", "Delete All",
-        "await confirmAndPerformSectionFileOperation(action.operation, sectionKey: sectionKey, pathCount: count)",
+        "Stage All Files", "Unstage All Files", "Discard All Changes", "Delete All Untracked Files",
+        "await confirmAndPerformSectionFileOperation(action.operation, sectionKey: sectionKey, pathCount: count, owner: owner)",
+        "role: .destructive",
       ], "destructive and bulk git actions")
     view.excludes("files.map(\\.path)", "bulk actions must not be limited to displayed rows")
+
+    let viewModel = try SourceContract("Argus/Views/GitSidebar/GitStatusViewModel.swift")
+    viewModel.containsAll(
+      [
+        "fileOperationConfirmer.confirm(operation: operation, paths: paths)",
+        "fileOperationConfirmer.confirm(operation: operation, pathCount: pathCount)",
+        "guard activeMutationRequest == nil, activeRefreshRequests[owner] == nil else { return nil }",
+        "activeMutationRequest = (requestId, owner)",
+        "isMutationInProgress = true",
+        "if activeMutationRequest?.owner == owner",
+        "pendingRefreshOwners.insert(owner)",
+      ], "exact-path confirmation and serialized Git mutations")
+  }
+
+  @Test
+  func destructiveConfirmationNamesExactPaths() {
+    #expect(
+      GitStatusFileOperation.discard.confirmationMessage(paths: ["Sources/App.swift", "README.md"])
+        == "This will permanently discard unstaged changes in:\n\n\"Sources/App.swift\"\n\"README.md\"")
+    #expect(
+      GitStatusFileOperation.delete.confirmationMessage(paths: ["scratch notes.txt"])
+        == "This will permanently delete from disk:\n\n\"scratch notes.txt\"")
   }
 
   @Test
@@ -441,8 +546,11 @@ struct GitStatusUIContractTests {
     view.containsAll(
       [
         "case diff", "case blame",
-        "await showPreview(kind: .diff, file: file)",
-        "await showPreview(kind: .blame, file: file)",
+        "await showPreview(kind: .diff, file: file, owner: owner)",
+        "await showPreview(kind: .blame, file: file, owner: owner)",
+        "viewModel.loadPreview(kind: kind, file: file, owner: owner)",
+        "$0.id == owner.workspaceId",
+        "rootPath: owner.rootPath",
       ], "diff and blame actions")
     let untracked = try view.section(after: "case \"untracked\":", before: "default:")
     #expect(untracked.contains(".diff"))
@@ -480,10 +588,12 @@ struct GitStatusUIContractTests {
       [
         "case .notRepository(let rootPath):",
         "notRepositoryContent(rootPath: rootPath",
-        "Text(\"Initialize Repository\")",
-        "await viewModel.initializeRepository(context: context)",
+        "Text(\"Initialize Git Repository\")",
+        "guard let owner = selectedSnapshotOwner, viewModel.ownsSnapshot(owner)",
+        "await viewModel.initializeRepository(owner: owner)",
         "case .repositoryInitializationFailed(let rootPath, let message):",
         "notRepositoryContent(rootPath: rootPath, message: message",
+        "Text(\"Refresh Changes\")",
       ], "repository initialization UI")
   }
 
@@ -497,7 +607,11 @@ struct GitStatusUIContractTests {
     try SourceContract("Argus/Views/GitSidebar/GitSidebarView.swift").containsAll(
       [
         "@EnvironmentObject private var viewModel: GitStatusViewModel",
-        "viewModel.refresh(workspaceId: workspace.id, context: context)",
+        "GitStatusSnapshotOwner",
+        "viewModel.owner(workspaceId: workspace.id, context: context)",
+        "viewModel.activate(owner)",
+        "viewModel.ownsSnapshot(owner)",
+        "viewModel.refresh(owner: owner)",
       ], "workspace-scoped sidebar status")
     try SourceContract("Argus/Views/Titlebar/TitlebarView.swift").containsAll(
       [

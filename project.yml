@@ -51,6 +51,7 @@ targets:
           - "-framework IOSurface"
           - "-framework UniformTypeIdentifiers"
           - "-framework Carbon"
+          - "-framework WebKit"
           - "-lz"
           - "-lc++"
         ENABLE_HARDENED_RUNTIME: YES

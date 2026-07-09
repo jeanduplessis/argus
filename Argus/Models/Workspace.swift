@@ -10,16 +10,22 @@ enum PanelSplitDirection: String, Codable, Sendable {
     case horizontal
 }
 
+/// One branch in a path from a tab layout root to a nested split.
+enum PanelLayoutBranch: Sendable {
+    case first
+    case second
+}
+
 /// Tree describing the panes visible inside one workspace tab.
 indirect enum PanelLayoutNode: Equatable, Sendable {
     case leaf(UUID)
-    case split(direction: PanelSplitDirection, first: PanelLayoutNode, second: PanelLayoutNode)
+    case split(direction: PanelSplitDirection, ratio: CGFloat = 0.5, first: PanelLayoutNode, second: PanelLayoutNode)
 
     var leaves: [UUID] {
         switch self {
         case .leaf(let id):
             return [id]
-        case .split(_, let first, let second):
+        case .split(_, _, let first, let second):
             return first.leaves + second.leaves
         }
     }
@@ -32,9 +38,10 @@ indirect enum PanelLayoutNode: Equatable, Sendable {
         switch self {
         case .leaf(let id):
             return id == panelId ? replacement : self
-        case .split(let direction, let first, let second):
+        case .split(let direction, let ratio, let first, let second):
             return .split(
                 direction: direction,
+                ratio: ratio,
                 first: first.replacingLeaf(panelId, with: replacement),
                 second: second.replacingLeaf(panelId, with: replacement)
             )
@@ -45,7 +52,7 @@ indirect enum PanelLayoutNode: Equatable, Sendable {
         switch self {
         case .leaf(let id):
             return id == panelId ? nil : self
-        case .split(let direction, let first, let second):
+        case .split(let direction, let ratio, let first, let second):
             let newFirst = first.removingLeaf(panelId)
             let newSecond = second.removingLeaf(panelId)
             switch (newFirst, newSecond) {
@@ -53,8 +60,44 @@ indirect enum PanelLayoutNode: Equatable, Sendable {
             case (let remaining?, nil): return remaining
             case (nil, let remaining?): return remaining
             case (let first?, let second?):
-                return .split(direction: direction, first: first, second: second)
+                return .split(direction: direction, ratio: ratio, first: first, second: second)
             }
+        }
+    }
+
+    func settingSplitRatio(
+        _ ratio: CGFloat,
+        at path: [PanelLayoutBranch],
+        depth: Int = 0
+    ) -> PanelLayoutNode {
+        guard case .split(let direction, let currentRatio, let first, let second) = self else {
+            return self
+        }
+
+        if depth == path.count {
+            return .split(
+                direction: direction,
+                ratio: min(max(ratio, 0.1), 0.9),
+                first: first,
+                second: second
+            )
+        }
+
+        switch path[depth] {
+        case .first:
+            return .split(
+                direction: direction,
+                ratio: currentRatio,
+                first: first.settingSplitRatio(ratio, at: path, depth: depth + 1),
+                second: second
+            )
+        case .second:
+            return .split(
+                direction: direction,
+                ratio: currentRatio,
+                first: first,
+                second: second.settingSplitRatio(ratio, at: path, depth: depth + 1)
+            )
         }
     }
 }
@@ -123,6 +166,8 @@ final class Workspace: Identifiable, ObservableObject {
     /// User-assigned terminal tab titles, keyed by top-level panel id.
     @Published private(set) var terminalCustomTitles: [UUID: String] = [:]
 
+    private var panelCancellables: [UUID: AnyCancellable] = [:]
+
     // MARK: - Computed properties
 
     /// The currently active panel instance.
@@ -159,6 +204,12 @@ final class Workspace: Identifiable, ObservableObject {
     /// Returns the layout for a top-level tab, falling back to a single leaf.
     func layout(for tabId: UUID) -> PanelLayoutNode {
         tabLayouts[tabId] ?? .leaf(tabId)
+    }
+
+    /// Updates one nested split ratio without changing Pane or Top-level Tab identity.
+    func setSplitRatio(_ ratio: CGFloat, for tabId: UUID, at path: [PanelLayoutBranch]) {
+        guard panelOrder.contains(tabId) else { return }
+        tabLayouts[tabId] = layout(for: tabId).settingSplitRatio(ratio, at: path)
     }
 
     /// Returns the ordinal label shown in the tab bar for a top-level tab.
@@ -290,6 +341,7 @@ final class Workspace: Identifiable, ObservableObject {
     /// If no panel is currently active, the new panel becomes active.
     func addPanel(_ panel: any Panel) {
         panels[panel.id] = panel
+        observeBrowserPanel(panel)
         panelOrder.append(panel.id)
         tabLayouts[panel.id] = .leaf(panel.id)
         if activePanelId == nil {
@@ -332,6 +384,23 @@ final class Workspace: Identifiable, ObservableObject {
 
         let panel = FilePanel(rootPath: standardizedRootPath, relativePath: relativePath)
         panels[panel.id] = panel
+        if let tabId = activeTabId,
+           let activeIndex = panelOrder.firstIndex(of: tabId) {
+            panelOrder.insert(panel.id, at: activeIndex + 1)
+        } else {
+            panelOrder.append(panel.id)
+        }
+        tabLayouts[panel.id] = .leaf(panel.id)
+        selectPanel(panel.id)
+        return panel
+    }
+
+    /// Creates a Browser Panel as a top-level tab immediately after the Active Tab.
+    @discardableResult
+    func addBrowserPanel(url: URL? = nil) -> BrowserPanel {
+        let panel = BrowserPanel(currentURL: url)
+        panels[panel.id] = panel
+        observeBrowserPanel(panel)
         if let tabId = activeTabId,
            let activeIndex = panelOrder.firstIndex(of: tabId) {
             panelOrder.insert(panel.id, at: activeIndex + 1)
@@ -399,6 +468,7 @@ final class Workspace: Identifiable, ObservableObject {
 
         let split = PanelLayoutNode.split(
             direction: direction,
+            ratio: 0.5,
             first: .leaf(activePanelId),
             second: .leaf(panel.id)
         )
@@ -408,16 +478,73 @@ final class Workspace: Identifiable, ObservableObject {
         return panel
     }
 
-    /// Removes a panel from this workspace and tears down its resources.
+    /// Removes one Panel while preserving sibling Panes in its Top-level Tab.
     ///
-    /// Removing a top-level tab closes all split panes inside that tab. Removing
-    /// a split leaf closes only that pane and collapses the remaining layout.
+    /// Kept for source compatibility. Call `closeTab` or `closePane` when the
+    /// interaction's layout scope is known.
     func removePanel(_ panelId: UUID) {
-        guard panels[panelId] != nil else { return }
-        if panelOrder.contains(panelId) {
-            removeTab(panelId)
+        closePane(panelId)
+    }
+
+    /// Closes a Top-level Tab and every Pane in its split layout.
+    func closeTab(_ tabId: UUID) {
+        guard let removedIndex = panelOrder.firstIndex(of: tabId) else { return }
+
+        let leafIds = layout(for: tabId).leaves
+        let removedPanels = leafIds.compactMap { panels.removeValue(forKey: $0) }
+        for leafId in leafIds {
+            terminalCustomTitles.removeValue(forKey: leafId)
+            panelCancellables.removeValue(forKey: leafId)
+        }
+        panelOrder.remove(at: removedIndex)
+        tabLayouts.removeValue(forKey: tabId)
+
+        removedPanels.forEach { $0.close() }
+
+        if let activePanelId, leafIds.contains(activePanelId) {
+            let nextIndex = min(removedIndex, panelOrder.count - 1)
+            if panelOrder.indices.contains(nextIndex) {
+                selectPanel(panelOrder[nextIndex])
+            } else {
+                self.activePanelId = nil
+            }
+        }
+    }
+
+    /// Closes one Pane. Closing the only Pane delegates to Top-level Tab closure.
+    func closePane(_ panelId: UUID) {
+        guard panels[panelId] != nil,
+              let tabId = panelOrder.first(where: { layout(for: $0).contains(panelId) })
+        else { return }
+
+        let oldLayout = layout(for: tabId)
+        guard oldLayout.leaves.count > 1 else {
+            closeTab(tabId)
+            return
+        }
+        guard let newLayout = oldLayout.removingLeaf(panelId) else { return }
+
+        let removedPanel = panels.removeValue(forKey: panelId)
+        panelCancellables.removeValue(forKey: panelId)
+        let tabTitle = terminalCustomTitles.removeValue(forKey: panelId)
+
+        if panelId == tabId,
+           let tabIndex = panelOrder.firstIndex(of: tabId),
+           let replacementTabId = newLayout.leaves.first {
+            panelOrder[tabIndex] = replacementTabId
+            tabLayouts.removeValue(forKey: tabId)
+            tabLayouts[replacementTabId] = newLayout
+            if let tabTitle, panels[replacementTabId] is TerminalPanel {
+                terminalCustomTitles[replacementTabId] = tabTitle
+            }
         } else {
-            removeSplitLeaf(panelId)
+            tabLayouts[tabId] = newLayout
+        }
+
+        removedPanel?.close()
+
+        if activePanelId == panelId, let nextId = newLayout.leaves.first {
+            selectPanel(nextId)
         }
     }
 
@@ -425,12 +552,7 @@ final class Workspace: Identifiable, ObservableObject {
     /// the top-level tab.
     func closeActivePaneOrTab() {
         guard let activePanelId else { return }
-        if let activeTabId,
-           layout(for: activeTabId).leaves.count > 1 {
-            removeSplitLeaf(activePanelId)
-        } else {
-            removePanel(activeTabId ?? activePanelId)
-        }
+        closePane(activePanelId)
     }
 
     /// Switches the active panel, unfocusing the previous one and focusing
@@ -475,45 +597,6 @@ final class Workspace: Identifiable, ObservableObject {
         panelOrder.insert(panelId, at: insertionIndex)
     }
 
-    private func removeTab(_ tabId: UUID) {
-        let removedIndex = panelOrder.firstIndex(of: tabId)
-        let leafIds = layout(for: tabId).leaves
-        for leafId in leafIds {
-            panels[leafId]?.close()
-            panels.removeValue(forKey: leafId)
-            terminalCustomTitles.removeValue(forKey: leafId)
-        }
-        panelOrder.removeAll { $0 == tabId }
-        tabLayouts.removeValue(forKey: tabId)
-
-        if let activePanelId, leafIds.contains(activePanelId) {
-            let nextIndex = min(removedIndex ?? panelOrder.count - 1, panelOrder.count - 1)
-            if panelOrder.indices.contains(nextIndex) {
-                selectPanel(panelOrder[nextIndex])
-            } else {
-                self.activePanelId = nil
-            }
-        }
-    }
-
-    private func removeSplitLeaf(_ panelId: UUID) {
-        guard let tabId = panelOrder.first(where: { layout(for: $0).contains(panelId) }) else { return }
-        panels[panelId]?.close()
-        panels.removeValue(forKey: panelId)
-        tabLayouts[tabId] = layout(for: tabId).removingLeaf(panelId)
-        if tabLayouts[tabId] == nil {
-            panelOrder.removeAll { $0 == tabId }
-        }
-
-        if activePanelId == panelId {
-            if let nextId = layout(for: tabId).leaves.first, panels[nextId] != nil {
-                selectPanel(nextId)
-            } else {
-                activePanelId = panelOrder.last
-            }
-        }
-    }
-
     // MARK: - Title Management
 
     /// Sets a terminal tab's custom title. A blank title restores its ordinal label.
@@ -540,5 +623,12 @@ final class Workspace: Identifiable, ObservableObject {
     /// Sets or clears the user-assigned custom title.
     func setCustomTitle(_ newTitle: String?) {
         customTitle = newTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func observeBrowserPanel(_ panel: any Panel) {
+        guard let browser = panel as? BrowserPanel else { return }
+        panelCancellables[browser.id] = browser.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
     }
 }

@@ -4,6 +4,7 @@ import AppKit
 @main
 struct ArgusApp: App {
     @StateObject private var workspaceManager = WorkspaceManager()
+    @StateObject private var agentStatusStore = AgentStatusStore()
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
@@ -16,6 +17,7 @@ struct ArgusApp: App {
         Window("Argus", id: "main") {
             MainWindowView()
                 .environmentObject(workspaceManager)
+                .environmentObject(agentStatusStore)
                 .onAppear {
                     appDelegate.workspaceManager = workspaceManager
                     appDelegate.updateWindowTitle()
@@ -43,6 +45,10 @@ struct ArgusApp: App {
                 }
                 .keyboardShortcut("t", modifiers: [.command])
 
+                Button("New Browser Tab") {
+                    workspaceManager.addBrowserTab()
+                }
+
                 Button("Split Vertically") {
                     workspaceManager.splitActiveTerminal(direction: .vertical)
                 }
@@ -52,6 +58,15 @@ struct ArgusApp: App {
                     workspaceManager.splitActiveTerminal(direction: .horizontal)
                 }
                 .keyboardShortcut("d", modifiers: [.command, .shift])
+            }
+
+            CommandGroup(after: .textEditing) {
+                Divider()
+
+                Button("Find\u{2026}") {
+                    workspaceManager.requestFindInActiveBrowser()
+                }
+                .keyboardShortcut("f", modifiers: [.command])
             }
 
             // Close commands — placed after new-item group

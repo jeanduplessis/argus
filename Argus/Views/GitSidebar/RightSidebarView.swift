@@ -42,6 +42,7 @@ struct RightSidebarView: View {
                 case .files:
                     WorkspaceFilesView(
                         viewModel: filesViewModel,
+                        workspaceId: workspaceManager.selectedWorkspace?.id,
                         rootPath: workspaceManager.selectedWorkspace?.currentDirectory
                     )
                 case .changes:
@@ -51,6 +52,9 @@ struct RightSidebarView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(VisualEffectView(material: .sidebar, blendingMode: .behindWindow))
+        .onChange(of: filesRequest, initial: true) { _, request in
+            filesViewModel.activate(request: request)
+        }
     }
 
     private var header: some View {
@@ -80,8 +84,11 @@ struct RightSidebarView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .cursor(.pointingHand)
+            .disabled(isRefreshActive)
+            .cursor(isRefreshActive ? .arrow : .pointingHand)
             .help(selectedPanel == .files ? "Refresh files" : "Refresh changes")
+            .accessibilityLabel(selectedPanel == .files ? "Refresh files" : "Refresh changes")
+            .accessibilityValue(isRefreshActive ? "Refreshing" : "")
             .padding(.trailing, 12)
         }
         .frame(height: 44)
@@ -123,6 +130,25 @@ struct RightSidebarView: View {
         .buttonStyle(.plain)
         .cursor(.pointingHand)
         .help(panel.title)
+        .accessibilityValue(isSelected ? "Selected" : "")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private var isRefreshActive: Bool {
+        switch selectedPanel {
+        case .files:
+            return filesViewModel.isRefreshing
+        case .changes:
+            return gitStatusViewModel.isRefreshing
+        }
+    }
+
+    private var filesRequest: WorkspaceFileTreeRequest? {
+        guard let workspace = workspaceManager.selectedWorkspace else { return nil }
+        return WorkspaceFileTreeRequest(
+            workspaceId: workspace.id,
+            rootPath: workspace.currentDirectory
+        )
     }
 
     private var changesCount: Int? {
@@ -140,11 +166,11 @@ struct RightSidebarView: View {
     }
 
     private func refreshFiles() async {
-        guard let rootPath = workspaceManager.selectedWorkspace?.currentDirectory else {
+        guard let filesRequest else {
             filesViewModel.reset()
             return
         }
-        await filesViewModel.refresh(rootPath: rootPath)
+        await filesViewModel.refresh(request: filesRequest)
     }
 
     private func refreshChanges() async {
@@ -160,6 +186,16 @@ struct RightSidebarView: View {
 struct WorkspaceFileTreeEntry: Equatable, Sendable {
     let path: String
     let isDirectory: Bool
+}
+
+struct WorkspaceFileTreeRequest: Hashable, Sendable {
+    let workspaceId: UUID
+    let rootPath: String
+
+    init(workspaceId: UUID, rootPath: String) {
+        self.workspaceId = workspaceId
+        self.rootPath = URL(fileURLWithPath: rootPath).standardizedFileURL.path
+    }
 }
 
 struct WorkspaceFileTreeNode: Identifiable, Equatable, Sendable {
@@ -213,21 +249,70 @@ struct WorkspaceFileTreeRow: Identifiable, Equatable {
 struct WorkspaceFileTreeSnapshot: Equatable, Sendable {
     static let displayedEntryLimit = 2_500
 
+    let request: WorkspaceFileTreeRequest?
     let rootPath: String
     let nodes: [WorkspaceFileTreeNode]
     let fileCount: Int
     let directoryCount: Int
+    let totalEntryCount: Int
+    let omittedEntryCount: Int
     let isCapped: Bool
     let loadedDirectoryPaths: Set<String>
 
-    var totalEntryCount: Int { fileCount + directoryCount }
+    init(
+        request: WorkspaceFileTreeRequest? = nil,
+        rootPath: String,
+        nodes: [WorkspaceFileTreeNode],
+        fileCount: Int,
+        directoryCount: Int,
+        totalEntryCount: Int? = nil,
+        omittedEntryCount: Int = 0,
+        isCapped: Bool,
+        loadedDirectoryPaths: Set<String>
+    ) {
+        self.request = request
+        self.rootPath = rootPath
+        self.nodes = nodes
+        self.fileCount = fileCount
+        self.directoryCount = directoryCount
+        self.totalEntryCount = totalEntryCount ?? fileCount + directoryCount + omittedEntryCount
+        self.omittedEntryCount = omittedEntryCount
+        self.isCapped = isCapped
+        self.loadedDirectoryPaths = loadedDirectoryPaths
+    }
+
+    var displayedEntryCount: Int { fileCount + directoryCount }
 }
 
 struct WorkspaceFileTreeDirectorySnapshot: Equatable, Sendable {
     let rootPath: String
     let directoryPath: String
     let nodes: [WorkspaceFileTreeNode]
+    let totalEntryCount: Int
+    let omittedEntryCount: Int
     let isCapped: Bool
+
+    init(
+        rootPath: String,
+        directoryPath: String,
+        nodes: [WorkspaceFileTreeNode],
+        totalEntryCount: Int? = nil,
+        omittedEntryCount: Int = 0,
+        isCapped: Bool
+    ) {
+        let counts = WorkspaceFileTree.countEntries(nodes: nodes)
+        self.rootPath = rootPath
+        self.directoryPath = directoryPath
+        self.nodes = nodes
+        self.totalEntryCount = totalEntryCount ?? counts.files + counts.directories + omittedEntryCount
+        self.omittedEntryCount = omittedEntryCount
+        self.isCapped = isCapped
+    }
+}
+
+struct WorkspaceFileTreeDirectoryError: Equatable, Sendable {
+    let path: String
+    let message: String
 }
 
 enum WorkspaceFileTreeLoadState: Equatable, Sendable {
@@ -567,15 +652,25 @@ protocol WorkspaceFileTreeProviding: Sendable {
 
 struct FileManagerWorkspaceFileTreeProvider: WorkspaceFileTreeProviding {
     func loadTree(rootPath: String) async -> WorkspaceFileTreeLoadState {
-        await Task.detached(priority: .userInitiated) {
+        let task = Task.detached(priority: .userInitiated) {
             WorkspaceFileTreeLoader.load(rootPath: rootPath)
-        }.value
+        }
+        return await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
+        }
     }
 
     func loadChildren(rootPath: String, directoryPath: String) async -> WorkspaceFileTreeDirectoryLoadState {
-        await Task.detached(priority: .userInitiated) {
+        let task = Task.detached(priority: .userInitiated) {
             WorkspaceFileTreeLoader.loadChildren(rootPath: rootPath, directoryPath: directoryPath)
-        }.value
+        }
+        return await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
+        }
     }
 }
 
@@ -589,6 +684,8 @@ private enum WorkspaceFileTreeLoader {
                 nodes: directory.nodes,
                 fileCount: counts.files,
                 directoryCount: counts.directories,
+                totalEntryCount: directory.totalEntryCount,
+                omittedEntryCount: directory.omittedEntryCount,
                 isCapped: directory.isCapped,
                 loadedDirectoryPaths: [""]
             ))
@@ -613,6 +710,10 @@ private enum WorkspaceFileTreeLoader {
             ? rootURL
             : rootURL.appendingPathComponent(directoryPath, isDirectory: true).standardizedFileURL
         var isDirectory = ObjCBool(false)
+
+        if Task.isCancelled {
+            return .error(path: directoryURL.path, message: "Loading cancelled")
+        }
 
         guard fileManager.fileExists(atPath: rootURL.path, isDirectory: &isDirectory),
               isDirectory.boolValue
@@ -643,12 +744,11 @@ private enum WorkspaceFileTreeLoader {
                 options: [.skipsPackageDescendants]
             )
             var entries: [WorkspaceFileTreeEntry] = []
-            var isCapped = false
+            var totalEntryCount = 0
 
             for url in urls {
-                if entries.count >= WorkspaceFileTreeSnapshot.displayedEntryLimit {
-                    isCapped = true
-                    break
+                if Task.isCancelled {
+                    return .error(path: directoryURL.path, message: "Loading cancelled")
                 }
 
                 let values = try? url.resourceValues(forKeys: Set(resourceKeys))
@@ -664,17 +764,24 @@ private enum WorkspaceFileTreeLoader {
                 let relativePath = String(entryURL.path.dropFirst(rootPathWithSlash.count))
                 guard !relativePath.isEmpty else { continue }
 
-                entries.append(WorkspaceFileTreeEntry(
-                    path: relativePath,
-                    isDirectory: isEntryDirectory
-                ))
+                totalEntryCount += 1
+                if entries.count < WorkspaceFileTreeSnapshot.displayedEntryLimit {
+                    entries.append(WorkspaceFileTreeEntry(
+                        path: relativePath,
+                        isDirectory: isEntryDirectory
+                    ))
+                }
             }
+
+            let omittedEntryCount = max(0, totalEntryCount - entries.count)
 
             return .loaded(WorkspaceFileTreeDirectorySnapshot(
                 rootPath: rootURL.path,
                 directoryPath: directoryPath,
                 nodes: WorkspaceFileTree.makeImmediateNodes(entries: entries),
-                isCapped: isCapped
+                totalEntryCount: totalEntryCount,
+                omittedEntryCount: omittedEntryCount,
+                isCapped: omittedEntryCount > 0
             ))
         } catch {
             return .error(path: directoryURL.path, message: error.localizedDescription)
@@ -687,10 +794,14 @@ final class WorkspaceFilesViewModel: ObservableObject {
     @Published private(set) var state: WorkspaceFileTreeLoadState = .idle
     @Published private(set) var isRefreshing = false
     @Published private(set) var loadingDirectoryPaths: Set<String> = []
+    @Published private(set) var directoryErrors: [String: WorkspaceFileTreeDirectoryError] = [:]
 
     private let provider: any WorkspaceFileTreeProviding
     private let fileOperator: any WorkspaceFileOperating
     private let filePrompter: any WorkspaceFileOperationPrompting
+    private var activeRequest: WorkspaceFileTreeRequest?
+    private var requestGeneration: UInt64 = 0
+    private var directoryLoadGenerations: [String: UInt64] = [:]
 
     init(
         provider: any WorkspaceFileTreeProviding = FileManagerWorkspaceFileTreeProvider(),
@@ -703,61 +814,152 @@ final class WorkspaceFilesViewModel: ObservableObject {
     }
 
     func reset() {
-        state = .idle
-        isRefreshing = false
-        loadingDirectoryPaths = []
+        activate(request: nil)
     }
 
-    func refresh(rootPath: String) async {
+    func activate(request: WorkspaceFileTreeRequest?) {
+        guard activeRequest != request else { return }
+        invalidateRequests()
+        activeRequest = request
+        state = request == nil ? .idle : .loading
+        isRefreshing = false
+        loadingDirectoryPaths = []
+        directoryLoadGenerations = [:]
+        directoryErrors = [:]
+    }
+
+    func refresh(request: WorkspaceFileTreeRequest) async {
+        guard !(isRefreshing && activeRequest == request) else { return }
+
+        invalidateRequests()
+        let generation = requestGeneration
+        let previousRequest = activeRequest
+        activeRequest = request
         isRefreshing = true
         loadingDirectoryPaths = []
-        if case .loaded = state {
+        directoryLoadGenerations = [:]
+        if case .loaded(let snapshot) = state, snapshot.request == request, previousRequest == request {
             // Keep the previous tree visible during quick refreshes.
         } else {
             state = .loading
         }
-        defer { isRefreshing = false }
-        state = await provider.loadTree(rootPath: rootPath)
+        defer {
+            if requestGeneration == generation, activeRequest == request {
+                isRefreshing = false
+            }
+        }
+
+        let result = await provider.loadTree(rootPath: request.rootPath)
+        guard !Task.isCancelled,
+              requestGeneration == generation,
+              activeRequest == request
+        else {
+            return
+        }
+
+        switch result {
+        case .loaded(let snapshot):
+            guard snapshot.rootPath == request.rootPath else {
+                state = .error(path: snapshot.rootPath, message: "Workspace root changed while loading")
+                return
+            }
+            state = .loaded(WorkspaceFileTreeSnapshot(
+                request: request,
+                rootPath: snapshot.rootPath,
+                nodes: snapshot.nodes,
+                fileCount: snapshot.fileCount,
+                directoryCount: snapshot.directoryCount,
+                totalEntryCount: snapshot.totalEntryCount,
+                omittedEntryCount: snapshot.omittedEntryCount,
+                isCapped: snapshot.isCapped,
+                loadedDirectoryPaths: snapshot.loadedDirectoryPaths
+            ))
+            directoryErrors = [:]
+        case .missingDirectory(let path):
+            state = .missingDirectory(path: path)
+        case .error(let path, let message):
+            state = .error(path: path, message: message)
+        case .idle, .loading:
+            state = result
+        }
     }
 
-    func loadChildren(rootPath: String, directoryPath: String) async {
+    func loadChildren(request: WorkspaceFileTreeRequest, directoryPath: String) async {
         guard case .loaded(let snapshot) = state,
-              snapshot.rootPath == URL(fileURLWithPath: rootPath).standardizedFileURL.path,
+              snapshot.request == request,
+              activeRequest == request,
               !snapshot.loadedDirectoryPaths.contains(directoryPath),
               !loadingDirectoryPaths.contains(directoryPath)
         else {
             return
         }
 
+        let generation = requestGeneration
         loadingDirectoryPaths.insert(directoryPath)
-        defer { loadingDirectoryPaths.remove(directoryPath) }
+        directoryLoadGenerations[directoryPath] = generation
+        defer { finishDirectoryLoad(directoryPath: directoryPath, generation: generation) }
 
-        switch await provider.loadChildren(rootPath: rootPath, directoryPath: directoryPath) {
+        let result = await provider.loadChildren(
+            rootPath: request.rootPath,
+            directoryPath: directoryPath
+        )
+        guard !Task.isCancelled,
+              requestGeneration == generation,
+              activeRequest == request
+        else {
+            return
+        }
+
+        switch result {
         case .loaded(let directory):
             guard case .loaded(let current) = state,
+                  current.request == request,
                   current.rootPath == directory.rootPath
             else {
                 return
             }
 
+            let remainingBudget = max(
+                0,
+                WorkspaceFileTreeSnapshot.displayedEntryLimit - current.displayedEntryCount
+            )
+            let displayedNodes = Array(directory.nodes.prefix(remainingBudget))
+            let displayedDirectoryCounts = WorkspaceFileTree.countEntries(nodes: displayedNodes)
+            let displayedDirectoryEntryCount = displayedDirectoryCounts.files
+                + displayedDirectoryCounts.directories
+            let omittedDirectoryEntryCount = max(
+                directory.omittedEntryCount,
+                directory.totalEntryCount - displayedDirectoryEntryCount
+            )
             let updatedNodes = WorkspaceFileTree.replacingChildren(
                 in: current.nodes,
                 directoryPath: directory.directoryPath,
-                with: directory.nodes
+                with: displayedNodes
             )
             let counts = WorkspaceFileTree.countEntries(nodes: updatedNodes)
+            let omittedEntryCount = current.omittedEntryCount + omittedDirectoryEntryCount
             state = .loaded(WorkspaceFileTreeSnapshot(
+                request: request,
                 rootPath: current.rootPath,
                 nodes: updatedNodes,
                 fileCount: counts.files,
                 directoryCount: counts.directories,
-                isCapped: current.isCapped || directory.isCapped,
+                totalEntryCount: current.totalEntryCount + directory.totalEntryCount,
+                omittedEntryCount: omittedEntryCount,
+                isCapped: omittedEntryCount > 0,
                 loadedDirectoryPaths: current.loadedDirectoryPaths.union([directory.directoryPath])
             ))
+            directoryErrors[directoryPath] = nil
         case .missingDirectory(let path):
-            state = .error(path: path, message: "Directory not found")
+            directoryErrors[directoryPath] = WorkspaceFileTreeDirectoryError(
+                path: path,
+                message: "Directory not found"
+            )
         case .error(let path, let message):
-            state = .error(path: path, message: message)
+            directoryErrors[directoryPath] = WorkspaceFileTreeDirectoryError(
+                path: path,
+                message: message
+            )
         }
     }
 
@@ -772,11 +974,12 @@ final class WorkspaceFilesViewModel: ObservableObject {
         }
     }
 
-    func deleteFileWithConfirmation(rootPath: String, path: String) async -> Bool {
+    func deleteFileWithConfirmation(request: WorkspaceFileTreeRequest, path: String) async -> Bool {
         guard filePrompter.confirmDelete(path: path) else { return false }
         do {
-            try await fileOperator.deleteFile(rootPath: rootPath, path: path)
-            await refresh(rootPath: rootPath)
+            try await fileOperator.deleteFile(rootPath: request.rootPath, path: path)
+            guard activeRequest == request else { return true }
+            await refresh(request: request)
             return true
         } catch {
             filePrompter.showFailure(
@@ -787,16 +990,17 @@ final class WorkspaceFilesViewModel: ObservableObject {
         }
     }
 
-    func renameFileWithPrompt(rootPath: String, path: String) async -> String? {
+    func renameFileWithPrompt(request: WorkspaceFileTreeRequest, path: String) async -> String? {
         let currentName = (path as NSString).lastPathComponent
         guard let newName = filePrompter.promptRename(currentName: currentName) else { return nil }
         do {
             let newPath = try await fileOperator.renameFile(
-                rootPath: rootPath,
+                rootPath: request.rootPath,
                 path: path,
                 newName: newName
             )
-            await refresh(rootPath: rootPath)
+            guard activeRequest == request else { return newPath }
+            await refresh(request: request)
             return newPath
         } catch {
             filePrompter.showFailure(
@@ -806,10 +1010,25 @@ final class WorkspaceFilesViewModel: ObservableObject {
             return nil
         }
     }
+
+    func isCurrent(_ request: WorkspaceFileTreeRequest) -> Bool {
+        activeRequest == request
+    }
+
+    private func invalidateRequests() {
+        requestGeneration &+= 1
+    }
+
+    private func finishDirectoryLoad(directoryPath: String, generation: UInt64) {
+        guard directoryLoadGenerations[directoryPath] == generation else { return }
+        directoryLoadGenerations[directoryPath] = nil
+        loadingDirectoryPaths.remove(directoryPath)
+    }
 }
 
 struct WorkspaceFilesView: View {
     @ObservedObject var viewModel: WorkspaceFilesViewModel
+    let workspaceId: UUID?
     let rootPath: String?
     @EnvironmentObject private var workspaceManager: WorkspaceManager
     @State private var expandedDirectoryIds: Set<String> = []
@@ -820,6 +1039,7 @@ struct WorkspaceFilesView: View {
     var body: some View {
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .id(request)
             .task(id: rootPath) {
                 expandedDirectoryIds = []
                 selectedItemId = nil
@@ -835,19 +1055,32 @@ struct WorkspaceFilesView: View {
         case .idle:
             emptyMessage("Select a workspace", systemImage: "folder")
         case .loading:
-            VStack(spacing: 8) {
-                ProgressView()
-                    .controlSize(.small)
-                Text("Loading files...")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-            }
+            loadingMessage
         case .loaded(let snapshot):
-            fileTreeContent(snapshot)
+            if snapshot.request == request {
+                fileTreeContent(snapshot)
+            } else {
+                loadingMessage
+            }
         case .missingDirectory(let path):
-            fileTreeError(title: "Directory not found", path: path)
+            fileTreeError(title: "Directory not found", path: path, message: nil)
         case .error(let path, let message):
             fileTreeError(title: "Files unavailable", path: path, message: message)
+        }
+    }
+
+    private var request: WorkspaceFileTreeRequest? {
+        guard let workspaceId, let rootPath else { return nil }
+        return WorkspaceFileTreeRequest(workspaceId: workspaceId, rootPath: rootPath)
+    }
+
+    private var loadingMessage: some View {
+        VStack(spacing: 8) {
+            ProgressView()
+                .controlSize(.small)
+            Text("Loading files...")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
         }
     }
 
@@ -856,7 +1089,10 @@ struct WorkspaceFilesView: View {
             fileTreeRootBar(snapshot)
 
             if snapshot.isCapped {
-                Text("Showing first \(WorkspaceFileTreeSnapshot.displayedEntryLimit) entries")
+                Text(
+                    "Showing \(snapshot.displayedEntryCount) of \(snapshot.totalEntryCount) loaded entries "
+                        + "(\(snapshot.omittedEntryCount) omitted)"
+                )
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 12)
@@ -876,11 +1112,22 @@ struct WorkspaceFilesView: View {
                         ) { row in
                             switch row.content {
                             case .directory(let directory):
-                                workspaceDirectoryRow(
-                                    directory,
-                                    depth: row.depth,
-                                    rootPath: snapshot.rootPath
-                                )
+                                VStack(spacing: 0) {
+                                    workspaceDirectoryRow(
+                                        directory,
+                                        depth: row.depth,
+                                        rootPath: snapshot.rootPath
+                                    )
+                                    if expandedDirectoryIds.contains(directory.id),
+                                       let error = viewModel.directoryErrors[directory.path] {
+                                        directoryLoadError(
+                                            error,
+                                            directory: directory,
+                                            depth: row.depth,
+                                            rootPath: snapshot.rootPath
+                                        )
+                                    }
+                                }
                             case .file(let file):
                                 workspaceFileRow(
                                     file,
@@ -901,7 +1148,7 @@ struct WorkspaceFilesView: View {
             Image(systemName: "folder")
             Text((snapshot.rootPath as NSString).lastPathComponent)
                 .lineLimit(1)
-                .truncationMode(.middle)
+                .truncationMode(.tail)
                 .layoutPriority(1)
             Text("\(snapshot.totalEntryCount) \(snapshot.totalEntryCount == 1 ? "item" : "items")")
                 .foregroundColor(.secondary)
@@ -924,6 +1171,7 @@ struct WorkspaceFilesView: View {
         let isExpanded = expandedDirectoryIds.contains(directory.id)
         let isLoading = viewModel.loadingDirectoryPaths.contains(directory.path)
         let isSelected = selectedItemId == directory.id
+        let isHovered = hoveredItemId == directory.id
 
         return Button {
             selectDirectory(directory)
@@ -948,9 +1196,10 @@ struct WorkspaceFilesView: View {
                 Text(directory.name)
                     .font(.system(size: 11))
                     .lineLimit(1)
-                    .truncationMode(.middle)
+                    .truncationMode(.tail)
                 Spacer(minLength: 0)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -960,29 +1209,54 @@ struct WorkspaceFilesView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(isSelected ? Color.accentColor.opacity(0.16) : Color.clear)
+                .fill(isSelected
+                    ? Color.accentColor.opacity(0.16)
+                    : (isHovered ? ChromeColors.hoveredTabFill : Color.clear))
         }
+        .onHover { isHovering in
+            if isHovering {
+                hoveredItemId = directory.id
+            } else if hoveredItemId == directory.id {
+                hoveredItemId = nil
+            }
+        }
+        .cursor(.pointingHand)
         .contextMenu {
-            Button("Open") {
+            Button("Open Folder") {
                 openWorkspaceDirectory(directory, rootPath: rootPath)
             }
-            Button("Copy") {
+            Button("Copy Folder") {
                 copyWorkspaceItem(directory, rootPath: rootPath)
             }
-            Button("Delete", role: .destructive) {
+            Button("Delete Folder", role: .destructive) {
+                guard let initiatingRequest = request else { return }
                 Task {
-                    await deleteWorkspaceItem(directory, rootPath: rootPath)
+                    await deleteWorkspaceItem(
+                        directory,
+                        rootPath: rootPath,
+                        initiatingRequest: initiatingRequest
+                    )
                 }
             }
-            Button("Rename") {
+            Button("Rename Folder") {
+                guard let initiatingRequest = request else { return }
                 Task {
-                    await renameWorkspaceItem(directory, rootPath: rootPath)
+                    await renameWorkspaceItem(
+                        directory,
+                        rootPath: rootPath,
+                        initiatingRequest: initiatingRequest
+                    )
                 }
             }
         }
         .help(directory.path)
         .accessibilityLabel("\(directory.name) folder")
-        .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+        .accessibilityValue(
+            [isSelected ? "Selected" : nil, isExpanded ? "Expanded" : "Collapsed"]
+                .compactMap { $0 }
+                .joined(separator: ", ")
+        )
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func workspaceFileRow(
@@ -1004,9 +1278,10 @@ struct WorkspaceFilesView: View {
                 Text(file.name)
                     .font(.system(size: 11))
                     .lineLimit(1)
-                    .truncationMode(.middle)
+                    .truncationMode(.tail)
                 Spacer(minLength: 0)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -1027,29 +1302,42 @@ struct WorkspaceFilesView: View {
                 hoveredItemId = nil
             }
         }
+        .cursor(.pointingHand)
         .simultaneousGesture(TapGesture(count: 2).onEnded {
             openWorkspaceFile(file, rootPath: rootPath)
         })
         .contextMenu {
-            Button("Open") {
+            Button("Open File") {
                 openWorkspaceFile(file, rootPath: rootPath)
             }
-            Button("Copy") {
+            Button("Copy File") {
                 copyWorkspaceItem(file, rootPath: rootPath)
             }
-            Button("Delete", role: .destructive) {
+            Button("Delete File", role: .destructive) {
+                guard let initiatingRequest = request else { return }
                 Task {
-                    await deleteWorkspaceItem(file, rootPath: rootPath)
+                    await deleteWorkspaceItem(
+                        file,
+                        rootPath: rootPath,
+                        initiatingRequest: initiatingRequest
+                    )
                 }
             }
-            Button("Rename") {
+            Button("Rename File") {
+                guard let initiatingRequest = request else { return }
                 Task {
-                    await renameWorkspaceItem(file, rootPath: rootPath)
+                    await renameWorkspaceItem(
+                        file,
+                        rootPath: rootPath,
+                        initiatingRequest: initiatingRequest
+                    )
                 }
             }
         }
         .help(file.path)
         .accessibilityLabel(file.path)
+        .accessibilityValue(isSelected ? "Selected" : "")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func workspaceTreeRowLeadingPadding(depth: Int) -> CGFloat {
@@ -1078,17 +1366,32 @@ struct WorkspaceFilesView: View {
     }
 
     private func openWorkspaceDirectory(_ directory: WorkspaceFileTreeNode, rootPath: String) {
+        guard let initiatingRequest = request,
+              initiatingRequest.rootPath == rootPath
+        else {
+            return
+        }
         selectDirectory(directory)
         guard !expandedDirectoryIds.contains(directory.id) else { return }
         expandedDirectoryIds.insert(directory.id)
         Task {
-            await viewModel.loadChildren(rootPath: rootPath, directoryPath: directory.path)
+            await viewModel.loadChildren(request: initiatingRequest, directoryPath: directory.path)
         }
     }
 
     private func openWorkspaceFile(_ file: WorkspaceFileTreeNode, rootPath: String) {
+        guard let initiatingRequest = request,
+              initiatingRequest.rootPath == rootPath
+        else {
+            return
+        }
         selectFile(file)
-        workspaceManager.selectedWorkspace?.openFilePanel(
+        guard let sourceWorkspace = workspaceManager.workspaces.first(where: {
+            $0.id == initiatingRequest.workspaceId
+        }) else {
+            return
+        }
+        sourceWorkspace.openFilePanel(
             rootPath: rootPath,
             relativePath: file.path
         )
@@ -1099,10 +1402,23 @@ struct WorkspaceFilesView: View {
         viewModel.copyFile(rootPath: rootPath, path: item.path)
     }
 
-    private func deleteWorkspaceItem(_ item: WorkspaceFileTreeNode, rootPath: String) async {
+    private func deleteWorkspaceItem(
+        _ item: WorkspaceFileTreeNode,
+        rootPath: String,
+        initiatingRequest: WorkspaceFileTreeRequest
+    ) async {
+        guard initiatingRequest.rootPath == rootPath else { return }
         selectWorkspaceItem(item)
-        let deleted = await viewModel.deleteFileWithConfirmation(rootPath: rootPath, path: item.path)
-        guard deleted else { return }
+        let deleted = await viewModel.deleteFileWithConfirmation(
+            request: initiatingRequest,
+            path: item.path
+        )
+        guard deleted,
+              request == initiatingRequest,
+              viewModel.isCurrent(initiatingRequest)
+        else {
+            return
+        }
         if selectedItemPath == item.path {
             selectedItemId = nil
             selectedItemPath = nil
@@ -1110,24 +1426,40 @@ struct WorkspaceFilesView: View {
         expandedDirectoryIds = []
     }
 
-    private func renameWorkspaceItem(_ item: WorkspaceFileTreeNode, rootPath: String) async {
+    private func renameWorkspaceItem(
+        _ item: WorkspaceFileTreeNode,
+        rootPath: String,
+        initiatingRequest: WorkspaceFileTreeRequest
+    ) async {
+        guard initiatingRequest.rootPath == rootPath else { return }
         selectWorkspaceItem(item)
-        guard let newPath = await viewModel.renameFileWithPrompt(rootPath: rootPath, path: item.path) else {
+        guard let newPath = await viewModel.renameFileWithPrompt(
+            request: initiatingRequest,
+            path: item.path
+        ) else {
             return
         }
-        if case .file = item.content {
-            workspaceManager.selectedWorkspace?.updateOpenFilePanel(
+        if case .file = item.content,
+           let sourceWorkspace = workspaceManager.workspaces.first(where: {
+               $0.id == initiatingRequest.workspaceId
+           }) {
+            sourceWorkspace.updateOpenFilePanel(
                 rootPath: rootPath,
                 oldPath: item.path,
                 newPath: newPath
             )
+        }
+        guard request == initiatingRequest,
+              viewModel.isCurrent(initiatingRequest)
+        else {
+            return
         }
         selectedItemId = "\(item.idPrefix):\(newPath)"
         selectedItemPath = newPath
         expandedDirectoryIds = []
     }
 
-    private func fileTreeError(title: String, path: String, message: String? = nil) -> some View {
+    private func fileTreeError(title: String, path: String, message: String?) -> some View {
         VStack(spacing: 8) {
             Image(systemName: "folder.badge.questionmark")
                 .font(.system(size: 24))
@@ -1149,8 +1481,60 @@ struct WorkspaceFilesView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 12)
             }
+            Button("Retry Files") {
+                Task { await refresh() }
+            }
+            .buttonStyle(.plain)
+            .disabled(viewModel.isRefreshing || request == nil)
+            .cursor(viewModel.isRefreshing || request == nil ? .arrow : .pointingHand)
+            .help("Retry loading files")
+            .accessibilityValue(viewModel.isRefreshing ? "Loading" : "")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func directoryLoadError(
+        _ error: WorkspaceFileTreeDirectoryError,
+        directory: WorkspaceFileTreeNode,
+        depth: Int,
+        rootPath: String
+    ) -> some View {
+        let isLoading = viewModel.loadingDirectoryPaths.contains(directory.path)
+
+        return HStack(spacing: 7) {
+            Image(systemName: "exclamationmark.triangle")
+                .foregroundColor(.orange)
+            Text(error.message)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer(minLength: 4)
+            Button("Retry Folder") {
+                guard let initiatingRequest = request,
+                      initiatingRequest.rootPath == rootPath
+                else {
+                    return
+                }
+                Task {
+                    await viewModel.loadChildren(
+                        request: initiatingRequest,
+                        directoryPath: directory.path
+                    )
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(isLoading)
+            .cursor(isLoading ? .arrow : .pointingHand)
+            .help("Retry loading \(directory.name)")
+        }
+        .font(.system(size: 10))
+        .foregroundColor(.secondary)
+        .padding(.leading, workspaceTreeRowLeadingPadding(depth: depth + 1) + 19)
+        .padding(.trailing, 12)
+        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .help("\(error.path): \(error.message)")
+        .accessibilityLabel("Could not load \(directory.name) folder")
+        .accessibilityValue(error.message)
     }
 
     private func emptyMessage(_ text: String, systemImage: String) -> some View {
@@ -1166,11 +1550,11 @@ struct WorkspaceFilesView: View {
     }
 
     private func refresh() async {
-        guard let rootPath else {
+        guard let request else {
             viewModel.reset()
             return
         }
-        await viewModel.refresh(rootPath: rootPath)
+        await viewModel.refresh(request: request)
     }
 }
 

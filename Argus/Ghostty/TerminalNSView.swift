@@ -70,7 +70,7 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
         if window != nil {
             surface?.createSurface()
             updateContentScale()
-            updateSurfaceSize()
+            synchronizeSurfaceGeometry()
             updateTrackingArea()
 
             if let surface = surface?.surface,
@@ -85,7 +85,7 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         updateContentScale()
-        updateSurfaceSize()
+        synchronizeSurfaceGeometry()
     }
 
     override func viewDidMoveToSuperview() {
@@ -95,25 +95,28 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
 
     override func viewDidEndLiveResize() {
         super.viewDidEndLiveResize()
-        updateSurfaceSize()
+        synchronizeSurfaceGeometry()
     }
 
     // MARK: - Sizing
 
     override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
-        updateSurfaceSize()
+        synchronizeSurfaceGeometry()
     }
 
     override func setBoundsSize(_ newSize: NSSize) {
         super.setBoundsSize(newSize)
-        updateSurfaceSize()
+        synchronizeSurfaceGeometry()
     }
 
-    private func updateSurfaceSize() {
+    /// Reconciles Ghostty and Metal with SwiftUI's resolved Pane size.
+    /// SwiftUI can reattach a retained NSView without a final frame callback.
+    func synchronizeSurfaceGeometry(to targetSize: CGSize? = nil) {
+        let pointSize = targetSize ?? bounds.size
         let scale = window?.backingScaleFactor ?? 1.0
-        let w = UInt32(bounds.width * scale)
-        let h = UInt32(bounds.height * scale)
+        let w = UInt32(max((pointSize.width * scale).rounded(), 0))
+        let h = UInt32(max((pointSize.height * scale).rounded(), 0))
         if w > 0, h > 0 {
             surface?.setSize(width: w, height: h)
         }
@@ -121,8 +124,8 @@ class TerminalNSView: NSView, @preconcurrency NSTextInputClient {
         // Update the metal layer's drawable size
         if let metalLayer = layer as? CAMetalLayer {
             metalLayer.drawableSize = CGSize(
-                width: bounds.width * scale,
-                height: bounds.height * scale
+                width: Int(w),
+                height: Int(h)
             )
         }
     }

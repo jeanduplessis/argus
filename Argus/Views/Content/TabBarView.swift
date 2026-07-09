@@ -11,10 +11,12 @@ import UniformTypeIdentifiers
 struct TabBarView: View {
     @ObservedObject var workspace: Workspace
     @EnvironmentObject var workspaceManager: WorkspaceManager
+    @EnvironmentObject var agentStatusStore: AgentStatusStore
 
     @State private var renamePanelId: UUID?
     @State private var renameText = ""
     @State private var showRenameAlert = false
+    @State private var isNewTabHovered = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -26,6 +28,7 @@ struct TabBarView: View {
                             TabItemView(
                                 panel: panel,
                                 title: workspace.tabDisplayTitle(for: panelId),
+                                agentStatus: agentStatus(for: panelId),
                                 isActive: panelId == workspace.activeTabId,
                                 onSelect: { workspace.selectPanel(panelId) },
                                 onRename: panel.panelType == .terminal ? {
@@ -33,6 +36,18 @@ struct TabBarView: View {
                                     renameText = workspace.tabDisplayTitle(for: panelId)
                                     showRenameAlert = true
                                 } : nil,
+                                canMoveLeft: workspace.panelOrder.first != panelId,
+                                canMoveRight: workspace.panelOrder.last != panelId,
+                                onMoveLeft: {
+                                    guard let index = workspace.panelOrder.firstIndex(of: panelId),
+                                          index > 0 else { return }
+                                    workspace.reorderPanel(from: index, to: index - 1)
+                                },
+                                onMoveRight: {
+                                    guard let index = workspace.panelOrder.firstIndex(of: panelId),
+                                          index < workspace.panelOrder.count - 1 else { return }
+                                    workspace.reorderPanel(from: index, to: index + 1)
+                                },
                                 onClose: {
                                     if workspace.panelOrder.count == 1,
                                        workspaceManager.shouldConfirmWorktreeDeletionBeforeClosing(workspace.id) {
@@ -44,7 +59,7 @@ struct TabBarView: View {
                                         return
                                     }
 
-                                    workspace.removePanel(panelId)
+                                    workspace.closeTab(panelId)
                                     if workspace.panelOrder.isEmpty {
                                         workspaceManager.removeWorkspace(workspace.id)
                                     }
@@ -69,13 +84,32 @@ struct TabBarView: View {
 
             Spacer()
 
-            // New tab button
-            Button(action: { workspace.addTerminalPanel() }) {
+            // New top-level tab menu
+            Menu {
+                Button("New Terminal Tab") {
+                    workspace.addTerminalPanel()
+                }
+                Button("New Browser Tab") {
+                    workspace.addBrowserPanel()
+                }
+            } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
+                    .frame(width: 20, height: 20)
+                    .background {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(isNewTabHovered ? ChromeColors.hoveredTabFill : Color.clear)
+                    }
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .cursor(.pointingHand)
+            .help("Add tab")
+            .accessibilityLabel("Add tab")
+            .onHover { isNewTabHovered = $0 }
             .padding(.trailing, 8)
         }
         .frame(height: 30)
@@ -92,6 +126,20 @@ struct TabBarView: View {
                 }
             }
         }
+    }
+
+    private func agentStatus(for tabId: UUID) -> AgentStatusEntry? {
+        let terminalSurfaceIds = workspace.layout(for: tabId).leaves.filter {
+            workspace.panels[$0]?.panelType == .terminal
+        }
+        if !terminalSurfaceIds.isEmpty {
+            return agentStatusStore.workspaceSummary(
+                workspaceId: workspace.id,
+                terminalSurfaceIds: terminalSurfaceIds,
+                includesNonterminalPanels: false
+            )
+        }
+        return agentStatusStore.effectiveStatus(workspaceId: workspace.id)
     }
 }
 
@@ -124,12 +172,18 @@ private struct PanelTabDropDelegate: DropDelegate {
 struct TabItemView: View {
     let panel: any Panel
     let title: String
+    let agentStatus: AgentStatusEntry?
     let isActive: Bool
     let onSelect: () -> Void
     let onRename: (() -> Void)?
+    let canMoveLeft: Bool
+    let canMoveRight: Bool
+    let onMoveLeft: () -> Void
+    let onMoveRight: () -> Void
     let onClose: () -> Void
 
     @State private var isHovered = false
+    @State private var isCloseHovered = false
 
     private var tabFill: Color {
         if isActive { return ChromeColors.activeTabFill }
@@ -138,45 +192,89 @@ struct TabItemView: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
-            // Panel icon
-            if let icon = panel.displayIcon {
-                Image(systemName: icon)
-                    .font(.system(size: 10))
-                    .foregroundColor(isActive ? .primary : .secondary)
+        HStack(spacing: 2) {
+            Button(action: onSelect) {
+                HStack(spacing: 4) {
+                    if panel.isLoading {
+                        ProgressView()
+                            .controlSize(.mini)
+                            .frame(width: 10, height: 10)
+                            .accessibilityLabel("Loading \(title)")
+                    } else if let agentStatus {
+                        Image(systemName: agentStatus.state.symbolName)
+                            .font(.system(size: 10))
+                            .foregroundColor(agentStatus.state.color)
+                            .accessibilityHidden(true)
+                    } else if let icon = panel.displayIcon {
+                        Image(systemName: icon)
+                            .font(.system(size: 10))
+                            .foregroundColor(isActive ? .primary : .secondary)
+                    }
+
+                    Text(title)
+                        .font(.system(size: 12))
+                        .foregroundColor(isActive ? .primary : .secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .frame(maxWidth: 140)
+                }
+                .padding(.leading, 8)
+                .frame(minHeight: 20)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .cursor(.pointingHand)
+            .help("Select \(title)")
+            .accessibilityLabel(title)
+            .accessibilityValue(tabAccessibilityValue)
+            .accessibilityAddTraits(isActive ? .isSelected : [])
+            .accessibilityActions {
+                if canMoveLeft {
+                    Button("Move Left", action: onMoveLeft)
+                }
+                if canMoveRight {
+                    Button("Move Right", action: onMoveRight)
+                }
             }
 
-            // Tab title
-            Text(title)
-                .font(.system(size: 12))
-                .foregroundColor(isActive ? .primary : .secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(maxWidth: 140)
-
-            // Close button
             Button(action: onClose) {
                 Image(systemName: "xmark")
                     .font(.system(size: 8, weight: .bold))
                     .foregroundColor(.secondary)
+                    .frame(width: 20, height: 20)
+                    .background {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(isCloseHovered ? ChromeColors.hoveredTabFill : Color.clear)
+                    }
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .frame(width: 14, height: 14)
+            .cursor(.pointingHand)
+            .help("Close \(title)")
+            .accessibilityLabel("Close \(title)")
+            .onHover { isCloseHovered = $0 }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.trailing, 4)
+        .frame(height: 24)
         .background(
             RoundedRectangle(cornerRadius: 4)
                 .fill(tabFill)
         )
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
-        .onTapGesture(perform: onSelect)
         .contextMenu {
             Button("Close", role: .destructive, action: onClose)
             if let onRename {
                 Button("Rename", action: onRename)
             }
         }
+    }
+
+    private var tabAccessibilityValue: String {
+        var values = [isActive ? "Selected" : "Not selected"]
+        if let agentStatus {
+            values.append("Agent status: \(agentStatus.state.label)")
+        }
+        return values.joined(separator: ", ")
     }
 }

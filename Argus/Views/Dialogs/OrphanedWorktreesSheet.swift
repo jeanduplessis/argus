@@ -6,6 +6,23 @@
 
 import SwiftUI
 
+private enum OrphanOperation: Equatable {
+    case adopt
+    case delete
+
+    var statusLabel: String {
+        switch self {
+        case .adopt: "Adopting…"
+        case .delete: "Deleting…"
+        }
+    }
+}
+
+private struct OrphanOperationFailure {
+    let operation: OrphanOperation
+    let message: String
+}
+
 struct OrphanedWorktreesSheet: View {
     @EnvironmentObject var workspaceManager: WorkspaceManager
     @Environment(\.dismiss) private var dismiss
@@ -13,8 +30,11 @@ struct OrphanedWorktreesSheet: View {
     /// The list of orphaned worktrees to display.
     @State var orphans: [OrphanedWorktreeInfo]
 
-    /// Tracks which orphans are currently being processed.
-    @State private var processingIds: Set<UUID> = []
+    /// Tracks active operations and retains recoverable row-level failures.
+    @State private var operations: [UUID: OrphanOperation] = [:]
+    @State private var failures: [UUID: OrphanOperationFailure] = [:]
+    @State private var pendingDeletion: OrphanedWorktreeInfo?
+    @State private var showDeleteConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -34,9 +54,11 @@ struct OrphanedWorktreesSheet: View {
                     ForEach(orphans) { orphan in
                         OrphanRow(
                             orphan: orphan,
-                            isProcessing: processingIds.contains(orphan.id),
+                            operation: operations[orphan.id],
+                            failure: failures[orphan.id],
                             onAdopt: { adoptOrphan(orphan) },
-                            onDelete: { deleteOrphan(orphan) }
+                            onDelete: { requestDelete(orphan) },
+                            onRetry: { retryOrphan(orphan) }
                         )
                     }
                 }
@@ -50,49 +72,111 @@ struct OrphanedWorktreesSheet: View {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
+                .disabled(!operations.isEmpty)
             }
         }
         .padding(20)
         .frame(width: 500)
+        .alert("Delete Orphaned Worktree?", isPresented: $showDeleteConfirmation, presenting: pendingDeletion) { orphan in
+            Button("Cancel", role: .cancel) { }
+            Button("Delete Worktree", role: .destructive) {
+                deleteOrphan(orphan)
+            }
+            .disabled(operations[orphan.id] != nil)
+        } message: { orphan in
+            Text(deleteConfirmationMessage(for: orphan))
+        }
     }
 
     // MARK: - Actions
 
     private func adoptOrphan(_ orphan: OrphanedWorktreeInfo) {
-        processingIds.insert(orphan.id)
+        guard operations[orphan.id] == nil else { return }
+        operations[orphan.id] = .adopt
+        failures[orphan.id] = nil
         Task {
             guard workspaceManager.projects.first(where: { $0.id == orphan.projectId }) != nil else {
-                processingIds.remove(orphan.id)
+                operations[orphan.id] = nil
+                failures[orphan.id] = OrphanOperationFailure(
+                    operation: .adopt,
+                    message: "Project is no longer available."
+                )
                 return
             }
 
-            _ = workspaceManager.adoptOrphanedWorktree(orphan)
+            guard workspaceManager.adoptOrphanedWorktree(orphan) != nil else {
+                operations[orphan.id] = nil
+                failures[orphan.id] = OrphanOperationFailure(
+                    operation: .adopt,
+                    message: "Workspace could not be created. The Workspace limit may have been reached."
+                )
+                return
+            }
 
             orphans.removeAll { $0.id == orphan.id }
-            processingIds.remove(orphan.id)
+            operations[orphan.id] = nil
+            failures[orphan.id] = nil
 
             if orphans.isEmpty { dismiss() }
         }
     }
 
+    private func requestDelete(_ orphan: OrphanedWorktreeInfo) {
+        guard operations[orphan.id] == nil else { return }
+        pendingDeletion = orphan
+        showDeleteConfirmation = true
+    }
+
     private func deleteOrphan(_ orphan: OrphanedWorktreeInfo) {
-        processingIds.insert(orphan.id)
+        guard operations[orphan.id] == nil else { return }
+        operations[orphan.id] = .delete
+        failures[orphan.id] = nil
         Task {
             guard let project = workspaceManager.projects.first(where: { $0.id == orphan.projectId }) else {
-                processingIds.remove(orphan.id)
+                operations[orphan.id] = nil
+                failures[orphan.id] = OrphanOperationFailure(
+                    operation: .delete,
+                    message: "Project is no longer available."
+                )
                 return
             }
 
-            try? await workspaceManager.worktreeService.cleanupOrphanedWorktree(
-                repositoryPath: project.repositoryPath,
-                worktreePath: orphan.path
-            )
+            do {
+                try await workspaceManager.worktreeService.cleanupOrphanedWorktree(
+                    repositoryPath: project.repositoryPath,
+                    worktreePath: orphan.path
+                )
+            } catch {
+                operations[orphan.id] = nil
+                failures[orphan.id] = OrphanOperationFailure(
+                    operation: .delete,
+                    message: error.localizedDescription
+                )
+                return
+            }
 
             orphans.removeAll { $0.id == orphan.id }
-            processingIds.remove(orphan.id)
+            operations[orphan.id] = nil
+            failures[orphan.id] = nil
 
             if orphans.isEmpty { dismiss() }
         }
+    }
+
+    private func retryOrphan(_ orphan: OrphanedWorktreeInfo) {
+        switch failures[orphan.id]?.operation {
+        case .adopt:
+            adoptOrphan(orphan)
+        case .delete:
+            requestDelete(orphan)
+        case nil:
+            break
+        }
+    }
+
+    private func deleteConfirmationMessage(for orphan: OrphanedWorktreeInfo) -> String {
+        let branch = orphan.branchName ?? "Unknown branch"
+        return "Branch: \(branch)\nPath: \(orphan.path)\n\nThis permanently deletes the worktree from disk. This cannot be undone."
     }
 }
 
@@ -101,42 +185,80 @@ struct OrphanedWorktreesSheet: View {
 /// A single row displaying an orphaned worktree with adopt/delete actions.
 private struct OrphanRow: View {
     let orphan: OrphanedWorktreeInfo
-    let isProcessing: Bool
+    let operation: OrphanOperation?
+    let failure: OrphanOperationFailure?
     let onAdopt: () -> Void
     let onDelete: () -> Void
+    let onRetry: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Path and branch info
-            VStack(alignment: .leading, spacing: 2) {
-                Text(truncatedPath(orphan.path))
-                    .font(.system(size: 13))
-                    .lineLimit(1)
-                    .truncationMode(.head)
-
-                if let branch = orphan.branchName {
-                    Text(branch)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 12) {
+                // Path and branch info
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(truncatedPath(orphan.path))
+                        .font(.system(size: 13))
                         .lineLimit(1)
-                        .truncationMode(.middle)
+                        .truncationMode(.head)
+
+                    if let branch = orphan.branchName {
+                        Text(branch)
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
                 }
+
+                Spacer()
+
+                ZStack(alignment: .trailing) {
+                    HStack(spacing: 8) {
+                        Button("Adopt") {
+                            onAdopt()
+                        }
+
+                        Button("Delete", role: .destructive) {
+                            onDelete()
+                        }
+                    }
+                    .opacity(operation == nil ? 1 : 0)
+                    .disabled(operation != nil)
+                    .allowsHitTesting(operation == nil)
+                    .accessibilityHidden(operation != nil)
+
+                    if let operation {
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text(operation.statusLabel)
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(operation.statusLabel)
+                    }
+                }
+                .frame(width: 132, alignment: .trailing)
             }
 
-            Spacer()
+            if let failure {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.red)
+                        .accessibilityHidden(true)
 
-            if isProcessing {
-                ProgressView()
-                    .controlSize(.small)
-            } else {
-                HStack(spacing: 8) {
-                    Button("Adopt") {
-                        onAdopt()
-                    }
+                    Text(failureMessage(failure))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                    Button("Delete", role: .destructive) {
-                        onDelete()
+                    Spacer(minLength: 8)
+
+                    Button("Retry") {
+                        onRetry()
                     }
+                    .help("Retry")
                 }
             }
         }
@@ -146,6 +268,18 @@ private struct OrphanRow: View {
             RoundedRectangle(cornerRadius: 6)
                 .fill(Color.secondary.opacity(0.06))
         )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(orphanAccessibilityLabel)
+    }
+
+    private func failureMessage(_ failure: OrphanOperationFailure) -> String {
+        let title = failure.operation == .delete ? "Couldn’t delete worktree." : "Couldn’t adopt worktree."
+        return "\(title) \(failure.message)"
+    }
+
+    private var orphanAccessibilityLabel: String {
+        let branch = orphan.branchName ?? "Unknown branch"
+        return "Orphaned Worktree, branch \(branch), path \(orphan.path)"
     }
 
     /// Returns the last 2–3 path components for a compact display.
