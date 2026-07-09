@@ -35,6 +35,7 @@
 		30CB5BDF7A31DE52A0BA63D8 /* ArgusDiffInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1645605131C8A8280C0D73CC /* ArgusDiffInput.swift */; };
 		344B25CC7C2ADD72466CD792 /* ExistingBranchPickerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D681607918630CD263C690CE /* ExistingBranchPickerTests.swift */; };
 		395203F465B0D6EDBD1BC9E3 /* GitStatusParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9E7D7DCF97A300FE8386B3A /* GitStatusParserTests.swift */; };
+		42A8CC9F70D0EB2AFC1DFBC4 /* ArgusTerminalTheme.ghostty in Resources */ = {isa = PBXBuildFile; fileRef = A7BFE3635908AAEF89CC326C /* ArgusTerminalTheme.ghostty */; };
 		46F58C605F00F868BAC204A0 /* GitSidebarView+Content.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2FE31B230E300291D165856 /* GitSidebarView+Content.swift */; };
 		48E62BE8320ACBDE490E28A2 /* GitStatusAutoRefreshController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4CAD208D03EF627A5AADF06 /* GitStatusAutoRefreshController.swift */; };
 		4B7BD698C037E123F109CA97 /* NewWorkspaceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C01FB15CE585853A5C6581E /* NewWorkspaceSheet.swift */; };
@@ -200,6 +201,7 @@
 		A0DE49DF785BEEBDEBA739E8 /* TerminalSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSurface.swift; sourceTree = "<group>"; };
 		A3E1F81F2D4F0342CDD02E30 /* WorktreeService+Operations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorktreeService+Operations.swift"; sourceTree = "<group>"; };
 		A5D03CF9AE8CC60343A9BE16 /* ArgusDiffHTMLTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArgusDiffHTMLTemplate.swift; sourceTree = "<group>"; };
+		A7BFE3635908AAEF89CC326C /* ArgusTerminalTheme.ghostty */ = {isa = PBXFileReference; path = ArgusTerminalTheme.ghostty; sourceTree = "<group>"; };
 		AF1749489767D34375CBDDCF /* AgentStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentStatus.swift; sourceTree = "<group>"; };
 		AF5C0E9D5F6638CD5FEFE123 /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
 		B01C2A9CF40C68B270ECBA48 /* ContentAreaView+SyntaxLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentAreaView+SyntaxLanguage.swift"; sourceTree = "<group>"; };
@@ -318,6 +320,7 @@
 			isa = PBXGroup;
 			children = (
 				86D4D33D9C23D6FB3D01EA36 /* Argus-Bridging-Header.h */,
+				A7BFE3635908AAEF89CC326C /* ArgusTerminalTheme.ghostty */,
 				C46B327656627D8D71A2C84F /* Assets.xcassets */,
 				673F5E881AC0083D421778FD /* pierre-diffs-bundle.js */,
 			);
@@ -624,6 +627,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				42A8CC9F70D0EB2AFC1DFBC4 /* ArgusTerminalTheme.ghostty in Resources */,
 				D35C1A0AE42B8588626875B1 /* Assets.xcassets in Resources */,
 				D76A28B8605DADFD16E997BC /* pierre-diffs-bundle.js in Resources */,
 			);

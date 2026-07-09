@@ -275,10 +275,13 @@ navigation event.
 
 ## Visual language
 
-Window chrome derives from the active Ghostty theme so terminal and content
-feel like one surface. Use shared `ChromeColors` values rather than local fixed
-light or dark colors. Sidebars use native sidebar material; separators use
-subtle adaptive one-point lines.
+The application shell uses an opaque black background across the native window,
+sidebars, Center Content Area Titlebar, and Top-level Tab bar. Terminal content
+uses the opaque black Argus background override while retaining other active
+Ghostty configuration and theme colors. Document content retains active Ghostty
+theme colors. Use shared `ChromeColors` values rather than local fixed colors.
+Separators use subtle adaptive one-point lines, and sidebars MUST NOT use
+translucent materials.
 
 Established geometry is the default:
 

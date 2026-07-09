@@ -1,8 +1,8 @@
 // ChromeColors.swift
 // Argus
 //
-// Shared window-chrome colors derived from the active Ghostty theme so the
-// titlebar and tab strip visually belong to the terminal/content column.
+// Shared window-chrome colors. The shell uses a fixed black surface while
+// content colors and chrome contrast derive from the active Ghostty theme.
 
 import AppKit
 import SwiftUI
@@ -46,6 +46,10 @@ struct ChromePalette {
 }
 
 enum ChromeColors {
+    static var shellBackground: Color {
+        Color(nsColor: shellBackgroundNSColor)
+    }
+
     static var contentBackground: Color {
         Color(nsColor: contentBackgroundNSColor)
     }
@@ -68,6 +72,10 @@ enum ChromeColors {
 
     static var contentBackgroundNSColor: NSColor {
         palette.background
+    }
+
+    static var shellBackgroundNSColor: NSColor {
+        .black
     }
 
     static var foregroundNSColor: NSColor {

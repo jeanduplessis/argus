@@ -14,6 +14,7 @@ struct GitPreviewPanelTests {
         resetsANSIColorAfterSGRReset()
         selectsRendererForPreviewContent()
         try usesGhosttyPaletteForPreviewRendering()
+        try argusTerminalThemeUsesBlackBackground()
     }
 
     @MainActor
@@ -114,6 +115,32 @@ struct GitPreviewPanelTests {
                 "revision: chromePalette.revision &+ 1",
                 "extractChromePalette(from: newConfig)"
             ], "Ghostty configuration owns preview palette updates")
+    }
+
+    @MainActor
+    private func argusTerminalThemeUsesBlackBackground() throws {
+        let themeURL = try #require(
+            Bundle.main.url(forResource: "ArgusTerminalTheme", withExtension: "ghostty"))
+        let theme = try String(contentsOf: themeURL, encoding: .utf8)
+        let assignments = theme.components(separatedBy: .newlines).filter {
+            !$0.isEmpty && !$0.hasPrefix("#")
+        }
+        #expect(assignments == ["background = 000000", "background-opacity = 1"])
+
+        let background = try #require(GhosttyApp.shared.defaultBackgroundColor.usingColorSpace(.sRGB))
+        #expect(background.redComponent == 0)
+        #expect(background.greenComponent == 0)
+        #expect(background.blueComponent == 0)
+        #expect(GhosttyApp.shared.defaultBackgroundOpacity == 1)
+
+        try SourceContract("Argus/Ghostty/GhosttyApp.swift").containsAll(
+            [
+                "ghostty_config_load_default_files(config)",
+                "ghostty_config_load_recursive_files(config)",
+                "loadTerminalTheme(into: config)",
+                "ghostty_config_finalize(config)",
+                "guard let newConfig = makeConfiguration() else { return }"
+            ], "Argus terminal theme override applies on launch and reload")
     }
 
     private func assertColor(

@@ -117,7 +117,7 @@ struct TabBarView: View {
             .padding(.trailing, 8)
         }
         .frame(height: 30)
-        .background(ChromeColors.contentBackground)
+        .background(ChromeColors.shellBackground)
         .overlay(alignment: .bottom) {
             ChromeColors.separator.frame(height: 1)
         }

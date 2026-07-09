@@ -5,6 +5,39 @@ import Testing
 
 @Suite
 struct ExistingBranchPickerTests {
+    @Test(.timeLimit(.minutes(1)))
+    func largeBranchListDoesNotBlockOnAFullOutputPipe() async throws {
+        let temp = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("argus-large-branch-picker-\(UUID().uuidString)", isDirectory: true)
+        let repo = temp.appendingPathComponent("repo", isDirectory: true)
+        try FileManager.default.createDirectory(at: repo, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: temp) }
+
+        try run("git", ["init", "-b", "main", "."], cwd: repo.path)
+        try run("git", ["config", "user.email", "test@example.com"], cwd: repo.path)
+        try run("git", ["config", "user.name", "Test User"], cwd: repo.path)
+        try "fixture".write(
+            to: repo.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
+        try run("git", ["add", "README.md"], cwd: repo.path)
+        try run("git", ["commit", "-m", "initial"], cwd: repo.path)
+
+        let head = try capture("git", ["rev-parse", "HEAD"], cwd: repo.path)
+        let refsDirectory = repo.appendingPathComponent(".git/refs/heads", isDirectory: true)
+        let branchPrefix = "branch-\(String(repeating: "x", count: 100))-"
+        for index in 0..<700 {
+            try "\(head)\n".write(
+                to: refsDirectory.appendingPathComponent("\(branchPrefix)\(index)"),
+                atomically: false,
+                encoding: .utf8
+            )
+        }
+
+        let available = try await WorktreeService().listWorkspaceBranchChoices(repositoryPath: repo.path)
+
+        assertTrue(available.count == 700, "all available branches are returned")
+        assertTrue(available.contains("\(branchPrefix)699"), "last generated branch is returned")
+    }
+
     @Test
     func coveredBehaviors() async throws {
         let temp = URL(fileURLWithPath: NSTemporaryDirectory())

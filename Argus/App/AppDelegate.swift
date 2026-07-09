@@ -90,7 +90,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.titleVisibility = .hidden
         window.styleMask.insert(.fullSizeContentView)
         window.titlebarSeparatorStyle = .none
-        window.backgroundColor = ChromeColors.contentBackgroundNSColor
+        window.backgroundColor = ChromeColors.shellBackgroundNSColor
         window.isRestorable = false
 
         // Window sizing

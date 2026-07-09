@@ -75,7 +75,7 @@ struct TitlebarView: View {
         }
         .frame(height: 44)
         .background {
-            ChromeColors.contentBackground
+            ChromeColors.shellBackground
                 .allowsHitTesting(false)
         }
         .overlay(alignment: .bottom) {

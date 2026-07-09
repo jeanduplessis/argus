@@ -21,7 +21,10 @@ targets:
       - path: Argus
         excludes:
           - "**/.DS_Store"
+          - "Resources/ArgusTerminalTheme.ghostty"
           - "Resources/pierre-diffs-bundle.js"
+      - path: Argus/Resources/ArgusTerminalTheme.ghostty
+        buildPhase: resources
       - path: Argus/Resources/pierre-diffs-bundle.js
         buildPhase: resources
     settings:

@@ -85,6 +85,37 @@ struct GitStatusUIContractTests {
     }
 
     @Test
+    func workspaceFileIconsUseSemanticSFSymbols() {
+        let expectedSymbols = [
+            "Sources/App.swift": "chevron.left.forwardslash.chevron.right",
+            "COMPONENT.TSX": "chevron.left.forwardslash.chevron.right",
+            "scripts/build.sh": "terminal",
+            "Makefile": "terminal",
+            "README.md": "doc.text",
+            "LICENSE": "doc.text",
+            ".env.local": "gearshape",
+            ".gitignore": "gearshape",
+            "settings.toml": "gearshape",
+            "response.json": "curlybraces",
+            "records.csv": "tablecells",
+            "hero.webp": "photo",
+            "theme.mp3": "waveform",
+            "demo.mov": "film",
+            "source.tar.gz": "archivebox",
+            "Package.swift": "shippingbox",
+            "Cargo.lock": "shippingbox",
+            "guide.pdf": "doc.richtext",
+            "payload.bin": "doc"
+        ]
+
+        for (fileName, expectedSymbol) in expectedSymbols {
+            let symbol = WorkspaceFileIcon.systemName(for: fileName)
+            #expect(symbol == expectedSymbol)
+            #expect(NSImage(systemSymbolName: symbol, accessibilityDescription: nil) != nil)
+        }
+    }
+
+    @Test
     func workspaceFileProviderLoadsRootEntriesBeforeChildren() async throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("argus-files-panel-\(UUID().uuidString)", isDirectory: true)
@@ -181,6 +212,33 @@ struct WorkspaceFilesUIContractTests {
     }
 
     @Test
+    func sidebarsUseOpaqueBlackShellBackgrounds() throws {
+        try SourceContract("Argus/Views/ChromeColors.swift").containsAll(
+            ["static var shellBackground: Color", "static var shellBackgroundNSColor: NSColor", ".black"],
+            "black shell color"
+        )
+        for path in ["Argus/App/AppDelegate.swift", "Argus/Ghostty/GhosttyApp.swift"] {
+            try SourceContract(path).contains(
+                "window.backgroundColor = ChromeColors.shellBackgroundNSColor",
+                "native window backing must preserve the black shell"
+            )
+        }
+
+        for path in [
+            "Argus/Views/Sidebar/SidebarView+Header.swift",
+            "Argus/Views/GitSidebar/RightSidebarView.swift"
+        ] {
+            let sidebar = try SourceContract(path)
+            sidebar.contains(
+                ".background(ChromeColors.shellBackground)",
+                "sidebars must use the opaque black shell background"
+            )
+            sidebar.excludes("VisualEffectView(", "sidebars must not use translucent material")
+            sidebar.excludes(".behindWindow", "sidebars must not sample content behind the window")
+        }
+    }
+
+    @Test
     func rightSidebarRefreshUsesEnabledIconActionAffordances() throws {
         let rightView = try SourceContract("Argus/Views/GitSidebar/RightSidebarView.swift")
         let header = try rightView.section(
@@ -244,6 +302,7 @@ struct WorkspaceFilesUIContractTests {
                 "private func workspaceFileRow(",
                 "selectFile(file)",
                 "let isSelected = selectedItemId == file.id",
+                "WorkspaceFileIcon.systemName(for: file.name)",
                 "isHovered ? ChromeColors.hoveredTabFill : Color.clear",
                 ".simultaneousGesture(",
                 "TapGesture(count: 2).onEnded {",

@@ -1,0 +1,4 @@
+# Argus terminal color overrides. User fonts, keybindings, shell, and remaining
+# theme colors continue to come from the normal Ghostty configuration.
+background = 000000
+background-opacity = 1

@@ -118,6 +118,10 @@ struct WorkspaceUIContractTests {
                 "surface.setOcclusion(!isVisible)",
                 "nsView.surface?.setOcclusion(true)"
             ], "terminal visibility must reconcile geometry, redraw, and occlusion")
+        try SourceContract("Argus/Ghostty/TerminalSurface.swift").contains(
+            "ghostty_surface_set_occlusion(surface, !occluded)",
+            "Ghostty visibility must invert the Argus occlusion state"
+        )
         try SourceContract("Argus/Ghostty/TerminalNSViewSupport.swift").contains(
             "func synchronizeSurfaceGeometry(to targetSize: CGSize? = nil)",
             "terminal geometry must synchronize Ghostty and its Metal drawable"
@@ -283,9 +287,9 @@ struct WorkspaceTabAndChromeUIContractTests {
         try SourceContract("Argus/Views/MainWindowView.swift").containsAll(
             [
                 "@ObservedObject private var ghosttyApp = GhosttyApp.shared",
-                ".background(ChromeColors.contentBackground)",
+                ".background(ChromeColors.shellBackground)",
                 ".environment(\\.colorScheme, ghosttyApp.chromePalette.isDark ? .dark : .light)"
-            ], "Ghostty-derived window chrome")
+            ], "black window shell with Ghostty-derived appearance")
     }
 
     @Test

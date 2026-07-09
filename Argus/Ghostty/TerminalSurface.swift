@@ -269,10 +269,11 @@ final class TerminalSurface: ObservableObject, Identifiable {
         ghostty_surface_set_content_scale(surface, scaleX, scaleY)
     }
 
-    /// Set occlusion state (whether the surface is visible).
+    /// Set whether the surface is occluded.
     func setOcclusion(_ occluded: Bool) {
         guard let surface else { return }
-        ghostty_surface_set_occlusion(surface, occluded)
+        // Ghostty's embedded API accepts visibility, not occlusion.
+        ghostty_surface_set_occlusion(surface, !occluded)
     }
 
     /// Trigger a surface redraw.

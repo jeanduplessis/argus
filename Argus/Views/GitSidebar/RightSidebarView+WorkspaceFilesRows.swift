@@ -199,7 +199,7 @@ extension WorkspaceFilesView {
         isSelected: Bool
     ) -> some View {
         HStack(spacing: 7) {
-            Image(systemName: "doc")
+            Image(systemName: WorkspaceFileIcon.systemName(for: file.name))
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(isSelected ? .accentColor : .secondary)
                 .frame(width: 14)

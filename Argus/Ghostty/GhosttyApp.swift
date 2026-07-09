@@ -14,6 +14,7 @@ import Foundation
 final class GhosttyApp: ObservableObject {
 
     nonisolated(unsafe) static let shared = GhosttyApp()
+    private static let terminalThemeResource = "ArgusTerminalTheme"
 
     private(set) var app: ghostty_app_t?
     private(set) var config: ghostty_config_t?
@@ -91,25 +92,8 @@ final class GhosttyApp: ObservableObject {
         }
 
         // 2. Create and load config
-        guard let cfg = ghostty_config_new() else {
-            NSLog("GhosttyApp: ghostty_config_new returned nil")
-            return
-        }
+        guard let cfg = makeConfiguration() else { return }
         self.config = cfg
-
-        // Load config files from standard paths
-        ghostty_config_load_default_files(cfg)
-        ghostty_config_load_recursive_files(cfg)
-        ghostty_config_finalize(cfg)
-
-        // Log any config diagnostics
-        let diagCount = ghostty_config_diagnostics_count(cfg)
-        for i in 0..<diagCount {
-            let diag = ghostty_config_get_diagnostic(cfg, i)
-            if let msg = diag.message {
-                NSLog("GhosttyConfig diagnostic: %@", String(cString: msg))
-            }
-        }
 
         // 3. Extract terminal colors for window and content chrome.
         extractChromePalette(from: cfg)
@@ -133,6 +117,50 @@ final class GhosttyApp: ObservableObject {
         self.app = ghosttyApp
 
         observeApplicationFocus()
+    }
+
+    private func makeConfiguration() -> ghostty_config_t? {
+        guard let config = ghostty_config_new() else {
+            NSLog("GhosttyApp: ghostty_config_new returned nil")
+            return nil
+        }
+
+        ghostty_config_load_default_files(config)
+        ghostty_config_load_recursive_files(config)
+        loadTerminalTheme(into: config)
+        ghostty_config_finalize(config)
+        logDiagnostics(for: config)
+        return config
+    }
+
+    private func loadTerminalTheme(into config: ghostty_config_t) {
+        guard
+            let themeURL = Bundle.main.url(
+                forResource: Self.terminalThemeResource,
+                withExtension: "ghostty"
+            )
+        else {
+            NSLog("GhosttyApp: missing Argus terminal theme resource")
+            return
+        }
+
+        themeURL.withUnsafeFileSystemRepresentation { path in
+            guard let path else {
+                NSLog("GhosttyApp: invalid Argus terminal theme path")
+                return
+            }
+            ghostty_config_load_file(config, path)
+        }
+    }
+
+    private func logDiagnostics(for config: ghostty_config_t) {
+        let diagnosticCount = ghostty_config_diagnostics_count(config)
+        for index in 0..<diagnosticCount {
+            let diagnostic = ghostty_config_get_diagnostic(config, index)
+            if let message = diagnostic.message {
+                NSLog("GhosttyConfig diagnostic: %@", String(cString: message))
+            }
+        }
     }
 
     private func observeApplicationFocus() {
@@ -211,10 +239,7 @@ final class GhosttyApp: ObservableObject {
 
         NSLog("GhosttyApp: Reloading configuration (source: %@)", source)
 
-        guard let newConfig = ghostty_config_new() else { return }
-        ghostty_config_load_default_files(newConfig)
-        ghostty_config_load_recursive_files(newConfig)
-        ghostty_config_finalize(newConfig)
+        guard let newConfig = makeConfiguration() else { return }
 
         GhosttyConfig.invalidateCache()
         extractChromePalette(from: newConfig)
@@ -227,7 +252,7 @@ final class GhosttyApp: ObservableObject {
         self.config = newConfig
 
         for window in NSApp.windows {
-            window.backgroundColor = defaultBackgroundColor
+            window.backgroundColor = ChromeColors.shellBackgroundNSColor
             window.contentView?.needsDisplay = true
         }
     }

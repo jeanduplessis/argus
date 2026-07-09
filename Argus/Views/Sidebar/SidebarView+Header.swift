@@ -30,7 +30,7 @@ extension SidebarView {
             Spacer()
         }
         .frame(maxHeight: .infinity)
-        .background(VisualEffectView(material: .sidebar, blendingMode: .behindWindow))
+        .background(ChromeColors.shellBackground)
     }
 }
 

@@ -6,6 +6,60 @@ struct WorkspaceFileTreeEntry: Equatable, Sendable {
     let isDirectory: Bool
 }
 
+enum WorkspaceFileIcon {
+    private static let packageFileNames: Set<String> = [
+        "cargo.lock", "cargo.toml", "composer.json", "gemfile", "gemfile.lock", "go.mod", "go.sum",
+        "package-lock.json", "package.json", "package.swift", "pnpm-lock.yaml", "podfile", "podfile.lock",
+        "pyproject.toml", "requirements.txt", "yarn.lock"
+    ]
+    private static let textFileNames: Set<String> = [
+        "authors", "changelog", "contributing", "copying", "license", "notice", "readme"
+    ]
+    private static let configurationFileNames: Set<String> = [
+        ".editorconfig", ".gitattributes", ".gitignore", ".gitmodules"
+    ]
+    private static let extensionGroups: [(symbolName: String, extensions: Set<String>)] = [
+        (
+            "chevron.left.forwardslash.chevron.right",
+            [
+                "swift", "c", "h", "m", "mm", "cc", "cpp", "cxx", "hpp", "hxx", "cs", "css", "scss",
+                "sass", "less", "dart", "erl", "ex", "exs", "fs", "fsx", "go", "hrl", "html", "htm",
+                "java", "js", "jsx", "mjs", "cjs", "kt", "kts", "lua", "php", "py", "pyw", "rb", "rs",
+                "scala", "sol", "svelte", "ts", "tsx", "vb", "vue", "xhtml", "zig"
+            ]
+        ),
+        ("terminal", ["sh", "bash", "zsh", "fish", "command", "bat", "cmd", "ps1"]),
+        ("doc.text", ["txt", "md", "markdown", "rtf", "textile", "adoc"]),
+        ("gearshape", ["env", "ini", "cfg", "conf", "config", "toml", "properties", "xcconfig"]),
+        ("curlybraces", ["json", "jsonc", "yaml", "yml", "xml", "plist"]),
+        ("tablecells", ["csv", "tsv", "sql", "sqlite", "db"]),
+        ("photo", ["png", "jpg", "jpeg", "gif", "heic", "heif", "tif", "tiff", "bmp", "webp", "ico", "svg"]),
+        ("waveform", ["mp3", "wav", "aiff", "aif", "m4a", "aac", "flac", "ogg"]),
+        ("film", ["mov", "mp4", "m4v", "avi", "mkv", "webm"]),
+        ("archivebox", ["zip", "tar", "gz", "tgz", "bz2", "xz", "7z", "rar"]),
+        ("doc.richtext", ["pdf", "doc", "docx", "pages", "odt"])
+    ]
+
+    static func systemName(for fileName: String) -> String {
+        let name = (fileName as NSString).lastPathComponent.lowercased()
+        let fileExtension = (name as NSString).pathExtension
+
+        if packageFileNames.contains(name) || name == "dockerfile" || name.hasPrefix("dockerfile.") {
+            return "shippingbox"
+        }
+        if textFileNames.contains(name) {
+            return "doc.text"
+        }
+        if configurationFileNames.contains(name) || name == ".env" || name.hasPrefix(".env.") {
+            return "gearshape"
+        }
+        if name == "makefile" || name.hasPrefix("makefile.") {
+            return "terminal"
+        }
+        return extensionGroups.first(where: { $0.extensions.contains(fileExtension) })?.symbolName ?? "doc"
+    }
+}
+
 struct WorkspaceFileTreeRequest: Hashable, Sendable {
     let workspaceId: UUID
     let rootPath: String

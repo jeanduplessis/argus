@@ -102,6 +102,7 @@ final class WorktreeService: Sendable {
         process.standardError = stderr
 
         try process.run()
+        let outputReader = WorktreeProcessOutputReader(stdout: stdout, stderr: stderr)
         if let timeout {
             let deadline = Date().addingTimeInterval(timeout)
             while process.isRunning && Date() < deadline {
@@ -112,16 +113,15 @@ final class WorktreeService: Sendable {
             }
         }
         process.waitUntilExit()
+        let processOutput = await outputReader.readToEnd()
 
-        let outputData = stdout.fileHandleForReading.readDataToEndOfFile()
         let output =
-            String(data: outputData, encoding: .utf8)?
+            String(data: processOutput.stdout, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
         guard process.terminationStatus == 0 else {
-            let errorData = stderr.fileHandleForReading.readDataToEndOfFile()
             let errorOutput =
-                String(data: errorData, encoding: .utf8)?
+                String(data: processOutput.stderr, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let detail = errorOutput.isEmpty ? output : errorOutput
             throw WorktreeError.gitCommandFailed(
@@ -214,6 +214,38 @@ final class WorktreeService: Sendable {
                 return candidate
             }
             counter += 1
+        }
+    }
+
+    private final class WorktreeProcessDataBox: @unchecked Sendable {
+        var data = Data()
+    }
+
+    private final class WorktreeProcessOutputReader: @unchecked Sendable {
+        private let outputGroup = DispatchGroup()
+        private let stdoutBox = WorktreeProcessDataBox()
+        private let stderrBox = WorktreeProcessDataBox()
+
+        init(stdout: Pipe, stderr: Pipe) {
+            outputGroup.enter()
+            DispatchQueue.global(qos: .utility).async { [stdoutBox, outputGroup] in
+                stdoutBox.data = stdout.fileHandleForReading.readDataToEndOfFile()
+                outputGroup.leave()
+            }
+            outputGroup.enter()
+            DispatchQueue.global(qos: .utility).async { [stderrBox, outputGroup] in
+                stderrBox.data = stderr.fileHandleForReading.readDataToEndOfFile()
+                outputGroup.leave()
+            }
+        }
+
+        func readToEnd() async -> (stdout: Data, stderr: Data) {
+            await withCheckedContinuation { continuation in
+                outputGroup.notify(queue: .global(qos: .utility)) {
+                    continuation.resume()
+                }
+            }
+            return (stdoutBox.data, stderrBox.data)
         }
     }
 

@@ -69,7 +69,7 @@ struct MainWindowView: View {
                         maxWidth: .infinity,
                         maxHeight: .infinity
                     )
-                    .background(ChromeColors.contentBackground)
+                    .background(ChromeColors.shellBackground)
 
                 // Right side panel
                 if gitSidebarState.isVisible {
@@ -93,7 +93,7 @@ struct MainWindowView: View {
             }
         }
         .frame(minWidth: 600, maxWidth: .infinity, minHeight: 400, maxHeight: .infinity)
-        .background(ChromeColors.contentBackground)
+        .background(ChromeColors.shellBackground)
         .environmentObject(sidebarState)
         .environmentObject(gitSidebarState)
         .environmentObject(gitStatusViewModel)

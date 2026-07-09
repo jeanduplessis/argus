@@ -51,7 +51,7 @@ struct RightSidebarView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(VisualEffectView(material: .sidebar, blendingMode: .behindWindow))
+        .background(ChromeColors.shellBackground)
         .onChange(of: filesRequest, initial: true) { _, request in
             filesViewModel.activate(request: request)
         }
