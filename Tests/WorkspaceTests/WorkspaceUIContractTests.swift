@@ -123,8 +123,8 @@ struct WorkspaceUIContractTests {
             "Ghostty visibility must invert the Argus occlusion state"
         )
         try SourceContract("Argus/Ghostty/TerminalNSViewSupport.swift").contains(
-            "func synchronizeSurfaceGeometry(to targetSize: CGSize? = nil)",
-            "terminal geometry must synchronize Ghostty and its Metal drawable"
+            "guard let window else { return }",
+            "terminal geometry must wait for an attached window's backing scale"
         )
     }
 

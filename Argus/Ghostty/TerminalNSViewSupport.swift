@@ -10,13 +10,17 @@ extension TerminalNSView {
     /// Reconciles Ghostty and Metal with SwiftUI's resolved Pane size.
     /// SwiftUI can reattach a retained NSView without a final frame callback.
     func synchronizeSurfaceGeometry(to targetSize: CGSize? = nil) {
+        // A detached retained view has no authoritative backing scale. Updating
+        // it at 1x corrupts the drawable and Ghostty viewport on Retina windows.
+        guard let window else { return }
+
         let pointSize = targetSize ?? bounds.size
-        let scale = window?.backingScaleFactor ?? 1.0
+        guard pointSize.width > 0, pointSize.height > 0 else { return }
+
+        let scale = window.backingScaleFactor
         let width = UInt32(max((pointSize.width * scale).rounded(), 0))
         let height = UInt32(max((pointSize.height * scale).rounded(), 0))
-        if width > 0, height > 0 {
-            surface?.setSize(width: width, height: height)
-        }
+        surface?.setSize(width: width, height: height)
 
         if let metalLayer = layer as? CAMetalLayer {
             metalLayer.drawableSize = CGSize(width: Int(width), height: Int(height))
