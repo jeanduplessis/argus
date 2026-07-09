@@ -144,20 +144,23 @@ struct NewWorkspaceSheet: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 2) {
                     ForEach(filteredAvailableBranches, id: \.self) { branch in
-                        Button(action: {
-                            selectedExistingBranch = branch
-                        }) {
-                            HStack {
-                                Text(branch)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
-                                Spacer()
-                                if selectedExistingBranch == branch {
-                                    Image(systemName: "checkmark")
+                        Button(
+                            action: {
+                                selectedExistingBranch = branch
+                            },
+                            label: {
+                                HStack {
+                                    Text(branch)
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                    Spacer()
+                                    if selectedExistingBranch == branch {
+                                        Image(systemName: "checkmark")
+                                    }
                                 }
+                                .contentShape(Rectangle())
                             }
-                            .contentShape(Rectangle())
-                        }
+                        )
                         .buttonStyle(.plain)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -206,7 +209,8 @@ struct NewWorkspaceSheet: View {
                 )
                 availableBranches = branches
                 if let selectedExistingBranch,
-                   !branches.contains(selectedExistingBranch) {
+                    !branches.contains(selectedExistingBranch)
+                {
                     self.selectedExistingBranch = nil
                 }
             } catch {

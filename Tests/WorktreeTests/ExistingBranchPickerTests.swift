@@ -5,102 +5,106 @@ import Testing
 
 @Suite
 struct ExistingBranchPickerTests {
-  @Test
-  func coveredBehaviors() async throws {
-    let temp = URL(fileURLWithPath: NSTemporaryDirectory())
-      .appendingPathComponent("argus-existing-picker-\(UUID().uuidString)", isDirectory: true)
-    let origin = temp.appendingPathComponent("origin.git", isDirectory: true)
-    let seed = temp.appendingPathComponent("seed", isDirectory: true)
-    let repo = temp.appendingPathComponent("repo", isDirectory: true)
-    try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: temp) }
+    @Test
+    func coveredBehaviors() async throws {
+        let temp = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("argus-existing-picker-\(UUID().uuidString)", isDirectory: true)
+        let origin = temp.appendingPathComponent("origin.git", isDirectory: true)
+        let seed = temp.appendingPathComponent("seed", isDirectory: true)
+        let repo = temp.appendingPathComponent("repo", isDirectory: true)
+        try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: temp) }
 
-    try run("git", ["init", "--bare", origin.path], cwd: temp.path)
-    try FileManager.default.createDirectory(at: seed, withIntermediateDirectories: true)
-    try run("git", ["init", "-b", "main", "."], cwd: seed.path)
-    try run("git", ["config", "user.email", "test@example.com"], cwd: seed.path)
-    try run("git", ["config", "user.name", "Test User"], cwd: seed.path)
-    try "hello".write(
-      to: seed.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
-    try run("git", ["add", "README.md"], cwd: seed.path)
-    try run("git", ["commit", "-m", "initial"], cwd: seed.path)
-    try run("git", ["remote", "add", "origin", origin.path], cwd: seed.path)
-    try run("git", ["push", "-u", "origin", "main"], cwd: seed.path)
-    try run("git", ["checkout", "-b", "feature/unfetched"], cwd: seed.path)
-    try "feature".write(
-      to: seed.appendingPathComponent("feature.txt"), atomically: true, encoding: .utf8)
-    try run("git", ["add", "feature.txt"], cwd: seed.path)
-    try run("git", ["commit", "-m", "feature"], cwd: seed.path)
-    try run("git", ["push", "origin", "feature/unfetched"], cwd: seed.path)
+        try createRemoteFixture(origin: origin, seed: seed, temp: temp)
 
-    try run(
-      "git", ["clone", "--single-branch", "--branch", "main", origin.path, repo.path],
-      cwd: temp.path)
-    try run("git", ["config", "user.email", "test@example.com"], cwd: repo.path)
-    try run("git", ["config", "user.name", "Test User"], cwd: repo.path)
+        try run(
+            "git", ["clone", "--single-branch", "--branch", "main", origin.path, repo.path],
+            cwd: temp.path)
+        try run("git", ["config", "user.email", "test@example.com"], cwd: repo.path)
+        try run("git", ["config", "user.name", "Test User"], cwd: repo.path)
 
-    let localBranches = try capture(
-      "git", ["branch", "--all", "--format=%(refname:short)"], cwd: repo.path)
-    assertFalse(
-      localBranches.contains("origin/feature/unfetched"),
-      "test branch starts as an unfetched remote branch")
+        let localBranches = try capture(
+            "git", ["branch", "--all", "--format=%(refname:short)"], cwd: repo.path)
+        assertFalse(
+            localBranches.contains("origin/feature/unfetched"),
+            "test branch starts as an unfetched remote branch")
 
-    let service = WorktreeService()
-    let available = try await service.listAvailableBranches(repositoryPath: repo.path)
-    assertTrue(
-      available.contains("origin/feature/unfetched"),
-      "available branches include remote heads not present in local remote-tracking refs")
-    assertFalse(available.contains("origin/main"), "checked-out main remains unavailable")
+        let service = WorktreeService()
+        let available = try await service.listAvailableBranches(repositoryPath: repo.path)
+        assertTrue(
+            available.contains("origin/feature/unfetched"),
+            "available branches include remote heads not present in local remote-tracking refs")
+        assertFalse(available.contains("origin/main"), "checked-out main remains unavailable")
 
-    let worktreePath = try await service.createWorktree(
-      projectId: UUID(),
-      repositoryPath: repo.path,
-      branchName: "origin/feature/unfetched",
-      createNewBranch: false
-    )
-    defer { try? FileManager.default.removeItem(atPath: worktreePath) }
-    let checkedOutBranch = try capture("git", ["branch", "--show-current"], cwd: worktreePath)
-    assertTrue(
-      checkedOutBranch == "feature/unfetched",
-      "unfetched remote head opens as a local tracking branch")
-  }
-
-  private func run(_ executable: String, _ args: [String], cwd: String) throws {
-    _ = try capture(executable, args, cwd: cwd)
-  }
-
-  private func capture(_ executable: String, _ args: [String], cwd: String) throws -> String {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/usr/bin/\(executable)")
-    process.arguments = args
-    process.currentDirectoryURL = URL(fileURLWithPath: cwd)
-    let stdout = Pipe()
-    let stderr = Pipe()
-    process.standardOutput = stdout
-    process.standardError = stderr
-    try process.run()
-    process.waitUntilExit()
-    let output =
-      String(data: stdout.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
-      .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    guard process.terminationStatus == 0 else {
-      let detail =
-        String(data: stderr.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-      throw NSError(
-        domain: "ExistingBranchPickerTests", code: Int(process.terminationStatus),
-        userInfo: [
-          NSLocalizedDescriptionKey:
-            "\(executable) \(args.joined(separator: " ")) failed: \(detail)"
-        ])
+        let worktreePath = try await service.createWorktree(
+            projectId: UUID(),
+            repositoryPath: repo.path,
+            branchName: "origin/feature/unfetched",
+            createNewBranch: false
+        )
+        defer { try? FileManager.default.removeItem(atPath: worktreePath) }
+        let checkedOutBranch = try capture("git", ["branch", "--show-current"], cwd: worktreePath)
+        assertTrue(
+            checkedOutBranch == "feature/unfetched",
+            "unfetched remote head opens as a local tracking branch")
     }
-    return output
-  }
 
-  private func assertTrue(_ condition: Bool, _ message: String) {
-    #expect(condition, Comment(rawValue: message))
-  }
+    private func createRemoteFixture(origin: URL, seed: URL, temp: URL) throws {
+        try run("git", ["init", "--bare", origin.path], cwd: temp.path)
+        try FileManager.default.createDirectory(at: seed, withIntermediateDirectories: true)
+        try run("git", ["init", "-b", "main", "."], cwd: seed.path)
+        try run("git", ["config", "user.email", "test@example.com"], cwd: seed.path)
+        try run("git", ["config", "user.name", "Test User"], cwd: seed.path)
+        try "hello".write(
+            to: seed.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
+        try run("git", ["add", "README.md"], cwd: seed.path)
+        try run("git", ["commit", "-m", "initial"], cwd: seed.path)
+        try run("git", ["remote", "add", "origin", origin.path], cwd: seed.path)
+        try run("git", ["push", "-u", "origin", "main"], cwd: seed.path)
+        try run("git", ["checkout", "-b", "feature/unfetched"], cwd: seed.path)
+        try "feature".write(
+            to: seed.appendingPathComponent("feature.txt"), atomically: true, encoding: .utf8)
+        try run("git", ["add", "feature.txt"], cwd: seed.path)
+        try run("git", ["commit", "-m", "feature"], cwd: seed.path)
+        try run("git", ["push", "origin", "feature/unfetched"], cwd: seed.path)
+    }
 
-  private func assertFalse(_ condition: Bool, _ message: String) {
-    assertTrue(!condition, message)
-  }
+    private func run(_ executable: String, _ args: [String], cwd: String) throws {
+        _ = try capture(executable, args, cwd: cwd)
+    }
+
+    private func capture(_ executable: String, _ args: [String], cwd: String) throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/\(executable)")
+        process.arguments = args
+        process.currentDirectoryURL = URL(fileURLWithPath: cwd)
+        let stdout = Pipe()
+        let stderr = Pipe()
+        process.standardOutput = stdout
+        process.standardError = stderr
+        try process.run()
+        process.waitUntilExit()
+        let output =
+            String(data: stdout.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard process.terminationStatus == 0 else {
+            let detail =
+                String(data: stderr.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+            throw NSError(
+                domain: "ExistingBranchPickerTests", code: Int(process.terminationStatus),
+                userInfo: [
+                    NSLocalizedDescriptionKey:
+                        "\(executable) \(args.joined(separator: " ")) failed: \(detail)"
+                ])
+        }
+        return output
+    }
+
+    private func assertTrue(_ condition: Bool, _ message: String) {
+        #expect(condition, Comment(rawValue: message))
+    }
+
+    private func assertFalse(_ condition: Bool, _ message: String) {
+        assertTrue(!condition, message)
+    }
 }

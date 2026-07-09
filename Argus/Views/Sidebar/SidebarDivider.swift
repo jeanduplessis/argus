@@ -5,8 +5,8 @@
 // Each divider is a 1px visible line with a 12px invisible hit zone for
 // drag gestures. The cursor changes to a horizontal-resize arrow on hover.
 
-import SwiftUI
 import AppKit
+import SwiftUI
 
 // MARK: - Left Sidebar Divider
 
@@ -35,7 +35,8 @@ struct SidebarDivider: View {
                                 if dragStartWidth == nil {
                                     dragStartWidth = position
                                 }
-                                let newWidth = (dragStartWidth ?? position)
+                                let newWidth =
+                                    (dragStartWidth ?? position)
                                     + value.translation.width
                                 withTransaction(Transaction(animation: nil)) {
                                     position = max(minValue, min(maxValue, newWidth))
@@ -79,7 +80,8 @@ struct GitSidebarDivider: View {
                                 }
                                 // Invert: dragging left (negative translation)
                                 // should increase the git sidebar width.
-                                let newWidth = (dragStartWidth ?? position)
+                                let newWidth =
+                                    (dragStartWidth ?? position)
                                     - value.translation.width
                                 withTransaction(Transaction(animation: nil)) {
                                     position = max(minValue, min(maxValue, newWidth))

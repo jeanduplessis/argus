@@ -1,5 +1,5 @@
-import Foundation
 import AppKit
+import Foundation
 
 /// Type of panel content.
 public enum PanelType: String, Codable, Sendable {

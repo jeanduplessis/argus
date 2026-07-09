@@ -35,8 +35,9 @@ final class ArgusDiffWebViewCoordinator: NSObject, WKScriptMessageHandler {
         }
 
         guard let previousInput,
-              previousInput.oldFile == input.oldFile,
-              previousInput.newFile == input.newFile else {
+            previousInput.oldFile == input.oldFile,
+            previousInput.newFile == input.newFile
+        else {
             render(input)
             return
         }
@@ -78,8 +79,9 @@ final class ArgusDiffWebViewCoordinator: NSObject, WKScriptMessageHandler {
     ) {
         Task { @MainActor [weak self] in
             guard let self,
-                  let payload = message.body as? [String: Any],
-                  let type = payload["type"] as? String else { return }
+                let payload = message.body as? [String: Any],
+                let type = payload["type"] as? String
+            else { return }
 
             switch type {
             case "ready":
@@ -107,7 +109,8 @@ final class ArgusDiffWebViewCoordinator: NSObject, WKScriptMessageHandler {
 
     private func javaScriptString(_ value: String) -> String {
         guard let data = try? JSONEncoder().encode(value),
-              let string = String(data: data, encoding: .utf8) else {
+            let string = String(data: data, encoding: .utf8)
+        else {
             return "\"\""
         }
         return string

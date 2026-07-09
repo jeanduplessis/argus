@@ -7,6 +7,17 @@
 import AppKit
 import SwiftUI
 
+struct HoverStateView<Content: View>: View {
+    let content: (Bool) -> Content
+
+    @State private var isHovered = false
+
+    var body: some View {
+        content(isHovered)
+            .onHover { isHovered = $0 }
+    }
+}
+
 struct ChromePalette {
     let background: NSColor
     let foreground: NSColor
@@ -76,7 +87,8 @@ enum ChromeColors {
     }
 
     private static func adaptiveOverlay(darkAlpha: CGFloat, lightAlpha: CGFloat) -> Color {
-        let color = palette.isDark
+        let color =
+            palette.isDark
             ? NSColor.white.withAlphaComponent(darkAlpha)
             : NSColor.black.withAlphaComponent(lightAlpha)
         return Color(nsColor: color)

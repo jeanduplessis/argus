@@ -1,70 +1,5 @@
-import AppKit
 import Foundation
 import SwiftUI
-
-protocol GitStatusPathCopying: AnyObject {
-    func copyPath(_ path: String)
-}
-
-final class PasteboardGitStatusPathClipboard: GitStatusPathCopying {
-    func copyPath(_ path: String) {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(path, forType: .string)
-    }
-}
-
-protocol GitStatusFileOperationConfirming: AnyObject {
-    @MainActor
-    func confirm(operation: GitStatusFileOperation, paths: [String]) -> Bool
-
-    @MainActor
-    func confirm(operation: GitStatusFileOperation, pathCount: Int) -> Bool
-}
-
-extension GitStatusFileOperationConfirming {
-    @MainActor
-    func confirm(operation: GitStatusFileOperation, pathCount: Int) -> Bool {
-        confirm(operation: operation, paths: Array(repeating: "", count: pathCount))
-    }
-}
-
-final class AlertGitStatusFileOperationConfirmer: GitStatusFileOperationConfirming {
-    @MainActor
-    func confirm(operation: GitStatusFileOperation, paths: [String]) -> Bool {
-        guard operation.requiresConfirmation else { return true }
-        return runAlert(
-            operation: operation,
-            informativeText: operation.confirmationMessage(paths: paths)
-        )
-    }
-
-    @MainActor
-    func confirm(operation: GitStatusFileOperation, pathCount: Int) -> Bool {
-        guard operation.requiresConfirmation else { return true }
-        return runAlert(
-            operation: operation,
-            informativeText: operation.confirmationMessage(pathCount: pathCount)
-        )
-    }
-
-    @MainActor
-    private func runAlert(operation: GitStatusFileOperation, informativeText: String) -> Bool {
-        let alert = NSAlert()
-        alert.messageText = operation.confirmationTitle
-        alert.informativeText = informativeText
-        alert.alertStyle = .warning
-        let destructiveButton = alert.addButton(withTitle: operation.confirmationButtonTitle)
-        destructiveButton.hasDestructiveAction = operation.requiresConfirmation
-        alert.addButton(withTitle: "Cancel")
-        return alert.runModal() == .alertFirstButtonReturn
-    }
-}
-
-struct GitStatusSnapshotOwner: Equatable, Hashable, Sendable {
-    let workspaceId: UUID
-    let rootPath: String
-}
 
 @MainActor
 final class GitStatusViewModel: ObservableObject {
@@ -75,10 +10,10 @@ final class GitStatusViewModel: ObservableObject {
     @Published private(set) var isMutationInProgress = false
 
     private let service: any GitStatusProviding
-    private let resolver: GitStatusRootResolver
-    private let pathClipboard: any GitStatusPathCopying
-    private let fileOperationConfirmer: any GitStatusFileOperationConfirming
-    private let previewService: any GitPreviewProviding
+    let resolver: GitStatusRootResolver
+    let pathClipboard: any GitStatusPathCopying
+    let fileOperationConfirmer: any GitStatusFileOperationConfirming
+    let previewService: any GitPreviewProviding
 
     private static let legacyWorkspaceId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
     private var snapshotOwner: GitStatusSnapshotOwner?
@@ -137,176 +72,12 @@ final class GitStatusViewModel: ObservableObject {
         updateProgressState()
     }
 
-    func refresh(context: GitStatusRootContext) async {
-        await refresh(owner: legacyOwner(context: context), exposesWorkspaceId: false)
-    }
-
-    func refresh(workspaceId: UUID?, context: GitStatusRootContext) async {
-        guard let workspaceId else {
-            await refresh(context: context)
-            return
-        }
-        await refresh(owner: owner(workspaceId: workspaceId, context: context))
-    }
-
-    func refresh(owner: GitStatusSnapshotOwner) async {
-        await refresh(owner: owner, exposesWorkspaceId: true)
-    }
-
     func titlebarGitContext(for workspaceId: UUID) -> TitlebarGitContext? {
         guard stateWorkspaceId == workspaceId, snapshotOwner?.workspaceId == workspaceId else { return nil }
         return TitlebarGitContextFormatter.context(from: state)
     }
 
-    func initializeRepository(context: GitStatusRootContext) async {
-        await initializeRepository(owner: legacyOwner(context: context), exposesWorkspaceId: false)
-    }
-
-    func initializeRepository(owner: GitStatusSnapshotOwner) async {
-        await initializeRepository(owner: owner, exposesWorkspaceId: true)
-    }
-
-    func copyPath(_ path: String) {
-        pathClipboard.copyPath(path)
-    }
-
-    func performFileOperation(
-        _ operation: GitStatusFileOperation,
-        path: String,
-        context: GitStatusRootContext
-    ) async {
-        await performFileOperation(
-            operation,
-            path: path,
-            owner: legacyOwner(context: context),
-            exposesWorkspaceId: false
-        )
-    }
-
-    func performFileOperation(
-        _ operation: GitStatusFileOperation,
-        path: String,
-        owner: GitStatusSnapshotOwner
-    ) async {
-        await performFileOperation(operation, path: path, owner: owner, exposesWorkspaceId: true)
-    }
-
-    func performBulkFileOperation(
-        _ operation: GitStatusFileOperation,
-        paths: [String],
-        context: GitStatusRootContext
-    ) async {
-        await performBulkFileOperation(
-            operation,
-            paths: paths,
-            owner: legacyOwner(context: context),
-            exposesWorkspaceId: false
-        )
-    }
-
-    func performBulkFileOperation(
-        _ operation: GitStatusFileOperation,
-        paths: [String],
-        owner: GitStatusSnapshotOwner
-    ) async {
-        await performBulkFileOperation(operation, paths: paths, owner: owner, exposesWorkspaceId: true)
-    }
-
-    func performSectionFileOperation(
-        _ operation: GitStatusFileOperation,
-        sectionKey: String,
-        context: GitStatusRootContext
-    ) async {
-        await performSectionFileOperation(
-            operation,
-            sectionKey: sectionKey,
-            owner: legacyOwner(context: context),
-            exposesWorkspaceId: false
-        )
-    }
-
-    func performSectionFileOperation(
-        _ operation: GitStatusFileOperation,
-        sectionKey: String,
-        owner: GitStatusSnapshotOwner
-    ) async {
-        await performSectionFileOperation(
-            operation,
-            sectionKey: sectionKey,
-            owner: owner,
-            exposesWorkspaceId: true
-        )
-    }
-
-    func confirmAndPerformFileOperation(
-        _ operation: GitStatusFileOperation,
-        paths: [String],
-        context: GitStatusRootContext
-    ) async {
-        guard !operation.requiresConfirmation || fileOperationConfirmer.confirm(operation: operation, paths: paths) else {
-            return
-        }
-        await performBulkFileOperation(operation, paths: paths, context: context)
-    }
-
-    func confirmAndPerformFileOperation(
-        _ operation: GitStatusFileOperation,
-        paths: [String],
-        owner: GitStatusSnapshotOwner
-    ) async {
-        guard canPerformActions(for: owner) else { return }
-        guard !operation.requiresConfirmation || fileOperationConfirmer.confirm(operation: operation, paths: paths) else {
-            return
-        }
-        await performBulkFileOperation(operation, paths: paths, owner: owner)
-    }
-
-    func confirmAndPerformSectionFileOperation(
-        _ operation: GitStatusFileOperation,
-        sectionKey: String,
-        pathCount: Int,
-        context: GitStatusRootContext
-    ) async {
-        guard !operation.requiresConfirmation || fileOperationConfirmer.confirm(operation: operation, pathCount: pathCount) else {
-            return
-        }
-        await performSectionFileOperation(operation, sectionKey: sectionKey, context: context)
-    }
-
-    func confirmAndPerformSectionFileOperation(
-        _ operation: GitStatusFileOperation,
-        sectionKey: String,
-        pathCount: Int,
-        owner: GitStatusSnapshotOwner
-    ) async {
-        guard canPerformActions(for: owner) else { return }
-        guard !operation.requiresConfirmation || fileOperationConfirmer.confirm(operation: operation, pathCount: pathCount) else {
-            return
-        }
-        await performSectionFileOperation(operation, sectionKey: sectionKey, owner: owner)
-    }
-
-    func loadPreview(
-        kind: GitPreviewKind,
-        file: GitFileChange,
-        context: GitStatusRootContext
-    ) async -> GitPreviewLoadState {
-        let rootPath = resolver.root(for: context)
-        return await previewService.preview(kind: kind, rootPath: rootPath, file: file)
-    }
-
-    func loadPreview(
-        kind: GitPreviewKind,
-        file: GitFileChange,
-        owner: GitStatusSnapshotOwner
-    ) async -> GitPreviewLoadState {
-        guard ownsSnapshot(owner) else {
-            return .failed(kind: kind, path: file.path, message: "Git status changed before preview opened.")
-        }
-        return await previewService.preview(kind: kind, rootPath: owner.rootPath, file: file)
-    }
-
-    private func refresh(owner: GitStatusSnapshotOwner, exposesWorkspaceId: Bool) async {
+    func refresh(owner: GitStatusSnapshotOwner, exposesWorkspaceId: Bool) async {
         activate(owner, exposesWorkspaceId: exposesWorkspaceId)
         if activeRefreshRequests[owner] == requestGeneration { return }
         if activeMutationRequest?.owner == owner {
@@ -325,7 +96,7 @@ final class GitStatusViewModel: ObservableObject {
         finishRequest(requestId)
     }
 
-    private func initializeRepository(owner: GitStatusSnapshotOwner, exposesWorkspaceId: Bool) async {
+    func initializeRepository(owner: GitStatusSnapshotOwner, exposesWorkspaceId: Bool) async {
         guard prepareMutationOwner(owner, exposesWorkspaceId: exposesWorkspaceId) else { return }
         guard let requestId = beginMutation(owner: owner) else { return }
         let result = await service.initializeRepository(rootPath: owner.rootPath)
@@ -333,7 +104,7 @@ final class GitStatusViewModel: ObservableObject {
         finishMutation(requestId)
     }
 
-    private func performFileOperation(
+    func performFileOperation(
         _ operation: GitStatusFileOperation,
         path: String,
         owner: GitStatusSnapshotOwner,
@@ -346,7 +117,7 @@ final class GitStatusViewModel: ObservableObject {
         finishMutation(requestId)
     }
 
-    private func performBulkFileOperation(
+    func performBulkFileOperation(
         _ operation: GitStatusFileOperation,
         paths: [String],
         owner: GitStatusSnapshotOwner,
@@ -359,7 +130,7 @@ final class GitStatusViewModel: ObservableObject {
         finishMutation(requestId)
     }
 
-    private func performSectionFileOperation(
+    func performSectionFileOperation(
         _ operation: GitStatusFileOperation,
         sectionKey: String,
         owner: GitStatusSnapshotOwner,
@@ -406,7 +177,8 @@ final class GitStatusViewModel: ObservableObject {
     }
 
     private func finishMutation(_ requestId: UInt64) {
-        let completedOwner = activeMutationRequest?.id == requestId
+        let completedOwner =
+            activeMutationRequest?.id == requestId
             ? activeMutationRequest?.owner
             : nil
         if completedOwner != nil {
@@ -416,8 +188,8 @@ final class GitStatusViewModel: ObservableObject {
         finishRequest(requestId)
 
         guard let completedOwner,
-              pendingRefreshOwners.remove(completedOwner) != nil,
-              snapshotOwner == completedOwner
+            pendingRefreshOwners.remove(completedOwner) != nil,
+            snapshotOwner == completedOwner
         else {
             return
         }
@@ -462,7 +234,7 @@ final class GitStatusViewModel: ObservableObject {
         return false
     }
 
-    private func legacyOwner(context: GitStatusRootContext) -> GitStatusSnapshotOwner {
+    func legacyOwner(context: GitStatusRootContext) -> GitStatusSnapshotOwner {
         GitStatusSnapshotOwner(
             workspaceId: Self.legacyWorkspaceId,
             rootPath: resolver.root(for: context)

@@ -1,15 +1,12 @@
 import SwiftUI
 
 extension GitFileStatus {
-    var systemImage: String {
+    var systemImage: String? {
         switch self {
-        case .added: return "doc.badge.plus"
-        case .modified: return "pencil"
-        case .deleted: return "trash"
+        case .added, .modified, .deleted, .untracked: return nil
         case .renamed: return "arrow.right"
         case .copied: return "doc.on.doc"
         case .typeChanged: return "wrench.and.screwdriver"
-        case .untracked: return "questionmark.circle"
         case .unmerged: return "exclamationmark.triangle"
         }
     }

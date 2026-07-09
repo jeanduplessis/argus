@@ -1,6 +1,6 @@
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 
 /// Central state manager for all workspaces in the application.
 ///
@@ -18,7 +18,7 @@ final class WorkspaceManager: ObservableObject {
     // MARK: - Published State
 
     /// Ordered list of workspaces (determines sidebar order).
-    @Published private(set) var workspaces: [Workspace] = []
+    @Published internal(set) var workspaces: [Workspace] = []
 
     /// ID of the currently selected workspace.
     @Published var selectedWorkspaceId: UUID? {
@@ -26,16 +26,16 @@ final class WorkspaceManager: ObservableObject {
     }
 
     /// Ordered list of projects (named projects first, catch-all last).
-    @Published private(set) var projects: [Project] = []
+    @Published internal(set) var projects: [Project] = []
 
     /// The non-removable catch-all project for standalone workspaces.
-    private(set) var catchAllProject: Project!
+    var catchAllProject: Project!
 
     /// Shared worktree service for git operations.
     let worktreeService = WorktreeService()
 
     /// Last workspace creation error for user-visible sheet feedback.
-    private(set) var lastWorkspaceCreationError: WorktreeError?
+    var lastWorkspaceCreationError: WorktreeError?
 
     /// Location of the minimal Phase 2 session snapshot.
     private let sessionSnapshotURL: URL
@@ -97,7 +97,8 @@ final class WorkspaceManager: ObservableObject {
         self.sessionSnapshotURL = sessionSnapshotURL
 
         if !Self.isRunningUnderAutomatedTests,
-           restoreSessionIfAvailable(from: sessionSnapshotURL) {
+            restoreSessionIfAvailable(from: sessionSnapshotURL)
+        {
             // Restored from disk.
         } else {
             createFreshSession()
@@ -110,7 +111,7 @@ final class WorkspaceManager: ObservableObject {
             queue: .main
         ) { [weak self] notification in
             guard let self,
-                  let surfaceId = notification.object as? UUID
+                let surfaceId = notification.object as? UUID
             else { return }
             self.handleSurfaceClosed(surfaceId)
         }
@@ -123,7 +124,7 @@ final class WorkspaceManager: ObservableObject {
             queue: .main
         ) { [weak self] notification in
             guard let self,
-                  let surfaceId = notification.object as? UUID
+                let surfaceId = notification.object as? UUID
             else { return }
             self.focusPanel(surfaceId)
         }
@@ -196,7 +197,7 @@ final class WorkspaceManager: ObservableObject {
     @discardableResult
     private func restoreSessionIfAvailable(from url: URL) -> Bool {
         guard let data = try? Data(contentsOf: url),
-              let snapshot = try? JSONDecoder().decode(ArgusSessionSnapshot.self, from: data)
+            let snapshot = try? JSONDecoder().decode(ArgusSessionSnapshot.self, from: data)
         else { return false }
         return restoreSession(from: snapshot)
     }
@@ -206,8 +207,8 @@ final class WorkspaceManager: ObservableObject {
     @discardableResult
     func restoreSession(from snapshot: ArgusSessionSnapshot) -> Bool {
         guard snapshot.isCompatible,
-              !snapshot.workspaces.isEmpty,
-              snapshot.workspaces.count <= Self.maxWorkspaces
+            !snapshot.workspaces.isEmpty,
+            snapshot.workspaces.count <= Self.maxWorkspaces
         else { return false }
 
         let reconciledSnapshot = snapshot.reconciledForRestore()
@@ -274,9 +275,10 @@ final class WorkspaceManager: ObservableObject {
         guard let workspace = workspaces.first(where: { $0.id == workspaceId }) else { return false }
 
         if deletingWorktree,
-           let worktreePath = workspace.worktreePath,
-           let project = project(for: workspaceId),
-           !project.isCatchAll {
+            let worktreePath = workspace.worktreePath,
+            let project = project(for: workspaceId),
+            !project.isCatchAll
+        {
             do {
                 try await worktreeService.removeWorktree(
                     repositoryPath: project.repositoryPath,
@@ -295,9 +297,9 @@ final class WorkspaceManager: ObservableObject {
 
     func shouldConfirmWorktreeDeletionBeforeClosing(_ workspaceId: UUID) -> Bool {
         guard let workspace = workspaces.first(where: { $0.id == workspaceId }),
-              workspace.worktreePath != nil,
-              let project = project(for: workspaceId),
-              !project.isCatchAll
+            workspace.worktreePath != nil,
+            let project = project(for: workspaceId),
+            !project.isCatchAll
         else { return false }
         return true
     }
@@ -335,428 +337,7 @@ final class WorkspaceManager: ObservableObject {
         }
     }
 
-    // MARK: - Project CRUD
-
-    /// Creates a new project from a git repository path.
-    ///
-    /// Validates that the path is a git repository and that no existing
-    /// project uses the same repository path.
-    ///
-    /// - Parameters:
-    ///   - repositoryPath: Absolute path to the git repo root.
-    ///   - displayName: Optional custom name. Defaults to repo basename.
-    /// - Returns: The new project, or `nil` if validation fails.
-    func createProject(
-        repositoryPath: String,
-        displayName: String? = nil,
-        mainBranchOverride: String? = nil
-    ) async -> Project? {
-        // Validate and normalize to the canonical git repo root.
-        guard let repositoryRoot = try? await worktreeService.canonicalRepositoryRoot(for: repositoryPath) else {
-            return nil
-        }
-
-        // Check for duplicate.
-        guard !hasDuplicateProject(repositoryRoot: repositoryRoot) else { return nil }
-
-        // Detect main branch when possible, but accept an explicit user override.
-        let detectedMainBranch = try? await worktreeService.detectMainBranch(
-            repositoryPath: repositoryRoot
-        )
-        let normalizedMainBranch = mainBranchOverride?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let mainBranch = normalizedMainBranch.isEmpty ? (detectedMainBranch ?? "") : normalizedMainBranch
-        guard !mainBranch.isEmpty else { return nil }
-
-        let checkoutBranch = (try? await worktreeService.currentBranchName(repositoryPath: repositoryRoot))
-            ?? mainBranch
-
-        let project = Project(
-            repositoryPath: repositoryRoot,
-            displayName: displayName,
-            mainBranch: mainBranch
-        )
-
-        // Insert before catch-all (catch-all is always last).
-        let insertIndex = projects.count - 1
-        projects.insert(project, at: max(insertIndex, 0))
-
-        // Create the main-checkout workspace for this project.
-        let workspace = Workspace(
-            title: checkoutBranch,
-            workingDirectory: repositoryRoot,
-            projectId: project.id,
-            branchName: checkoutBranch,
-            workspaceType: .mainCheckout
-        )
-        workspaces.append(workspace)
-        project.addWorkspace(workspace.id)
-        selectedWorkspaceId = workspace.id
-
-        return project
-    }
-
-    /// Removes a project and all its child workspaces.
-    ///
-    /// Worktrees are cleaned up via `WorktreeService`. The catch-all project
-    /// cannot be removed.
-    func removeProject(_ projectId: UUID) async {
-        guard let project = projects.first(where: { $0.id == projectId }),
-              !project.isCatchAll else { return }
-
-        // Remove all child workspaces and their worktrees.
-        for workspaceId in project.workspaceIds {
-            if let workspace = workspaces.first(where: { $0.id == workspaceId }) {
-                // Clean up worktree if applicable.
-                if let worktreePath = workspace.worktreePath {
-                    try? await worktreeService.removeWorktree(
-                        repositoryPath: project.repositoryPath,
-                        worktreePath: worktreePath,
-                        force: true
-                    )
-                }
-                // Close all panels.
-                for panelId in workspace.panelOrder {
-                    workspace.closeTab(panelId)
-                }
-            }
-        }
-
-        // Remove workspaces from the flat list.
-        let idsToRemove = Set(project.workspaceIds)
-        workspaces.removeAll { idsToRemove.contains($0.id) }
-
-        // Remove the project.
-        projects.removeAll { $0.id == projectId }
-
-        // Fix selection.
-        if let selectedId = selectedWorkspaceId,
-           idsToRemove.contains(selectedId) {
-            if workspaces.isEmpty {
-                // Spec: always have at least one workspace.
-                let newWorkspace = Workspace()
-                workspaces.append(newWorkspace)
-                catchAllProject.addWorkspace(newWorkspace.id)
-                selectedWorkspaceId = newWorkspace.id
-            } else {
-                selectedWorkspaceId = workspaces.first?.id
-            }
-        }
-    }
-
-    /// Renames a project.
-    func renameProject(_ projectId: UUID, name: String) {
-        guard let project = projects.first(where: { $0.id == projectId }),
-              !project.isCatchAll else { return }
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty {
-            project.displayName = trimmed
-            notifyWorkspaceContextChanged()
-        }
-    }
-
-    /// Returns the project that owns a workspace, falling back to the catch-all.
-    func project(for workspaceId: UUID) -> Project? {
-        projects.first { $0.containsWorkspace(workspaceId) }
-    }
-
-    /// Returns all named (non-catch-all) projects.
-    var namedProjects: [Project] {
-        projects.filter { !$0.isCatchAll }
-    }
-
-    /// Adopts an orphaned worktree already present on disk without invoking
-    /// `git worktree add` or creating a duplicate directory.
-    @discardableResult
-    func adoptOrphanedWorktree(_ orphan: OrphanedWorktreeInfo) -> Workspace? {
-        guard workspaces.count < Self.maxWorkspaces else { return nil }
-        guard let project = projects.first(where: { $0.id == orphan.projectId }),
-              !project.isCatchAll else { return nil }
-
-        let branchName = orphan.branchName ?? (orphan.path as NSString).lastPathComponent
-        let workspace = Workspace(
-            title: branchName,
-            workingDirectory: orphan.path,
-            projectId: orphan.projectId,
-            branchName: branchName,
-            workspaceType: .worktree,
-            worktreePath: orphan.path
-        )
-        workspaces.append(workspace)
-        project.addWorkspace(workspace.id)
-        selectedWorkspaceId = workspace.id
-        return workspace
-    }
-
-    func hasDuplicateProject(repositoryRoot: String) -> Bool {
-        let canonicalRoot = URL(fileURLWithPath: repositoryRoot)
-            .resolvingSymlinksInPath()
-            .path
-        return projects.contains {
-            !$0.isCatchAll
-                && URL(fileURLWithPath: $0.repositoryPath).resolvingSymlinksInPath().path == canonicalRoot
-        }
-    }
-
-    /// Creates a new workspace within a project, optionally with a new git worktree.
-    ///
-    /// - Parameters:
-    ///   - projectId: The project to add the workspace to.
-    ///   - branchName: The git branch name.
-    ///   - createNewBranch: If `true`, creates a new branch; otherwise checks out existing.
-    /// - Returns: The new workspace, or `nil` on failure.
-    func addWorkspaceToProject(
-        _ projectId: UUID,
-        branchName: String,
-        createNewBranch: Bool = true
-    ) async -> Workspace? {
-        lastWorkspaceCreationError = nil
-        guard workspaces.count < Self.maxWorkspaces else { return nil }
-        guard let project = projects.first(where: { $0.id == projectId }),
-              !project.isCatchAll else { return nil }
-
-        do {
-            if createNewBranch {
-                try await worktreeService.ensureBranchNameAvailable(branchName, repositoryPath: project.repositoryPath)
-            }
-            let worktreePath = try await worktreeService.createWorktree(
-                projectId: projectId,
-                repositoryPath: project.repositoryPath,
-                branchName: branchName,
-                createNewBranch: createNewBranch
-            )
-
-            let workspace = Workspace(
-                title: branchName,
-                workingDirectory: worktreePath,
-                projectId: projectId,
-                branchName: branchName,
-                workspaceType: .worktree,
-                worktreePath: worktreePath
-            )
-            workspaces.append(workspace)
-            project.addWorkspace(workspace.id)
-            selectedWorkspaceId = workspace.id
-            return workspace
-        } catch let error as WorktreeError {
-            lastWorkspaceCreationError = error
-            print("Failed to create worktree workspace: \(error.localizedDescription)")
-            return nil
-        } catch {
-            print("Failed to create worktree workspace: \(error.localizedDescription)")
-            return nil
-        }
-    }
-
-    // MARK: - Selection
-
-    /// Selects a workspace by ID, transferring panel focus.
-    func selectWorkspace(_ workspaceId: UUID) {
-        guard workspaces.contains(where: { $0.id == workspaceId }) else { return }
-
-        // Unfocus the active panel in the outgoing workspace.
-        selectedWorkspace?.activePanel?.unfocus()
-
-        selectedWorkspaceId = workspaceId
-
-        // Focus the active panel in the incoming workspace.
-        selectedWorkspace?.activePanel?.focus()
-    }
-
-    /// Selects a workspace by its zero-based sidebar index.
-    func selectWorkspaceByIndex(_ index: Int) {
-        let ordered = sidebarOrderedWorkspaces
-        guard index >= 0, index < ordered.count else { return }
-        selectWorkspace(ordered[index].workspace.id)
-    }
-
-    /// Selects the last workspace in sidebar order (Cmd+9).
-    func selectLastWorkspace() {
-        let ordered = sidebarOrderedWorkspaces
-        guard let last = ordered.last else { return }
-        selectWorkspace(last.workspace.id)
-    }
-
-    /// Selects the next workspace, wrapping around to the first.
-    func selectNextWorkspace() {
-        guard let currentId = selectedWorkspaceId,
-              let currentIndex = workspaces.firstIndex(where: { $0.id == currentId }) else { return }
-        let nextIndex = (currentIndex + 1) % workspaces.count
-        selectWorkspace(workspaces[nextIndex].id)
-    }
-
-    /// Selects the previous workspace, wrapping around to the last.
-    func selectPreviousWorkspace() {
-        guard let currentId = selectedWorkspaceId,
-              let currentIndex = workspaces.firstIndex(where: { $0.id == currentId }) else { return }
-        let prevIndex = (currentIndex - 1 + workspaces.count) % workspaces.count
-        selectWorkspace(workspaces[prevIndex].id)
-    }
-
-    // MARK: - Workspace Mutation
-
-    /// Renames a workspace (spec: "The system MUST allow renaming workspaces.").
-    func renameWorkspace(_ workspaceId: UUID, title: String) {
-        guard let workspace = workspaces.first(where: { $0.id == workspaceId }) else { return }
-        workspace.setCustomTitle(title)
-        if selectedWorkspaceId == workspaceId {
-            notifyWorkspaceContextChanged()
-        }
-    }
-
-    /// Reorders a workspace from one sidebar position to another.
-    ///
-    /// Both indices must be valid; out-of-range values are silently ignored.
-    func reorderWorkspace(from source: Int, to destination: Int) {
-        guard source >= 0, source < workspaces.count,
-              destination >= 0, destination < workspaces.count,
-              source != destination else { return }
-        let workspace = workspaces.remove(at: source)
-        workspaces.insert(workspace, at: destination)
-    }
-
-    /// Reorders a workspace within a project section, keeping project order as
-    /// the source of truth for sidebar display and Cmd+number shortcuts.
-    func reorderWorkspace(in projectId: UUID, moving workspaceId: UUID, before targetWorkspaceId: UUID) {
-        guard let project = projects.first(where: { $0.id == projectId }),
-              let source = project.workspaceIds.firstIndex(of: workspaceId),
-              let target = project.workspaceIds.firstIndex(of: targetWorkspaceId),
-              source != target
-        else { return }
-
-        let destination = source < target ? max(target - 1, 0) : target
-        project.moveWorkspace(from: source, to: destination)
-        syncFlatWorkspaceOrderToSidebarOrder()
-    }
-
-    private func syncFlatWorkspaceOrderToSidebarOrder() {
-        let orderedIds = sidebarOrderedWorkspaces.map(\.workspace.id)
-        let indexById = Dictionary(uniqueKeysWithValues: orderedIds.enumerated().map { ($0.element, $0.offset) })
-        workspaces.sort { lhs, rhs in
-            (indexById[lhs.id] ?? Int.max) < (indexById[rhs.id] ?? Int.max)
-        }
-    }
-
-    // MARK: - Tab Management (within selected workspace)
-
-    /// Adds a new terminal tab to the currently selected workspace.
-    ///
-    /// - Parameter workingDirectory: Optional initial working directory.
-    /// - Returns: The new terminal panel, or `nil` if no workspace is selected.
-    @discardableResult
-    func addTab(workingDirectory: String? = nil) -> TerminalPanel? {
-        guard let workspace = selectedWorkspace else { return nil }
-        return workspace.addTerminalPanel(workingDirectory: workingDirectory)
-    }
-
-    /// Adds a Browser Panel as a top-level tab in the Selected Workspace.
-    @discardableResult
-    func addBrowserTab(url: URL? = nil) -> BrowserPanel? {
-        selectedWorkspace?.addBrowserPanel(url: url)
-    }
-
-    func requestFindInActiveBrowser() {
-        (selectedWorkspace?.activePanel as? BrowserPanel)?.requestFind()
-    }
-
-    /// Splits the active terminal pane in the selected workspace.
-    @discardableResult
-    func splitActiveTerminal(direction: PanelSplitDirection) -> TerminalPanel? {
-        selectedWorkspace?.splitActiveTerminal(direction: direction)
-    }
-
-    /// Closes the active pane in the currently selected workspace.
-    ///
-    /// If the active tab has no remaining panes after removal, the tab closes.
-    /// If the workspace has no remaining tabs, the workspace itself is removed.
-    func closeCurrentTab() {
-        guard let workspace = selectedWorkspace else { return }
-
-        let closesLastWorkspaceTab = workspace.panelOrder.count == 1
-            && (workspace.activeTabLayout?.leaves.count ?? 1) == 1
-        if closesLastWorkspaceTab,
-           shouldConfirmWorktreeDeletionBeforeClosing(workspace.id) {
-            NotificationCenter.default.post(
-                name: .showCloseWorkspaceConfirmation,
-                object: nil,
-                userInfo: ["workspaceId": workspace.id]
-            )
-            return
-        }
-
-        workspace.closeActivePaneOrTab()
-
-        // An empty workspace is equivalent to a closed workspace.
-        if workspace.panelOrder.isEmpty {
-            removeWorkspace(workspace.id)
-        }
-    }
-
-    // MARK: - Keyboard Shortcut Handlers
-
-    /// Handles Cmd+N workspace shortcuts where N is 1–9.
-    ///
-    /// - Cmd+1 through Cmd+8: select workspace by global sidebar index.
-    /// - Cmd+9: select the last workspace.
-    func handleWorkspaceShortcut(number: Int) {
-        if number == 9 {
-            selectLastWorkspace()
-        } else {
-            selectWorkspaceByIndex(number - 1)
-        }
-    }
-
-    // MARK: - Lookup
-
-    /// Returns the workspace containing a given panel (surface) ID, if any.
-    func workspace(containingPanel panelId: UUID) -> Workspace? {
-        workspaces.first { $0.panels[panelId] != nil }
-    }
-
-    /// Marks a terminal surface as the focused panel when its NSView becomes
-    /// first responder.
-    func focusPanel(_ panelId: UUID) {
-        guard let workspace = workspace(containingPanel: panelId) else { return }
-        if selectedWorkspaceId != workspace.id {
-            selectedWorkspaceId = workspace.id
-        }
-        workspace.selectPanel(panelId)
-    }
-
-    /// Returns the 1-based sidebar position of a workspace (for TTS, titlebar, etc.).
-    func sidebarNumber(for workspaceId: UUID) -> Int? {
-        globalSidebarIndex(for: workspaceId)
-    }
-
-    // MARK: - Sidebar Ordering
-
-    /// Returns workspaces in sidebar display order: project workspaces first
-    /// (in project order, then workspace order within each project),
-    /// then catch-all workspaces.
-    var sidebarOrderedWorkspaces: [(project: Project, workspace: Workspace)] {
-        var result: [(Project, Workspace)] = []
-        for project in projects {
-            for wsId in project.workspaceIds {
-                if let workspace = workspaces.first(where: { $0.id == wsId }) {
-                    result.append((project, workspace))
-                }
-            }
-        }
-        return result
-    }
-
-    /// Returns the global 1-based sidebar index for a workspace.
-    /// This replaces the simple array-index approach from Phase 1
-    /// since workspaces are now grouped under projects.
-    func globalSidebarIndex(for workspaceId: UUID) -> Int? {
-        let ordered = sidebarOrderedWorkspaces
-        guard let idx = ordered.firstIndex(where: { $0.workspace.id == workspaceId }) else {
-            return nil
-        }
-        return idx + 1
-    }
-
-    private func notifyWorkspaceContextChanged() {
+    func notifyWorkspaceContextChanged() {
         NotificationCenter.default.post(name: .workspaceContextDidChange, object: nil)
     }
 }

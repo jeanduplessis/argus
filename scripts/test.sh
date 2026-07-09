@@ -4,6 +4,8 @@ set -euo pipefail
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$project_root"
 
+./scripts/lint.sh
+
 host_arch="$(uname -m)"
 
 xcodebuild test \

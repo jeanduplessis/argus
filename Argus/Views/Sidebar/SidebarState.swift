@@ -61,7 +61,8 @@ extension SidebarLayout {
         rightVisible: Bool
     ) -> CGFloat {
         let dividerCount: CGFloat = rightVisible ? 2 : 1
-        let available = windowWidth
+        let available =
+            windowWidth
             - centerMinWidth
             - (dividerCount * dividerWidth)
             - (rightVisible ? rightWidth : 0)
@@ -74,7 +75,8 @@ extension SidebarLayout {
         leftVisible: Bool
     ) -> CGFloat {
         let dividerCount: CGFloat = leftVisible ? 2 : 1
-        let available = windowWidth
+        let available =
+            windowWidth
             - centerMinWidth
             - (dividerCount * dividerWidth)
             - (leftVisible ? leftWidth : 0)

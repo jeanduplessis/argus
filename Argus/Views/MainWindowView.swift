@@ -124,7 +124,7 @@ struct MainWindowView: View {
         // Alert: Rename Project
         .alert("Rename Project", isPresented: $showRenameProjectAlert) {
             TextField("Project name", text: $renameProjectText)
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {}
             Button("Rename") {
                 if let id = renameProjectId {
                     workspaceManager.renameProject(id, name: renameProjectText)
@@ -134,7 +134,7 @@ struct MainWindowView: View {
         // Alert: Rename Workspace
         .alert("Rename Workspace", isPresented: $showRenameWorkspaceAlert) {
             TextField("Workspace name", text: $renameWorkspaceText)
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {}
             Button("Rename") {
                 if let id = renameWorkspaceId {
                     workspaceManager.renameWorkspace(id, title: renameWorkspaceText)
@@ -143,7 +143,7 @@ struct MainWindowView: View {
         }
         // Alert: Close Workspace with optional worktree deletion
         .alert("Close Workspace?", isPresented: $showCloseWorkspaceConfirmation) {
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {}
             Button("Close Only") {
                 if let id = closeWorkspaceId {
                     workspaceManager.removeWorkspace(id)
@@ -157,7 +157,10 @@ struct MainWindowView: View {
                 }
             }
         } message: {
-            Text("Do you also want to delete the git worktree for \(closeWorkspaceTitle) at \(closeWorkspaceWorktreePath)?")
+            Text(
+                "Do you also want to delete the git worktree for "
+                    + "\(closeWorkspaceTitle) at \(closeWorkspaceWorktreePath)?"
+            )
         }
         // Notification receivers for sheet/alert triggers
         .onReceive(NotificationCenter.default.publisher(for: .showNewProjectSheet)) { _ in
@@ -170,7 +173,8 @@ struct MainWindowView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .showRenameProjectSheet)) { notification in
             if let projectId = notification.userInfo?["projectId"] as? UUID,
-               let project = workspaceManager.projects.first(where: { $0.id == projectId }) {
+                let project = workspaceManager.projects.first(where: { $0.id == projectId })
+            {
                 renameProjectId = projectId
                 renameProjectText = project.displayName
                 showRenameProjectAlert = true
@@ -178,7 +182,8 @@ struct MainWindowView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .showRenameWorkspaceSheet)) { notification in
             if let workspaceId = notification.userInfo?["workspaceId"] as? UUID,
-               let workspace = workspaceManager.workspaces.first(where: { $0.id == workspaceId }) {
+                let workspace = workspaceManager.workspaces.first(where: { $0.id == workspaceId })
+            {
                 renameWorkspaceId = workspaceId
                 renameWorkspaceText = workspace.displayTitle
                 showRenameWorkspaceAlert = true
@@ -186,7 +191,8 @@ struct MainWindowView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .showCloseWorkspaceConfirmation)) { notification in
             if let workspaceId = notification.userInfo?["workspaceId"] as? UUID,
-               let workspace = workspaceManager.workspaces.first(where: { $0.id == workspaceId }) {
+                let workspace = workspaceManager.workspaces.first(where: { $0.id == workspaceId })
+            {
                 closeWorkspaceId = workspaceId
                 closeWorkspaceTitle = workspace.displayTitle
                 closeWorkspaceWorktreePath = workspace.worktreePath ?? ""

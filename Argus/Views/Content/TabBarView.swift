@@ -16,7 +16,6 @@ struct TabBarView: View {
     @State private var renamePanelId: UUID?
     @State private var renameText = ""
     @State private var showRenameAlert = false
-    @State private var isNewTabHovered = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -31,26 +30,30 @@ struct TabBarView: View {
                                 agentStatus: agentStatus(for: panelId),
                                 isActive: panelId == workspace.activeTabId,
                                 onSelect: { workspace.selectPanel(panelId) },
-                                onRename: panel.panelType == .terminal ? {
-                                    renamePanelId = panelId
-                                    renameText = workspace.tabDisplayTitle(for: panelId)
-                                    showRenameAlert = true
-                                } : nil,
+                                onRename: panel.panelType == .terminal
+                                    ? {
+                                        renamePanelId = panelId
+                                        renameText = workspace.tabDisplayTitle(for: panelId)
+                                        showRenameAlert = true
+                                    } : nil,
                                 canMoveLeft: workspace.panelOrder.first != panelId,
                                 canMoveRight: workspace.panelOrder.last != panelId,
                                 onMoveLeft: {
                                     guard let index = workspace.panelOrder.firstIndex(of: panelId),
-                                          index > 0 else { return }
+                                        index > 0
+                                    else { return }
                                     workspace.reorderPanel(from: index, to: index - 1)
                                 },
                                 onMoveRight: {
                                     guard let index = workspace.panelOrder.firstIndex(of: panelId),
-                                          index < workspace.panelOrder.count - 1 else { return }
+                                        index < workspace.panelOrder.count - 1
+                                    else { return }
                                     workspace.reorderPanel(from: index, to: index + 1)
                                 },
                                 onClose: {
                                     if workspace.panelOrder.count == 1,
-                                       workspaceManager.shouldConfirmWorktreeDeletionBeforeClosing(workspace.id) {
+                                        workspaceManager.shouldConfirmWorktreeDeletionBeforeClosing(workspace.id)
+                                    {
                                         NotificationCenter.default.post(
                                             name: .showCloseWorkspaceConfirmation,
                                             object: nil,
@@ -85,31 +88,32 @@ struct TabBarView: View {
             Spacer()
 
             // New top-level tab menu
-            Menu {
-                Button("New Terminal Tab") {
-                    workspace.addTerminalPanel()
-                }
-                Button("New Browser Tab") {
-                    workspace.addBrowserPanel()
-                }
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .frame(width: 20, height: 20)
-                    .background {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(isNewTabHovered ? ChromeColors.hoveredTabFill : Color.clear)
+            HoverStateView { isHovered in
+                Menu {
+                    Button("New Terminal Tab") {
+                        workspace.addTerminalPanel()
                     }
-                    .contentShape(Rectangle())
+                    Button("New Browser Tab") {
+                        workspace.addBrowserPanel()
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .frame(width: 20, height: 20)
+                        .background {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(isHovered ? ChromeColors.hoveredTabFill : Color.clear)
+                        }
+                        .contentShape(Rectangle())
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .cursor(.pointingHand)
+                .help("Add tab")
+                .accessibilityLabel("Add tab")
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .cursor(.pointingHand)
-            .help("Add tab")
-            .accessibilityLabel("Add tab")
-            .onHover { isNewTabHovered = $0 }
             .padding(.trailing, 8)
         }
         .frame(height: 30)
@@ -119,7 +123,7 @@ struct TabBarView: View {
         }
         .alert("Rename Terminal", isPresented: $showRenameAlert) {
             TextField("Terminal title", text: $renameText)
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {}
             Button("Rename") {
                 if let renamePanelId {
                     workspace.renameTerminalPanel(renamePanelId, title: renameText)
@@ -158,8 +162,8 @@ private struct PanelTabDropDelegate: DropDelegate {
         guard let draggedPanelId = PanelTabDragState.draggedPanelId else { return false }
         defer { PanelTabDragState.draggedPanelId = nil }
         guard draggedPanelId != targetPanelId,
-              let source = workspace.panelOrder.firstIndex(of: draggedPanelId),
-              let destination = workspace.panelOrder.firstIndex(of: targetPanelId)
+            let source = workspace.panelOrder.firstIndex(of: draggedPanelId),
+            let destination = workspace.panelOrder.firstIndex(of: targetPanelId)
         else { return false }
 
         workspace.reorderPanel(from: source, to: destination)

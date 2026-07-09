@@ -9,7 +9,6 @@ struct BrowserView: View {
     @State private var addressText: String
     @State private var findQuery = ""
     @State private var isFindVisible = false
-    @State private var hoveredControl: BrowserControl?
     @FocusState private var isAddressFocused: Bool
     @FocusState private var isFindFocused: Bool
 
@@ -57,21 +56,18 @@ struct BrowserView: View {
     private var browserHeader: some View {
         HStack(spacing: 4) {
             chromeButton(
-                .back,
                 systemImage: "chevron.left",
                 help: "Go back",
                 enabled: panel.canGoBack,
                 action: panel.goBack
             )
             chromeButton(
-                .forward,
                 systemImage: "chevron.right",
                 help: "Go forward",
                 enabled: panel.canGoForward,
                 action: panel.goForward
             )
             chromeButton(
-                .reload,
                 systemImage: "arrow.clockwise",
                 help: "Reload page",
                 enabled: panel.currentURL != nil && !panel.isLoading,
@@ -150,21 +146,18 @@ struct BrowserView: View {
                 .accessibilityValue(matchCountText)
 
             chromeButton(
-                .findPrevious,
                 systemImage: "chevron.up",
                 help: "Previous match",
                 enabled: panel.findMatchCount > 0,
                 action: { panel.find(findQuery, direction: .previous) }
             )
             chromeButton(
-                .findNext,
                 systemImage: "chevron.down",
                 help: "Next match",
                 enabled: panel.findMatchCount > 0,
                 action: { panel.find(findQuery, direction: .next) }
             )
             chromeButton(
-                .closeFind,
                 systemImage: "xmark",
                 help: "Close find",
                 action: dismissFind
@@ -188,32 +181,31 @@ struct BrowserView: View {
     }
 
     private func chromeButton(
-        _ control: BrowserControl,
         systemImage: String,
         help: String,
         enabled: Bool = true,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(enabled ? .secondary : .secondary.opacity(0.35))
-                .frame(width: 20, height: 20)
-                .background {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(enabled && hoveredControl == control
-                              ? ChromeColors.hoveredTabFill
-                              : Color.clear)
-                }
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-        .cursor(enabled ? .pointingHand : .arrow)
-        .help(help)
-        .accessibilityLabel(help)
-        .onHover { hovering in
-            hoveredControl = enabled && hovering ? control : nil
+        HoverStateView { isHovered in
+            Button(action: action) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(enabled ? .secondary : .secondary.opacity(0.35))
+                    .frame(width: 20, height: 20)
+                    .background {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(
+                                enabled && isHovered
+                                    ? ChromeColors.hoveredTabFill
+                                    : Color.clear)
+                    }
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!enabled)
+            .cursor(enabled ? .pointingHand : .arrow)
+            .help(help)
+            .accessibilityLabel(help)
         }
     }
 
@@ -246,15 +238,6 @@ struct BrowserView: View {
             }
         }
     }
-}
-
-private enum BrowserControl: Hashable {
-    case back
-    case forward
-    case reload
-    case findPrevious
-    case findNext
-    case closeFind
 }
 
 private struct BrowserWebView: NSViewRepresentable {

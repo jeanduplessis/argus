@@ -43,10 +43,13 @@ struct OrphanedWorktreesSheet: View {
                 .font(.headline)
 
             // Description
-            Text("The following worktrees on disk have no corresponding workspace. You can adopt them back into their project, delete them, or dismiss this dialog.")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            Text(
+                "The following worktrees on disk have no corresponding workspace. "
+                    + "You can adopt them back into their project, delete them, or dismiss this dialog."
+            )
+            .font(.subheadline)
+            .foregroundColor(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
 
             // Orphan list
             ScrollView {
@@ -77,8 +80,12 @@ struct OrphanedWorktreesSheet: View {
         }
         .padding(20)
         .frame(width: 500)
-        .alert("Delete Orphaned Worktree?", isPresented: $showDeleteConfirmation, presenting: pendingDeletion) { orphan in
-            Button("Cancel", role: .cancel) { }
+        .alert(
+            "Delete Orphaned Worktree?",
+            isPresented: $showDeleteConfirmation,
+            presenting: pendingDeletion
+        ) { orphan in
+            Button("Cancel", role: .cancel) {}
             Button("Delete Worktree", role: .destructive) {
                 deleteOrphan(orphan)
             }
@@ -176,7 +183,8 @@ struct OrphanedWorktreesSheet: View {
 
     private func deleteConfirmationMessage(for orphan: OrphanedWorktreeInfo) -> String {
         let branch = orphan.branchName ?? "Unknown branch"
-        return "Branch: \(branch)\nPath: \(orphan.path)\n\nThis permanently deletes the worktree from disk. This cannot be undone."
+        return "Branch: \(branch)\nPath: \(orphan.path)\n\n"
+            + "This permanently deletes the worktree from disk. This cannot be undone."
     }
 }
 

@@ -22,7 +22,7 @@ extension NSColor {
         }
 
         guard hexString.count == 6,
-              let value = UInt64(hexString, radix: 16)
+            let value = UInt64(hexString, radix: 16)
         else {
             return nil
         }
@@ -230,7 +230,7 @@ struct GhosttyConfig {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         let searchPaths = [
             "\(home)/.config/ghostty/themes/\(themeName)",
-            "/Applications/Ghostty.app/Contents/Resources/ghostty/themes/\(themeName)",
+            "/Applications/Ghostty.app/Contents/Resources/ghostty/themes/\(themeName)"
         ]
 
         for path in searchPaths {

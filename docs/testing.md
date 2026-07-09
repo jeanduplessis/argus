@@ -6,6 +6,28 @@ Argus uses Apple's Swift Testing framework through the `ArgusTests` Xcode unit-t
 ./scripts/test.sh
 ```
 
+The complete suite checks formatting with [swift-format](https://github.com/swiftlang/swift-format) and then runs
+SwiftLint before building. Swift 6 toolchains include swift-format; install SwiftLint with Homebrew:
+
+```sh
+brew install swiftlint
+```
+
+Run linting by itself with:
+
+```sh
+./scripts/lint.sh
+```
+
+Format all Swift sources with:
+
+```sh
+./scripts/format.sh
+```
+
+Set `SWIFT_FORMAT_BIN` or `SWIFTLINT_BIN` to use executables outside the active Swift toolchain and standard Homebrew
+paths.
+
 Tests are grouped by product domain rather than implementation chronology:
 
 - `WorkspaceTests` covers window, sidebar, tab, and panel behavior.

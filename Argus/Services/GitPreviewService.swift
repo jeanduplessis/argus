@@ -60,11 +60,13 @@ final class GitPreviewService: GitPreviewProviding {
                 case .diff:
                     content = try self.diffContentLoader.load(rootPath: rootPath, file: file)
                 case .blame:
-                    guard let command = self.commandBuilder.command(
-                        kind: kind,
-                        rootPath: rootPath,
-                        file: file
-                    ) else {
+                    guard
+                        let command = self.commandBuilder.command(
+                            kind: kind,
+                            rootPath: rootPath,
+                            file: file
+                        )
+                    else {
                         return .failed(
                             kind: kind,
                             path: file.path,
@@ -73,7 +75,7 @@ final class GitPreviewService: GitPreviewProviding {
                     }
                     let result = try self.commandRunner.run(command)
                     let output = result.stdout.isEmpty ? result.stderr : result.stdout
-                    content = .ansiText(String(decoding: output, as: UTF8.self))
+                    content = .ansiText(String(bytes: output, encoding: .utf8) ?? "")
                 }
                 return .loaded(GitPreview(kind: kind, path: file.path, content: content))
             } catch {
@@ -133,11 +135,12 @@ struct GitDiffContentLoader: Sendable {
     func load(rootPath: String, file: GitFileChange) throws -> GitPreviewContent {
         do {
             let sides = try contentSides(rootPath: rootPath, file: file)
-            return .diff(GitDiffPreview(
-                fileName: file.path,
-                oldContent: try text(from: sides.old),
-                newContent: try text(from: sides.new)
-            ))
+            return .diff(
+                GitDiffPreview(
+                    fileName: file.path,
+                    oldContent: try text(from: sides.old),
+                    newContent: try text(from: sides.new)
+                ))
         } catch GitDiffContentError.binary {
             return .ansiText("Binary file differs")
         } catch GitDiffContentError.tooLarge {
@@ -148,43 +151,9 @@ struct GitDiffContentLoader: Sendable {
     private func contentSides(rootPath: String, file: GitFileChange) throws -> (old: Data, new: Data) {
         switch file.sectionKey {
         case "staged":
-            switch file.status {
-            case .added:
-                return (Data(), try gitObject(rootPath: rootPath, specifier: ":\(file.path)"))
-            case .deleted:
-                return (try gitObject(rootPath: rootPath, specifier: "HEAD:\(file.path)"), Data())
-            case .renamed, .copied:
-                let originalPath = file.originalPath ?? file.path
-                return (
-                    try gitObject(rootPath: rootPath, specifier: "HEAD:\(originalPath)"),
-                    try gitObject(rootPath: rootPath, specifier: ":\(file.path)")
-                )
-            case .unmerged:
-                throw GitDiffContentError.unavailable("Diff preview is unavailable for unmerged files")
-            default:
-                return (
-                    try gitObject(rootPath: rootPath, specifier: "HEAD:\(file.path)"),
-                    try gitObject(rootPath: rootPath, specifier: ":\(file.path)")
-                )
-            }
+            return try stagedContentSides(rootPath: rootPath, file: file)
         case "unstaged":
-            switch file.status {
-            case .deleted:
-                return (try gitObject(rootPath: rootPath, specifier: ":\(file.path)"), Data())
-            case .renamed:
-                let originalPath = file.originalPath ?? file.path
-                return (
-                    try gitObject(rootPath: rootPath, specifier: ":\(originalPath)"),
-                    try workingTreeFile(rootPath: rootPath, path: file.path)
-                )
-            case .unmerged:
-                throw GitDiffContentError.unavailable("Diff preview is unavailable for unmerged files")
-            default:
-                return (
-                    try gitObject(rootPath: rootPath, specifier: ":\(file.path)"),
-                    try workingTreeFile(rootPath: rootPath, path: file.path)
-                )
-            }
+            return try unstagedContentSides(rootPath: rootPath, file: file)
         case "untracked":
             return (Data(), try workingTreeFile(rootPath: rootPath, path: file.path))
         default:
@@ -192,23 +161,73 @@ struct GitDiffContentLoader: Sendable {
         }
     }
 
+    private func stagedContentSides(
+        rootPath: String,
+        file: GitFileChange
+    ) throws -> (old: Data, new: Data) {
+        switch file.status {
+        case .added:
+            return (Data(), try gitObject(rootPath: rootPath, specifier: ":\(file.path)"))
+        case .deleted:
+            return (try gitObject(rootPath: rootPath, specifier: "HEAD:\(file.path)"), Data())
+        case .renamed, .copied:
+            let originalPath = file.originalPath ?? file.path
+            return (
+                try gitObject(rootPath: rootPath, specifier: "HEAD:\(originalPath)"),
+                try gitObject(rootPath: rootPath, specifier: ":\(file.path)")
+            )
+        case .unmerged:
+            throw GitDiffContentError.unavailable("Diff preview is unavailable for unmerged files")
+        default:
+            return (
+                try gitObject(rootPath: rootPath, specifier: "HEAD:\(file.path)"),
+                try gitObject(rootPath: rootPath, specifier: ":\(file.path)")
+            )
+        }
+    }
+
+    private func unstagedContentSides(
+        rootPath: String,
+        file: GitFileChange
+    ) throws -> (old: Data, new: Data) {
+        switch file.status {
+        case .deleted:
+            return (try gitObject(rootPath: rootPath, specifier: ":\(file.path)"), Data())
+        case .renamed:
+            let originalPath = file.originalPath ?? file.path
+            return (
+                try gitObject(rootPath: rootPath, specifier: ":\(originalPath)"),
+                try workingTreeFile(rootPath: rootPath, path: file.path)
+            )
+        case .unmerged:
+            throw GitDiffContentError.unavailable("Diff preview is unavailable for unmerged files")
+        default:
+            return (
+                try gitObject(rootPath: rootPath, specifier: ":\(file.path)"),
+                try workingTreeFile(rootPath: rootPath, path: file.path)
+            )
+        }
+    }
+
     private func gitObject(rootPath: String, specifier: String) throws -> Data {
-        let sizeResult = try commandRunner.run(GitPreviewCommand(
-            executablePath: "/usr/bin/git",
-            arguments: ["-C", rootPath, "cat-file", "-s", specifier],
-            successfulExitCodes: [0]
-        ))
-        let sizeText = String(decoding: sizeResult.stdout, as: UTF8.self)
+        let sizeResult = try commandRunner.run(
+            GitPreviewCommand(
+                executablePath: "/usr/bin/git",
+                arguments: ["-C", rootPath, "cat-file", "-s", specifier],
+                successfulExitCodes: [0]
+            ))
+        let sizeText = (String(bytes: sizeResult.stdout, encoding: .utf8) ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         if let size = Int(sizeText), size > Self.maximumFileSize {
             throw GitDiffContentError.tooLarge
         }
 
-        let result = try commandRunner.run(GitPreviewCommand(
-            executablePath: "/usr/bin/git",
-            arguments: ["-C", rootPath, "cat-file", "blob", specifier],
-            successfulExitCodes: [0]
-        ))
+        let result = try commandRunner.run(
+            GitPreviewCommand(
+                executablePath: "/usr/bin/git",
+                arguments: ["-C", rootPath, "cat-file", "blob", specifier],
+                successfulExitCodes: [0]
+            ))
         return result.stdout
     }
 
@@ -242,7 +261,8 @@ struct GitDiffContentLoader: Sendable {
             throw GitDiffContentError.binary
         }
         if contents.split(separator: "\n", omittingEmptySubsequences: false)
-            .contains(where: { $0.utf8.count > Self.maximumLineLength }) {
+            .contains(where: { $0.utf8.count > Self.maximumLineLength })
+        {
             throw GitDiffContentError.tooLarge
         }
         return contents
@@ -308,7 +328,7 @@ private func runPreviewCommand(_ command: GitPreviewCommand) throws -> GitPrevie
     group.wait()
 
     guard command.successfulExitCodes.contains(process.terminationStatus) else {
-        let message = String(decoding: stderrBox.data, as: UTF8.self)
+        let message = (String(bytes: stderrBox.data, encoding: .utf8) ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         throw GitPreviewCommandError(message: message.isEmpty ? "preview command failed" : message)
     }

@@ -144,8 +144,9 @@ struct NewProjectSheet: View {
         isRepositoryValid = false
 
         Task {
-            guard let repositoryRoot = try? await workspaceManager.worktreeService
-                .canonicalRepositoryRoot(for: selectedPath)
+            guard
+                let repositoryRoot = try? await workspaceManager.worktreeService
+                    .canonicalRepositoryRoot(for: selectedPath)
             else {
                 validationError = "Not a git repository"
                 isValidating = false

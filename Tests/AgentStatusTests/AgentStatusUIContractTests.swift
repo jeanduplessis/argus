@@ -9,7 +9,7 @@ struct AgentStatusUIContractTests {
         try SourceContract("Argus/App/ArgusApp.swift").containsAll(
             [
                 "@StateObject private var agentStatusStore = AgentStatusStore()",
-                ".environmentObject(agentStatusStore)",
+                ".environmentObject(agentStatusStore)"
             ], "process-wide Agent Status Store ownership"
         )
 
@@ -36,32 +36,29 @@ struct AgentStatusUIContractTests {
             [
                 "workspace.layout(for: tabId).leaves",
                 "workspace.panels[$0]?.panelType == .terminal",
-                "agentStatusStore.effectiveStatus(workspaceId: workspace.id)",
+                "agentStatusStore.effectiveStatus(workspaceId: workspace.id)"
             ], "Terminal Surface and Workspace-level tab status resolution"
         )
     }
 
     @Test
     func sidebarStatusReplacesTypeIconAndNamesStateForAccessibility() throws {
-        let sidebar = try SourceContract("Argus/Views/Sidebar/SidebarView.swift")
-        let row = try sidebar.section(
-            after: "private struct SidebarWorkspaceRow: View",
-            before: "// MARK: - NSVisualEffectView Wrapper"
-        )
+        let row = try SourceContract("Argus/Views/Sidebar/SidebarView+WorkspaceRow.swift")
 
-        #expect(row.contains("if let agentStatus"))
-        #expect(row.contains("agentStatus.state.symbolName"))
-        #expect(row.contains("workspace.workspaceType.icon"))
-        #expect(row.contains(".accessibilityValue(workspaceAccessibilityValue)"))
-        #expect(row.contains(#"values.append("Agent status: \(agentStatus.state.label)")"#))
-        #expect(row.contains("includesNonterminalPanels:"))
+        row.containsAll(
+            [
+                "if let agentStatus", "agentStatus.state.symbolName",
+                "workspace.workspaceType.icon", ".accessibilityValue(workspaceAccessibilityValue)",
+                #"values.append("Agent status: \(agentStatus.state.label)")"#,
+                "includesNonterminalPanels:"
+            ], "sidebar Agent Status display")
     }
 
     @Test
     func implementationDoesNotInventDeferredAgentSubsystems() throws {
         let store = try SourceContract("Argus/Services/AgentStatusStore.swift")
         for forbidden in [
-            "Socket", "PID", "Process", "JSON", "Codable", "NotificationCenter", "TTS", "speech",
+            "Socket", "PID", "Process", "JSON", "Codable", "NotificationCenter", "TTS", "speech"
         ] {
             store.excludes(forbidden, "Agent Status Store must remain socket-independent and ephemeral")
         }

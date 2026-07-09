@@ -102,13 +102,16 @@ final class BrowserPanel: NSObject, Panel, ObservableObject {
             webView.load(URLRequest(url: currentURL))
         }
     }
+}
 
+extension BrowserPanel {
     static func resolvedURL(from input: String) -> URL? {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
 
         let lowercased = trimmed.lowercased()
-        let hasExplicitScheme = trimmed.contains("://")
+        let hasExplicitScheme =
+            trimmed.contains("://")
             || ["about:", "data:", "file:", "mailto:"].contains(where: lowercased.hasPrefix)
         let candidate = hasExplicitScheme ? trimmed : "https://\(trimmed)"
 
@@ -211,8 +214,8 @@ final class BrowserPanel: NSObject, Panel, ObservableObject {
         webView.allowsApplicationFocus = false
 
         guard let window = webView.window,
-              let firstResponder = window.firstResponder as? NSView,
-              firstResponder == webView || firstResponder.isDescendant(of: webView)
+            let firstResponder = window.firstResponder as? NSView,
+            firstResponder == webView || firstResponder.isDescendant(of: webView)
         else { return }
         window.makeFirstResponder(nil)
     }
@@ -267,11 +270,13 @@ final class BrowserPanel: NSObject, Panel, ObservableObject {
             if isNewQuery || self.currentFindMatch == 0 {
                 self.currentFindMatch = direction == .previous ? count : 1
             } else if direction == .previous {
-                self.currentFindMatch = self.currentFindMatch == 1
+                self.currentFindMatch =
+                    self.currentFindMatch == 1
                     ? count
                     : self.currentFindMatch - 1
             } else {
-                self.currentFindMatch = self.currentFindMatch == count
+                self.currentFindMatch =
+                    self.currentFindMatch == count
                     ? 1
                     : self.currentFindMatch + 1
             }
@@ -283,42 +288,42 @@ final class BrowserPanel: NSObject, Panel, ObservableObject {
     /// selection and next/previous navigation continue to use `WKWebView.find`.
     private func countMatches(for query: String, completion: @escaping @MainActor (Int) -> Void) {
         guard let encoded = try? JSONEncoder().encode(query),
-              let queryLiteral = String(data: encoded, encoding: .utf8)
+            let queryLiteral = String(data: encoded, encoding: .utf8)
         else {
             completion(0)
             return
         }
 
         let script = """
-        (() => {
-          const needle = \(queryLiteral).toLocaleLowerCase();
-          if (!needle || !document.body) return 0;
-          const walker = document.createTreeWalker(
-            document.body,
-            NodeFilter.SHOW_TEXT,
-            {
-              acceptNode(node) {
-                const parent = node.parentElement;
-                if (!parent || ['SCRIPT', 'STYLE', 'NOSCRIPT'].includes(parent.tagName)) {
-                  return NodeFilter.FILTER_REJECT;
+            (() => {
+              const needle = \(queryLiteral).toLocaleLowerCase();
+              if (!needle || !document.body) return 0;
+              const walker = document.createTreeWalker(
+                document.body,
+                NodeFilter.SHOW_TEXT,
+                {
+                  acceptNode(node) {
+                    const parent = node.parentElement;
+                    if (!parent || ['SCRIPT', 'STYLE', 'NOSCRIPT'].includes(parent.tagName)) {
+                      return NodeFilter.FILTER_REJECT;
+                    }
+                    return NodeFilter.FILTER_ACCEPT;
+                  }
                 }
-                return NodeFilter.FILTER_ACCEPT;
+              );
+              let count = 0;
+              let node;
+              while ((node = walker.nextNode())) {
+                const text = (node.nodeValue || '').toLocaleLowerCase();
+                let offset = 0;
+                while ((offset = text.indexOf(needle, offset)) !== -1) {
+                  count += 1;
+                  offset += Math.max(needle.length, 1);
+                }
               }
-            }
-          );
-          let count = 0;
-          let node;
-          while ((node = walker.nextNode())) {
-            const text = (node.nodeValue || '').toLocaleLowerCase();
-            let offset = 0;
-            while ((offset = text.indexOf(needle, offset)) !== -1) {
-              count += 1;
-              offset += Math.max(needle.length, 1);
-            }
-          }
-          return count;
-        })();
-        """
+              return count;
+            })();
+            """
 
         webView.evaluateJavaScript(script) { value, _ in
             let count = (value as? NSNumber)?.intValue ?? 0

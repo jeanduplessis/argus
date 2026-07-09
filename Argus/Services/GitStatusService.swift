@@ -3,13 +3,29 @@ import Foundation
 protocol GitStatusProviding: Sendable {
     func status(rootPath: String) async -> GitStatusLoadState
     func initializeRepository(rootPath: String) async -> GitStatusLoadState
-    func performFileOperation(_ operation: GitStatusFileOperation, rootPath: String, path: String) async -> GitStatusLoadState
-    func performBulkFileOperation(_ operation: GitStatusFileOperation, rootPath: String, paths: [String]) async -> GitStatusLoadState
-    func performSectionFileOperation(_ operation: GitStatusFileOperation, rootPath: String, sectionKey: String) async -> GitStatusLoadState
+    func performFileOperation(
+        _ operation: GitStatusFileOperation,
+        rootPath: String,
+        path: String
+    ) async -> GitStatusLoadState
+    func performBulkFileOperation(
+        _ operation: GitStatusFileOperation,
+        rootPath: String,
+        paths: [String]
+    ) async -> GitStatusLoadState
+    func performSectionFileOperation(
+        _ operation: GitStatusFileOperation,
+        rootPath: String,
+        sectionKey: String
+    ) async -> GitStatusLoadState
 }
 
 extension GitStatusProviding {
-    func performSectionFileOperation(_ operation: GitStatusFileOperation, rootPath: String, sectionKey: String) async -> GitStatusLoadState {
+    func performSectionFileOperation(
+        _ operation: GitStatusFileOperation,
+        rootPath: String,
+        sectionKey: String
+    ) async -> GitStatusLoadState {
         .fileOperationFailed(rootPath: rootPath, message: "Section operation is unavailable")
     }
 }
@@ -46,11 +62,19 @@ final class GitStatusService: GitStatusProviding {
         }.value
     }
 
-    func performFileOperation(_ operation: GitStatusFileOperation, rootPath: String, path: String) async -> GitStatusLoadState {
+    func performFileOperation(
+        _ operation: GitStatusFileOperation,
+        rootPath: String,
+        path: String
+    ) async -> GitStatusLoadState {
         await performBulkFileOperation(operation, rootPath: rootPath, paths: [path])
     }
 
-    func performBulkFileOperation(_ operation: GitStatusFileOperation, rootPath: String, paths: [String]) async -> GitStatusLoadState {
+    func performBulkFileOperation(
+        _ operation: GitStatusFileOperation,
+        rootPath: String,
+        paths: [String]
+    ) async -> GitStatusLoadState {
         await Task.detached(priority: .utility) {
             do {
                 try performOperationSynchronously(operation, rootPath: rootPath, paths: paths)
@@ -68,7 +92,11 @@ final class GitStatusService: GitStatusProviding {
         }.value
     }
 
-    func performSectionFileOperation(_ operation: GitStatusFileOperation, rootPath: String, sectionKey: String) async -> GitStatusLoadState {
+    func performSectionFileOperation(
+        _ operation: GitStatusFileOperation,
+        rootPath: String,
+        sectionKey: String
+    ) async -> GitStatusLoadState {
         await Task.detached(priority: .utility) {
             do {
                 try performSectionOperationSynchronously(operation, rootPath: rootPath, sectionKey: sectionKey)
@@ -144,16 +172,21 @@ private func allUntrackedPaths(rootPath: String) throws -> [String] {
 
 private func statusSynchronously(rootPath: String) -> GitStatusLoadState {
     do {
-        let result = try runGit(args: ["-C", rootPath, "status", "--porcelain=v2", "--branch", "--untracked-files=all"])
+        let result = try runGit(args: [
+            "-C", rootPath, "status", "--porcelain=v2", "--branch", "--untracked-files=all"
+        ])
         let summary = GitStatusPorcelainParser.parse(result.stdout, rootPath: rootPath)
-        let unstagedStats = GitDiffStatParser.parse((try? runGit(args: ["-C", rootPath, "diff", "--numstat"]).stdout) ?? "")
-        let stagedStats = GitDiffStatParser.parse((try? runGit(args: ["-C", rootPath, "diff", "--cached", "--numstat"]).stdout) ?? "")
+        let unstagedOutput = try? runGit(args: ["-C", rootPath, "diff", "--numstat"]).stdout
+        let stagedOutput = try? runGit(args: ["-C", rootPath, "diff", "--cached", "--numstat"]).stdout
+        let unstagedStats = GitDiffStatParser.parse(unstagedOutput ?? "")
+        let stagedStats = GitDiffStatParser.parse(stagedOutput ?? "")
         let untrackedStats = diffStatsForUntrackedFiles(rootPath: rootPath, files: summary.untrackedFiles)
-        return .loaded(summary.applying(
-            stagedStats: stagedStats,
-            unstagedStats: unstagedStats,
-            untrackedStats: untrackedStats
-        ))
+        return .loaded(
+            summary.applying(
+                stagedStats: stagedStats,
+                unstagedStats: unstagedStats,
+                untrackedStats: untrackedStats
+            ))
     } catch let error as GitStatusServiceError {
         switch error {
         case .notRepository:
@@ -174,7 +207,7 @@ private func diffStatsForUntrackedFiles(rootPath: String, files: [GitFileChange]
     for file in files {
         let fileURL = rootURL.appendingPathComponent(file.path).standardizedFileURL
         guard fileURL.path.hasPrefix(rootPathWithSlash),
-              let data = try? Data(contentsOf: fileURL)
+            let data = try? Data(contentsOf: fileURL)
         else { continue }
 
         if data.contains(0) {

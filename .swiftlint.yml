@@ -1,0 +1,30 @@
+included:
+  - Argus
+  - ArgusCLI
+  - Tests
+  - Package.swift
+
+strict: true
+check_for_updates: false
+
+opening_brace:
+  ignore_multiline_function_signatures: true
+  ignore_multiline_statement_conditions: true
+
+identifier_name:
+  excluded:
+    - "^b$"
+    - "^c$"
+    - "^fm$"
+    - "^g$"
+    - "^go$"
+    - "^h$"
+    - "^i$"
+    - "^id$"
+    - "^r$"
+    - "^s$"
+    - "^ud$"
+    - "^w$"
+    - "^x$"
+    - "^xy$"
+    - "^y$"

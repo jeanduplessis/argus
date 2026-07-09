@@ -2,59 +2,58 @@ import Foundation
 
 struct GitStatusPorcelainParser: Sendable {
     static func parse(_ output: String, rootPath: String) -> GitStatusSummary {
-        var branchName: String?
-        var upstreamName: String?
-        var aheadCount = 0
-        var behindCount = 0
-        var stagedFiles: [GitFileChange] = []
-        var unstagedFiles: [GitFileChange] = []
-        var untrackedFiles: [GitFileChange] = []
+        var status = ParsedGitStatus()
 
         for line in output.components(separatedBy: .newlines) {
-            if line.hasPrefix("# branch.head ") {
-                let value = String(line.dropFirst("# branch.head ".count))
-                branchName = value == "(detached)" ? nil : value
-            } else if line.hasPrefix("# branch.upstream ") {
-                upstreamName = String(line.dropFirst("# branch.upstream ".count))
-            } else if line.hasPrefix("# branch.ab ") {
-                let parts = line.dropFirst("# branch.ab ".count).split(separator: " ")
-                for part in parts {
-                    if part.hasPrefix("+") {
-                        aheadCount = Int(part.dropFirst()) ?? 0
-                    } else if part.hasPrefix("-") {
-                        behindCount = Int(part.dropFirst()) ?? 0
-                    }
-                }
-            } else if line.hasPrefix("? ") {
-                let path = String(line.dropFirst(2))
-                untrackedFiles.append(GitFileChange(path: path, status: .untracked, sectionKey: "untracked"))
-            } else if line.hasPrefix("1 ") {
-                appendOrdinaryChange(line, stagedFiles: &stagedFiles, unstagedFiles: &unstagedFiles)
-            } else if line.hasPrefix("2 ") {
-                appendRenamedOrCopiedChange(line, stagedFiles: &stagedFiles, unstagedFiles: &unstagedFiles)
-            } else if line.hasPrefix("u ") {
-                if let path = pathFromUnmergedLine(line) {
-                    unstagedFiles.append(GitFileChange(path: path, status: .unmerged, sectionKey: "unstaged"))
-                }
-            }
+            parse(line, into: &status)
         }
 
-        return cappedSummary(
-            rootPath: rootPath,
-            branchName: branchName,
-            upstreamName: upstreamName,
-            aheadCount: aheadCount,
-            behindCount: behindCount,
-            stagedFiles: stagedFiles,
-            unstagedFiles: unstagedFiles,
-            untrackedFiles: untrackedFiles
-        )
+        return cappedSummary(rootPath: rootPath, status: status)
+    }
+
+    private static func parse(_ line: String, into status: inout ParsedGitStatus) {
+        if line.hasPrefix("# ") {
+            parseBranch(line, into: &status)
+        } else if line.hasPrefix("? ") {
+            let path = String(line.dropFirst(2))
+            status.untrackedFiles.append(
+                GitFileChange(path: path, status: .untracked, sectionKey: "untracked")
+            )
+        } else if line.hasPrefix("1 ") {
+            appendOrdinaryChange(line, status: &status)
+        } else if line.hasPrefix("2 ") {
+            appendRenamedOrCopiedChange(line, status: &status)
+        } else if line.hasPrefix("u "), let path = pathFromUnmergedLine(line) {
+            status.unstagedFiles.append(
+                GitFileChange(path: path, status: .unmerged, sectionKey: "unstaged")
+            )
+        }
+    }
+
+    private static func parseBranch(_ line: String, into status: inout ParsedGitStatus) {
+        if line.hasPrefix("# branch.head ") {
+            let value = String(line.dropFirst("# branch.head ".count))
+            status.branchName = value == "(detached)" ? nil : value
+        } else if line.hasPrefix("# branch.upstream ") {
+            status.upstreamName = String(line.dropFirst("# branch.upstream ".count))
+        } else if line.hasPrefix("# branch.ab ") {
+            parseBranchCounts(line, into: &status)
+        }
+    }
+
+    private static func parseBranchCounts(_ line: String, into status: inout ParsedGitStatus) {
+        for part in line.dropFirst("# branch.ab ".count).split(separator: " ") {
+            if part.hasPrefix("+") {
+                status.aheadCount = Int(part.dropFirst()) ?? 0
+            } else if part.hasPrefix("-") {
+                status.behindCount = Int(part.dropFirst()) ?? 0
+            }
+        }
     }
 
     private static func appendOrdinaryChange(
         _ line: String,
-        stagedFiles: inout [GitFileChange],
-        unstagedFiles: inout [GitFileChange]
+        status: inout ParsedGitStatus
     ) {
         let fields = line.split(separator: " ", maxSplits: 8, omittingEmptySubsequences: true)
         guard fields.count >= 9 else { return }
@@ -62,15 +61,13 @@ struct GitStatusPorcelainParser: Sendable {
             xy: String(fields[1]),
             path: String(fields[8]),
             originalPath: nil,
-            stagedFiles: &stagedFiles,
-            unstagedFiles: &unstagedFiles
+            status: &status
         )
     }
 
     private static func appendRenamedOrCopiedChange(
         _ line: String,
-        stagedFiles: inout [GitFileChange],
-        unstagedFiles: inout [GitFileChange]
+        status: inout ParsedGitStatus
     ) {
         let fields = line.split(separator: " ", maxSplits: 9, omittingEmptySubsequences: true)
         guard fields.count >= 10 else { return }
@@ -79,8 +76,7 @@ struct GitStatusPorcelainParser: Sendable {
             xy: String(fields[1]),
             path: paths.first ?? String(fields[9]),
             originalPath: paths.dropFirst().first,
-            stagedFiles: &stagedFiles,
-            unstagedFiles: &unstagedFiles
+            status: &status
         )
     }
 
@@ -93,26 +89,27 @@ struct GitStatusPorcelainParser: Sendable {
         xy: String,
         path: String,
         originalPath: String?,
-        stagedFiles: inout [GitFileChange],
-        unstagedFiles: inout [GitFileChange]
+        status parsedStatus: inout ParsedGitStatus
     ) {
         let characters = Array(xy)
         guard characters.count >= 2 else { return }
         if characters[0] != "." {
-            stagedFiles.append(GitFileChange(
-                path: path,
-                originalPath: originalPath,
-                status: status(for: characters[0]),
-                sectionKey: "staged"
-            ))
+            parsedStatus.stagedFiles.append(
+                GitFileChange(
+                    path: path,
+                    originalPath: originalPath,
+                    status: status(for: characters[0]),
+                    sectionKey: "staged"
+                ))
         }
         if characters[1] != "." {
-            unstagedFiles.append(GitFileChange(
-                path: path,
-                originalPath: originalPath,
-                status: status(for: characters[1]),
-                sectionKey: "unstaged"
-            ))
+            parsedStatus.unstagedFiles.append(
+                GitFileChange(
+                    path: path,
+                    originalPath: originalPath,
+                    status: status(for: characters[1]),
+                    sectionKey: "unstaged"
+                ))
         }
     }
 
@@ -130,31 +127,25 @@ struct GitStatusPorcelainParser: Sendable {
 
     private static func cappedSummary(
         rootPath: String,
-        branchName: String?,
-        upstreamName: String?,
-        aheadCount: Int,
-        behindCount: Int,
-        stagedFiles: [GitFileChange],
-        unstagedFiles: [GitFileChange],
-        untrackedFiles: [GitFileChange]
+        status: ParsedGitStatus
     ) -> GitStatusSummary {
-        let total = stagedFiles.count + unstagedFiles.count + untrackedFiles.count
+        let total = status.stagedFiles.count + status.unstagedFiles.count + status.untrackedFiles.count
         var remaining = GitStatusSummary.displayFileLimit
-        let cappedStaged = Array(stagedFiles.prefix(remaining))
+        let cappedStaged = Array(status.stagedFiles.prefix(remaining))
         remaining -= cappedStaged.count
-        let cappedUnstaged = Array(unstagedFiles.prefix(max(remaining, 0)))
+        let cappedUnstaged = Array(status.unstagedFiles.prefix(max(remaining, 0)))
         remaining -= cappedUnstaged.count
-        let cappedUntracked = Array(untrackedFiles.prefix(max(remaining, 0)))
+        let cappedUntracked = Array(status.untrackedFiles.prefix(max(remaining, 0)))
 
         return GitStatusSummary(
             rootPath: rootPath,
-            branchName: branchName,
-            upstreamName: upstreamName,
-            aheadCount: aheadCount,
-            behindCount: behindCount,
-            stagedCount: stagedFiles.count,
-            unstagedCount: unstagedFiles.count,
-            untrackedCount: untrackedFiles.count,
+            branchName: status.branchName,
+            upstreamName: status.upstreamName,
+            aheadCount: status.aheadCount,
+            behindCount: status.behindCount,
+            stagedCount: status.stagedFiles.count,
+            unstagedCount: status.unstagedFiles.count,
+            untrackedCount: status.untrackedFiles.count,
             stagedFiles: cappedStaged,
             unstagedFiles: cappedUnstaged,
             untrackedFiles: cappedUntracked,
@@ -162,4 +153,14 @@ struct GitStatusPorcelainParser: Sendable {
             totalFileCount: total
         )
     }
+}
+
+private struct ParsedGitStatus {
+    var branchName: String?
+    var upstreamName: String?
+    var aheadCount = 0
+    var behindCount = 0
+    var stagedFiles: [GitFileChange] = []
+    var unstagedFiles: [GitFileChange] = []
+    var untrackedFiles: [GitFileChange] = []
 }

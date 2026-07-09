@@ -1,6 +1,6 @@
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 
 /// Direction for splitting terminal panes inside a workspace tab.
 enum PanelSplitDirection: String, Codable, Sendable {
@@ -149,11 +149,11 @@ final class Workspace: Identifiable, ObservableObject {
     @Published var currentDirectory: String
 
     /// Ordered panel IDs defining tab order left-to-right.
-    @Published private(set) var panelOrder: [UUID] = []
+    @Published internal(set) var panelOrder: [UUID] = []
 
     /// Panel instances keyed by their `id`. Uses `any Panel` existential
     /// because a workspace can contain mixed terminal and browser panels.
-    @Published private(set) var panels: [UUID: any Panel] = [:]
+    @Published internal(set) var panels: [UUID: any Panel] = [:]
 
     /// The `id` of the currently active (focused) panel, or `nil` if the
     /// workspace has no panels.
@@ -161,12 +161,12 @@ final class Workspace: Identifiable, ObservableObject {
 
     /// Split-pane layout for each top-level tab, keyed by that tab's root
     /// panel id. Tabs without an entry are single-pane tabs.
-    @Published private(set) var tabLayouts: [UUID: PanelLayoutNode] = [:]
+    @Published internal(set) var tabLayouts: [UUID: PanelLayoutNode] = [:]
 
     /// User-assigned terminal tab titles, keyed by top-level panel id.
-    @Published private(set) var terminalCustomTitles: [UUID: String] = [:]
+    @Published internal(set) var terminalCustomTitles: [UUID: String] = [:]
 
-    private var panelCancellables: [UUID: AnyCancellable] = [:]
+    var panelCancellables: [UUID: AnyCancellable] = [:]
 
     // MARK: - Computed properties
 
@@ -232,7 +232,8 @@ final class Workspace: Identifiable, ObservableObject {
     init(id: UUID = UUID(), title: String = "Terminal", workingDirectory: String? = nil) {
         self.id = id
         self.title = title
-        self.currentDirectory = workingDirectory
+        self.currentDirectory =
+            workingDirectory
             ?? FileManager.default.homeDirectoryForCurrentUser.path
 
         // Spec §Workspaces rule 7: new workspaces start with one terminal panel.
@@ -261,7 +262,8 @@ final class Workspace: Identifiable, ObservableObject {
     ) {
         self.id = id
         self.title = title
-        self.currentDirectory = workingDirectory
+        self.currentDirectory =
+            workingDirectory
             ?? FileManager.default.homeDirectoryForCurrentUser.path
         self.projectId = projectId
         self.branchName = branchName
@@ -334,301 +336,4 @@ final class Workspace: Identifiable, ObservableObject {
             .map { terminalCustomTitles[$0] }
     }
 
-    // MARK: - Panel Management
-
-    /// Adds a panel to this workspace at the end of the tab order.
-    ///
-    /// If no panel is currently active, the new panel becomes active.
-    func addPanel(_ panel: any Panel) {
-        panels[panel.id] = panel
-        observeBrowserPanel(panel)
-        panelOrder.append(panel.id)
-        tabLayouts[panel.id] = .leaf(panel.id)
-        if activePanelId == nil {
-            activePanelId = panel.id
-        }
-    }
-
-    /// Creates a new terminal panel, adds it to the workspace, and makes it
-    /// the active panel.
-    ///
-    /// - Parameter workingDirectory: Working directory for the new terminal.
-    ///   Defaults to this workspace's `currentDirectory`.
-    /// - Returns: The newly created terminal panel.
-    @discardableResult
-    func addTerminalPanel(workingDirectory: String? = nil) -> TerminalPanel {
-        let panel = TerminalPanel(
-            workspaceId: id,
-            workingDirectory: workingDirectory ?? currentDirectory
-        )
-
-        panels[panel.id] = panel
-        panelOrder.append(panel.id)
-        tabLayouts[panel.id] = .leaf(panel.id)
-        selectPanel(panel.id)
-
-        return panel
-    }
-
-    /// Opens a workspace file as a top-level tab. If the same file is already
-    /// open in this workspace, that tab is selected instead of duplicated.
-    @discardableResult
-    func openFilePanel(rootPath: String, relativePath: String) -> FilePanel {
-        let standardizedRootPath = URL(fileURLWithPath: rootPath).standardizedFileURL.path
-        if let existing = panels.values.compactMap({ $0 as? FilePanel }).first(where: {
-            $0.rootPath == standardizedRootPath && $0.relativePath == relativePath
-        }) {
-            selectPanel(existing.id)
-            return existing
-        }
-
-        let panel = FilePanel(rootPath: standardizedRootPath, relativePath: relativePath)
-        panels[panel.id] = panel
-        if let tabId = activeTabId,
-           let activeIndex = panelOrder.firstIndex(of: tabId) {
-            panelOrder.insert(panel.id, at: activeIndex + 1)
-        } else {
-            panelOrder.append(panel.id)
-        }
-        tabLayouts[panel.id] = .leaf(panel.id)
-        selectPanel(panel.id)
-        return panel
-    }
-
-    /// Creates a Browser Panel as a top-level tab immediately after the Active Tab.
-    @discardableResult
-    func addBrowserPanel(url: URL? = nil) -> BrowserPanel {
-        let panel = BrowserPanel(currentURL: url)
-        panels[panel.id] = panel
-        observeBrowserPanel(panel)
-        if let tabId = activeTabId,
-           let activeIndex = panelOrder.firstIndex(of: tabId) {
-            panelOrder.insert(panel.id, at: activeIndex + 1)
-        } else {
-            panelOrder.append(panel.id)
-        }
-        tabLayouts[panel.id] = .leaf(panel.id)
-        selectPanel(panel.id)
-        return panel
-    }
-
-    /// Opens a git diff or blame preview as a top-level tab. Reopening the same
-    /// preview refreshes its content instead of creating a duplicate tab.
-    @discardableResult
-    func openGitPreviewPanel(rootPath: String, preview: GitPreview) -> GitPreviewPanel {
-        let standardizedRootPath = URL(fileURLWithPath: rootPath).standardizedFileURL.path
-        if let existing = panels.values.compactMap({ $0 as? GitPreviewPanel }).first(where: {
-            $0.rootPath == standardizedRootPath
-                && $0.preview.kind == preview.kind
-                && $0.preview.path == preview.path
-        }) {
-            existing.update(preview: preview)
-            selectPanel(existing.id)
-            return existing
-        }
-
-        let panel = GitPreviewPanel(rootPath: standardizedRootPath, preview: preview)
-        panels[panel.id] = panel
-        if let tabId = activeTabId,
-           let activeIndex = panelOrder.firstIndex(of: tabId) {
-            panelOrder.insert(panel.id, at: activeIndex + 1)
-        } else {
-            panelOrder.append(panel.id)
-        }
-        tabLayouts[panel.id] = .leaf(panel.id)
-        selectPanel(panel.id)
-        return panel
-    }
-
-    func updateOpenFilePanel(rootPath: String, oldPath: String, newPath: String) {
-        let standardizedRootPath = URL(fileURLWithPath: rootPath).standardizedFileURL.path
-        for panel in panels.values.compactMap({ $0 as? FilePanel })
-            where panel.rootPath == standardizedRootPath && panel.relativePath == oldPath
-        {
-            panel.updatePath(rootPath: standardizedRootPath, relativePath: newPath)
-        }
-    }
-
-    /// Splits the focused terminal pane inside the active tab. The new pane
-    /// starts in the focused pane's working directory and becomes focused.
-    ///
-    /// Splits are pane-local: they do not create another top-level tab.
-    @discardableResult
-    func splitActiveTerminal(direction: PanelSplitDirection) -> TerminalPanel? {
-        guard let activePanelId,
-              let activeTerminal = panels[activePanelId] as? TerminalPanel,
-              let tabId = activeTabId
-        else { return nil }
-
-        let panel = TerminalPanel(
-            workspaceId: id,
-            workingDirectory: activeTerminal.directory.isEmpty ? currentDirectory : activeTerminal.directory
-        )
-        panels[panel.id] = panel
-
-        let split = PanelLayoutNode.split(
-            direction: direction,
-            ratio: 0.5,
-            first: .leaf(activePanelId),
-            second: .leaf(panel.id)
-        )
-        tabLayouts[tabId] = layout(for: tabId).replacingLeaf(activePanelId, with: split)
-        selectPanel(panel.id)
-
-        return panel
-    }
-
-    /// Removes one Panel while preserving sibling Panes in its Top-level Tab.
-    ///
-    /// Kept for source compatibility. Call `closeTab` or `closePane` when the
-    /// interaction's layout scope is known.
-    func removePanel(_ panelId: UUID) {
-        closePane(panelId)
-    }
-
-    /// Closes a Top-level Tab and every Pane in its split layout.
-    func closeTab(_ tabId: UUID) {
-        guard let removedIndex = panelOrder.firstIndex(of: tabId) else { return }
-
-        let leafIds = layout(for: tabId).leaves
-        let removedPanels = leafIds.compactMap { panels.removeValue(forKey: $0) }
-        for leafId in leafIds {
-            terminalCustomTitles.removeValue(forKey: leafId)
-            panelCancellables.removeValue(forKey: leafId)
-        }
-        panelOrder.remove(at: removedIndex)
-        tabLayouts.removeValue(forKey: tabId)
-
-        removedPanels.forEach { $0.close() }
-
-        if let activePanelId, leafIds.contains(activePanelId) {
-            let nextIndex = min(removedIndex, panelOrder.count - 1)
-            if panelOrder.indices.contains(nextIndex) {
-                selectPanel(panelOrder[nextIndex])
-            } else {
-                self.activePanelId = nil
-            }
-        }
-    }
-
-    /// Closes one Pane. Closing the only Pane delegates to Top-level Tab closure.
-    func closePane(_ panelId: UUID) {
-        guard panels[panelId] != nil,
-              let tabId = panelOrder.first(where: { layout(for: $0).contains(panelId) })
-        else { return }
-
-        let oldLayout = layout(for: tabId)
-        guard oldLayout.leaves.count > 1 else {
-            closeTab(tabId)
-            return
-        }
-        guard let newLayout = oldLayout.removingLeaf(panelId) else { return }
-
-        let removedPanel = panels.removeValue(forKey: panelId)
-        panelCancellables.removeValue(forKey: panelId)
-        let tabTitle = terminalCustomTitles.removeValue(forKey: panelId)
-
-        if panelId == tabId,
-           let tabIndex = panelOrder.firstIndex(of: tabId),
-           let replacementTabId = newLayout.leaves.first {
-            panelOrder[tabIndex] = replacementTabId
-            tabLayouts.removeValue(forKey: tabId)
-            tabLayouts[replacementTabId] = newLayout
-            if let tabTitle, panels[replacementTabId] is TerminalPanel {
-                terminalCustomTitles[replacementTabId] = tabTitle
-            }
-        } else {
-            tabLayouts[tabId] = newLayout
-        }
-
-        removedPanel?.close()
-
-        if activePanelId == panelId, let nextId = newLayout.leaves.first {
-            selectPanel(nextId)
-        }
-    }
-
-    /// Closes the focused pane. If it is the only pane in the tab, this closes
-    /// the top-level tab.
-    func closeActivePaneOrTab() {
-        guard let activePanelId else { return }
-        closePane(activePanelId)
-    }
-
-    /// Switches the active panel, unfocusing the previous one and focusing
-    /// the new one.
-    func selectPanel(_ panelId: UUID) {
-        let focusPanelId: UUID
-        if panelOrder.contains(panelId) {
-            focusPanelId = layout(for: panelId).leaves.first ?? panelId
-        } else {
-            focusPanelId = panelId
-        }
-        guard panels[focusPanelId] != nil else { return }
-
-        if activePanelId == focusPanelId {
-            panels[focusPanelId]?.focus()
-            return
-        }
-
-        // Unfocus the previously active panel.
-        if let prevId = activePanelId, let prev = panels[prevId] {
-            prev.unfocus()
-        }
-
-        activePanelId = focusPanelId
-
-        if let panel = panels[focusPanelId] {
-            panel.focus()
-        }
-    }
-
-    /// Reorders a panel tab from one index to another within the tab bar.
-    ///
-    /// Both indices must be valid; out-of-range indices are ignored.
-    func reorderPanel(from source: Int, to destination: Int) {
-        guard source >= 0, source < panelOrder.count,
-              destination >= 0, destination <= panelOrder.count,
-              source != destination
-        else { return }
-
-        let panelId = panelOrder.remove(at: source)
-        let insertionIndex = min(destination, panelOrder.count)
-        panelOrder.insert(panelId, at: insertionIndex)
-    }
-
-    // MARK: - Title Management
-
-    /// Sets a terminal tab's custom title. A blank title restores its ordinal label.
-    func renameTerminalPanel(_ panelId: UUID, title newTitle: String) {
-        guard panelOrder.contains(panelId), panels[panelId] is TerminalPanel else { return }
-        let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            terminalCustomTitles.removeValue(forKey: panelId)
-        } else {
-            terminalCustomTitles[panelId] = trimmed
-        }
-    }
-
-    /// Updates the derived title (from shell cwd / process title).
-    ///
-    /// Empty or whitespace-only values are ignored.
-    func updateTitle(_ newTitle: String) {
-        let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty && title != trimmed {
-            title = trimmed
-        }
-    }
-
-    /// Sets or clears the user-assigned custom title.
-    func setCustomTitle(_ newTitle: String?) {
-        customTitle = newTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private func observeBrowserPanel(_ panel: any Panel) {
-        guard let browser = panel as? BrowserPanel else { return }
-        panelCancellables[browser.id] = browser.objectWillChange.sink { [weak self] _ in
-            self?.objectWillChange.send()
-        }
-    }
 }

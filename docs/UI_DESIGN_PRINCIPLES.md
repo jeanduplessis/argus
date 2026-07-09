@@ -113,12 +113,17 @@ Every enabled custom clickable surface MUST provide all of these affordances:
   `contentShape(Rectangle())`.
 - Visible hover feedback.
 - A pointing-hand cursor through `.cursor(.pointingHand)` or a shared equivalent.
+- A tooltip naming the action when the visible content does not name it.
 - An accessible label when the visible content does not name the action.
 
 This rule applies to rows, tabs, disclosure controls, icon buttons, segmented
-chrome controls, and hover-revealed actions. Native text fields, pickers, menus,
-and standard buttons MAY retain native cursor behavior. Disabled controls MUST
-look disabled, reject input, and MUST NOT show a pointing-hand cursor.
+chrome controls, and hover-revealed actions. Every enabled icon-only control MUST
+provide the full set of affordances above, whether implemented as a SwiftUI
+`Button`, an AppKit control, or a custom clickable surface. Icon-only standard
+buttons are not exempt. Native text fields, pickers, menus, and standard buttons
+whose visible text names the action MAY retain native cursor behavior. Disabled
+controls MUST look disabled, reject input, and MUST NOT show a pointing-hand
+cursor.
 
 Use specialized cursors where the operation has a stronger established
 meaning:

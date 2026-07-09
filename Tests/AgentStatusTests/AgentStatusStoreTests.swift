@@ -50,11 +50,12 @@ struct AgentStatusStoreTests {
         )
 
         #expect(store.effectiveStatus(workspaceId: workspaceId) == newerWorkspaceEntry)
-        #expect(store.workspaceSummary(
-            workspaceId: workspaceId,
-            terminalSurfaceIds: [firstSurfaceId, secondSurfaceId],
-            includesNonterminalPanels: false
-        ) == newestPanelEntry)
+        #expect(
+            store.workspaceSummary(
+                workspaceId: workspaceId,
+                terminalSurfaceIds: [firstSurfaceId, secondSurfaceId],
+                includesNonterminalPanels: false
+            ) == newestPanelEntry)
     }
 
     @Test
@@ -79,9 +80,10 @@ struct AgentStatusStoreTests {
         )
 
         store.clearStatus(agentKey: "first", workspaceId: firstWorkspaceId)
-        #expect(store.entries.values.contains {
-            $0.agentKey == "second" && $0.scope == .workspace(firstWorkspaceId)
-        })
+        #expect(
+            store.entries.values.contains {
+                $0.agentKey == "second" && $0.scope == .workspace(firstWorkspaceId)
+            })
 
         store.clearStatuses(workspaceId: firstWorkspaceId, surfaceId: surfaceId)
         #expect(store.effectiveStatus(workspaceId: firstWorkspaceId, surfaceId: surfaceId)?.agentKey == "second")

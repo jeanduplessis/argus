@@ -7,13 +7,13 @@ enum ProjectColor: String, Codable, CaseIterable, Sendable {
 
     var nsColor: NSColor {
         switch self {
-        case .red:    return .systemRed
+        case .red: return .systemRed
         case .orange: return .systemOrange
         case .yellow: return .systemYellow
-        case .green:  return .systemGreen
-        case .blue:   return .systemBlue
+        case .green: return .systemGreen
+        case .blue: return .systemBlue
         case .purple: return .systemPurple
-        case .pink:   return .systemPink
+        case .pink: return .systemPink
         }
     }
 }
@@ -27,16 +27,16 @@ enum WorkspaceType: String, Codable, Sendable {
     var label: String {
         switch self {
         case .mainCheckout: return "Main"
-        case .worktree:     return "Worktree"
-        case .external:     return "External"
+        case .worktree: return "Worktree"
+        case .external: return "External"
         }
     }
 
     var icon: String {
         switch self {
         case .mainCheckout: return "folder.fill"
-        case .worktree:     return "arrow.triangle.branch"
-        case .external:     return "folder.badge.questionmark"
+        case .worktree: return "arrow.triangle.branch"
+        case .external: return "folder.badge.questionmark"
         }
     }
 }
@@ -104,7 +104,8 @@ final class Project: Identifiable, ObservableObject {
         self.id = UUID()
         self.repositoryPath = repositoryPath
         self.isCatchAll = false
-        self.displayName = displayName
+        self.displayName =
+            displayName
             ?? (repositoryPath as NSString).lastPathComponent
         self.mainBranch = mainBranch
         self.workspaceIds = []
@@ -126,16 +127,17 @@ final class Project: Identifiable, ObservableObject {
 
     /// Creates the non-removable catch-all project for unassigned workspaces.
     static func catchAll() -> Project {
-        Project(snapshot: ProjectSnapshot(
-            id: UUID(),
-            repositoryPath: "",
-            isCatchAll: true,
-            displayName: "Workspaces",
-            mainBranch: "",
-            workspaceIds: [],
-            isExpanded: true,
-            color: nil
-        ))
+        Project(
+            snapshot: ProjectSnapshot(
+                id: UUID(),
+                repositoryPath: "",
+                isCatchAll: true,
+                displayName: "Workspaces",
+                mainBranch: "",
+                workspaceIds: [],
+                isExpanded: true,
+                color: nil
+            ))
     }
 
     // MARK: - Snapshot
@@ -167,7 +169,7 @@ final class Project: Identifiable, ObservableObject {
 
     func moveWorkspace(from source: Int, to destination: Int) {
         guard source >= 0, source < workspaceIds.count,
-              destination >= 0, destination < workspaceIds.count
+            destination >= 0, destination < workspaceIds.count
         else { return }
 
         let id = workspaceIds.remove(at: source)

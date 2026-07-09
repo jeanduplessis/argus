@@ -97,13 +97,14 @@ final class GitStatusAutoRefreshController {
         var isDirectory: ObjCBool = false
 
         if FileManager.default.fileExists(atPath: dotGitURL.path, isDirectory: &isDirectory),
-           isDirectory.boolValue {
+            isDirectory.boolValue
+        {
             return [rootURL.path]
         }
 
         guard let contents = try? String(contentsOf: dotGitURL, encoding: .utf8),
-              let firstLine = contents.split(whereSeparator: \.isNewline).first,
-              firstLine.hasPrefix("gitdir:")
+            let firstLine = contents.split(whereSeparator: \.isNewline).first,
+            firstLine.hasPrefix("gitdir:")
         else {
             return [rootURL.path]
         }
@@ -190,9 +191,10 @@ final class FSEventsFileWatcher: FileSystemEventWatching, @unchecked Sendable {
             release: nil,
             copyDescription: nil
         )
-        let standardizedPaths = paths.map {
-            URL(fileURLWithPath: $0).standardizedFileURL.path
-        } as CFArray
+        let standardizedPaths =
+            paths.map {
+                URL(fileURLWithPath: $0).standardizedFileURL.path
+            } as CFArray
         let flags = FSEventStreamCreateFlags(
             kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagUseCFTypes
         )

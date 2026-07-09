@@ -112,17 +112,21 @@ struct GitPreviewANSITextRenderer {
                 continue
             }
 
-            result.append(NSAttributedString(
-                string: String(text[index]),
-                attributes: attributes
-            ))
+            result.append(
+                NSAttributedString(
+                    string: String(text[index]),
+                    attributes: attributes
+                ))
             index = text.index(after: index)
         }
 
         return result
     }
 
-    private static func sgrSequence(in text: String, at index: String.Index) -> (codes: [Int], endIndex: String.Index)? {
+    private static func sgrSequence(
+        in text: String,
+        at index: String.Index
+    ) -> (codes: [Int], endIndex: String.Index)? {
         guard text[index] == "\u{001B}" else { return nil }
         let bracketIndex = text.index(after: index)
         guard bracketIndex < text.endIndex, text[bracketIndex] == "[" else { return nil }
@@ -133,7 +137,8 @@ struct GitPreviewANSITextRenderer {
             let character = text[cursor]
             if character == "m" {
                 let endIndex = text.index(after: cursor)
-                let codes = parameterText.isEmpty
+                let codes =
+                    parameterText.isEmpty
                     ? [0]
                     : parameterText.split(separator: ";", omittingEmptySubsequences: false).map { Int($0) ?? 0 }
                 return (codes, endIndex)
@@ -214,7 +219,10 @@ private struct GitPreviewANSITextView: NSViewRepresentable {
         textView.isHorizontallyResizable = true
         textView.isVerticallyResizable = true
         textView.autoresizingMask = [.width]
-        textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainer?.containerSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
         textView.textContainer?.widthTracksTextView = false
 
         scrollView.documentView = textView
@@ -223,9 +231,10 @@ private struct GitPreviewANSITextView: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
-        textView.textStorage?.setAttributedString(GitPreviewANSITextRenderer.attributedString(
-            for: output,
-            foregroundColor: foregroundColor
-        ))
+        textView.textStorage?.setAttributedString(
+            GitPreviewANSITextRenderer.attributedString(
+                for: output,
+                foregroundColor: foregroundColor
+            ))
     }
 }

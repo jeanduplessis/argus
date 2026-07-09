@@ -1,0 +1,133 @@
+import SwiftUI
+
+// MARK: - SidebarWorkspaceRow
+
+/// Individual workspace row showing global index, type icon, display title,
+/// branch name, and panel count badge.
+struct SidebarWorkspaceRow: View {
+    @ObservedObject var workspace: Workspace
+    @EnvironmentObject var agentStatusStore: AgentStatusStore
+    let globalIndex: Int
+    let isSelected: Bool
+    let onSelect: () -> Void
+    @State private var isHovered = false
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 8) {
+                // 1-based global index (for Cmd+N shortcut reference)
+                Text("\(globalIndex)")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .frame(width: 16)
+
+                if let agentStatus {
+                    Image(systemName: agentStatus.state.symbolName)
+                        .font(.system(size: 11))
+                        .foregroundColor(agentStatus.state.color)
+                        .frame(width: 14)
+                        .accessibilityHidden(true)
+                } else {
+                    Image(systemName: workspace.workspaceType.icon)
+                        .font(.system(size: 11))
+                        .foregroundColor(isSelected ? .white : .secondary)
+                        .frame(width: 14)
+                        .accessibilityHidden(true)
+                }
+
+                // Title and branch
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(workspace.displayTitle)
+                        .font(.system(size: 13))
+                        .foregroundColor(isSelected ? .white : .primary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+
+                    if let branch = workspace.branchName {
+                        Text(branch)
+                            .font(.system(size: 10))
+                            .foregroundColor(isSelected ? .white.opacity(0.7) : .secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                }
+
+                Spacer()
+
+                // Panel count badge (shown when > 1 tab)
+                if workspace.panelCount > 1 {
+                    Text("\(workspace.panelCount)")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Color.secondary.opacity(0.15))
+                        .cornerRadius(4)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(backgroundColor)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(focusColor, lineWidth: isFocused ? 1 : 0)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focused($isFocused)
+        .cursor(.pointingHand)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+        .accessibilityLabel(workspaceAccessibilityLabel)
+        .accessibilityValue(workspaceAccessibilityValue)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private var agentStatus: AgentStatusEntry? {
+        let panels = Array(workspace.panels.values)
+        return agentStatusStore.workspaceSummary(
+            workspaceId: workspace.id,
+            terminalSurfaceIds: panels.filter { $0.panelType == .terminal }.map(\.id),
+            includesNonterminalPanels: panels.contains { $0.panelType != .terminal }
+        )
+    }
+
+    private var backgroundColor: Color {
+        if isSelected {
+            return Color.accentColor
+        } else if isHovered || isFocused {
+            return Color.secondary.opacity(0.1)
+        } else {
+            return Color.clear
+        }
+    }
+
+    private var focusColor: Color {
+        isSelected ? Color.white.opacity(0.7) : Color.accentColor
+    }
+
+    private var workspaceAccessibilityLabel: String {
+        var parts = ["Workspace \(globalIndex)", workspace.displayTitle, workspace.workspaceType.label]
+        if let branch = workspace.branchName {
+            parts.append("branch \(branch)")
+        }
+        if workspace.panelCount > 1 {
+            parts.append("\(workspace.panelCount) tabs")
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    private var workspaceAccessibilityValue: String {
+        var values = [isSelected ? "Selected" : "Not selected"]
+        if let agentStatus {
+            values.append("Agent status: \(agentStatus.state.label)")
+        }
+        return values.joined(separator: ", ")
+    }
+}

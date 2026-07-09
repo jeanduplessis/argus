@@ -52,7 +52,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             queue: .main
         ) { [weak self] notification in
             guard let self,
-                  let window = notification.object as? NSWindow else { return }
+                let window = notification.object as? NSWindow
+            else { return }
             self.configureWindow(window)
         }
 
@@ -104,7 +105,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Falls back to "Argus" when no workspace is selected.
     func updateWindowTitle(_ window: NSWindow? = nil) {
         let targetWindow = window ?? NSApp.mainWindow
-        targetWindow?.title = workspaceManager?.activeWorkspaceTitle
+        targetWindow?.title =
+            workspaceManager?.activeWorkspaceTitle
             ?? WorkspaceTitleFormatter.fallbackTitle
     }
 }

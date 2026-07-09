@@ -83,9 +83,9 @@ final class TerminalSurface: ObservableObject, Identifiable {
             queue: .main
         ) { [weak self] notification in
             guard let userInfo = notification.userInfo,
-                  let notifId = userInfo["surfaceId"] as? UUID,
-                  notifId == surfaceId,
-                  let title = userInfo["title"] as? String
+                let notifId = userInfo["surfaceId"] as? UUID,
+                notifId == surfaceId,
+                let title = userInfo["title"] as? String
             else { return }
             self?.title = title
         }
@@ -96,9 +96,9 @@ final class TerminalSurface: ObservableObject, Identifiable {
             queue: .main
         ) { [weak self] notification in
             guard let userInfo = notification.userInfo,
-                  let notifId = userInfo["surfaceId"] as? UUID,
-                  notifId == surfaceId,
-                  let pwd = userInfo["pwd"] as? String
+                let notifId = userInfo["surfaceId"] as? UUID,
+                notifId == surfaceId,
+                let pwd = userInfo["pwd"] as? String
             else { return }
             self?.pwd = pwd
         }
@@ -109,7 +109,7 @@ final class TerminalSurface: ObservableObject, Identifiable {
             queue: .main
         ) { [weak self] notification in
             guard let notifId = notification.object as? UUID,
-                  notifId == surfaceId
+                notifId == surfaceId
             else { return }
             self?.needsDisplay = true
             self?._hostedView?.needsDisplay = true
@@ -121,9 +121,9 @@ final class TerminalSurface: ObservableObject, Identifiable {
             queue: .main
         ) { [weak self] notification in
             guard let userInfo = notification.userInfo,
-                  let notifId = userInfo["surfaceId"] as? UUID,
-                  notifId == surfaceId,
-                  let shapeRaw = userInfo["shape"] as? UInt32
+                let notifId = userInfo["surfaceId"] as? UUID,
+                notifId == surfaceId,
+                let shapeRaw = userInfo["shape"] as? UInt32
             else { return }
             let shape = ghostty_action_mouse_shape_e(rawValue: shapeRaw)
             self?._hostedView?.updateCursor(shape: shape)
@@ -250,8 +250,8 @@ final class TerminalSurface: ObservableObject, Identifiable {
     func requestFocus() {
         setFocus(true)
         guard let view = _hostedView,
-              let window = view.window,
-              window.firstResponder !== view
+            let window = view.window,
+            window.firstResponder !== view
         else { return }
         window.makeFirstResponder(view)
     }

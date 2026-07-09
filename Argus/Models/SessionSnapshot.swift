@@ -20,7 +20,8 @@ struct WorkspaceSnapshot: Codable, Sendable {
 
     var restoredTerminalDirectories: [String] {
         let total = max(panelCount, 1)
-        let sanitized = terminalDirectories
+        let sanitized =
+            terminalDirectories
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
 
@@ -65,14 +66,18 @@ struct WorkspaceSnapshot: Codable, Sendable {
         self.customTitle = customTitle
         self.currentDirectory = currentDirectory
         self.panelCount = panelCount
-        self.terminalDirectories = terminalDirectories ?? Array(
-            repeating: currentDirectory,
-            count: max(panelCount, 1)
-        )
-        self.terminalCustomTitles = terminalCustomTitles ?? Array(
-            repeating: nil,
-            count: max(panelCount, 1)
-        )
+        self.terminalDirectories =
+            terminalDirectories
+            ?? Array(
+                repeating: currentDirectory,
+                count: max(panelCount, 1)
+            )
+        self.terminalCustomTitles =
+            terminalCustomTitles
+            ?? Array(
+                repeating: nil,
+                count: max(panelCount, 1)
+            )
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -138,27 +143,89 @@ struct ArgusSessionSnapshot: Codable, Sendable {
     /// Returns a restore-safe snapshot with project/workspace cross-references
     /// reconciled according to the Phase 2 sidebar hierarchy rules.
     func reconciledForRestore() -> ArgusSessionSnapshot {
-        let workspaceIds = Set(workspaces.map(\.id))
-        let firstCatchAll = projects.first(where: \.isCatchAll) ?? ProjectSnapshot(
-            id: UUID(),
-            repositoryPath: "",
-            isCatchAll: true,
-            displayName: "Workspaces",
-            mainBranch: "",
-            workspaceIds: [],
-            isExpanded: true,
-            color: nil
-        )
-        let namedProjects = projects.filter { !$0.isCatchAll }
-        let namedProjectIds = Set(namedProjects.map(\.id))
+        SessionSnapshotReconciler(snapshot: self).reconcile()
+    }
 
-        let reconciledWorkspaces = workspaces.map { workspace in
+    init(
+        schemaVersion: Int = Self.currentSchemaVersion,
+        selectedWorkspaceId: UUID?,
+        projects: [ProjectSnapshot],
+        workspaces: [WorkspaceSnapshot]
+    ) {
+        self.schemaVersion = schemaVersion
+        self.selectedWorkspaceId = selectedWorkspaceId
+        self.projects = projects
+        self.workspaces = workspaces
+    }
+}
+
+private struct SessionSnapshotReconciler {
+    let snapshot: ArgusSessionSnapshot
+
+    func reconcile() -> ArgusSessionSnapshot {
+        let catchAll = firstCatchAll()
+        let namedProjects = snapshot.projects.filter { !$0.isCatchAll }
+        let reconciledWorkspaces = reconcileWorkspaces(
+            catchAllId: catchAll.id,
+            namedProjectIds: Set(namedProjects.map(\.id))
+        )
+        let workspaceIds = Set(reconciledWorkspaces.map(\.id))
+        let workspaceById = Dictionary(
+            uniqueKeysWithValues: reconciledWorkspaces.map { ($0.id, $0) }
+        )
+        let projects =
+            namedProjects.map {
+                reconciledProject(
+                    $0,
+                    workspaces: reconciledWorkspaces,
+                    workspaceIds: workspaceIds,
+                    workspaceById: workspaceById
+                )
+            } + [
+                reconciledCatchAll(
+                    catchAll,
+                    workspaces: reconciledWorkspaces,
+                    workspaceIds: workspaceIds,
+                    workspaceById: workspaceById
+                )
+            ]
+        let selectedId =
+            snapshot.selectedWorkspaceId.flatMap { workspaceIds.contains($0) ? $0 : nil }
+            ?? reconciledWorkspaces.first?.id
+
+        return ArgusSessionSnapshot(
+            schemaVersion: snapshot.schemaVersion,
+            selectedWorkspaceId: selectedId,
+            projects: projects,
+            workspaces: reconciledWorkspaces
+        )
+    }
+
+    private func firstCatchAll() -> ProjectSnapshot {
+        snapshot.projects.first(where: \.isCatchAll)
+            ?? ProjectSnapshot(
+                id: UUID(),
+                repositoryPath: "",
+                isCatchAll: true,
+                displayName: "Workspaces",
+                mainBranch: "",
+                workspaceIds: [],
+                isExpanded: true,
+                color: nil
+            )
+    }
+
+    private func reconcileWorkspaces(
+        catchAllId: UUID,
+        namedProjectIds: Set<UUID>
+    ) -> [WorkspaceSnapshot] {
+        snapshot.workspaces.map { workspace in
             guard let projectId = workspace.projectId,
-                  namedProjectIds.contains(projectId)
+                namedProjectIds.contains(projectId)
             else {
                 return WorkspaceSnapshot(
                     id: workspace.id,
-                    projectId: firstCatchAll.id,
+                    projectId: catchAllId,
                     branchName: workspace.branchName,
                     workspaceType: workspace.workspaceType,
                     worktreePath: workspace.worktreePath,
@@ -172,72 +239,76 @@ struct ArgusSessionSnapshot: Codable, Sendable {
             }
             return workspace
         }
-        let reconciledWorkspaceById = Dictionary(
-            uniqueKeysWithValues: reconciledWorkspaces.map { ($0.id, $0) }
-        )
+    }
 
-        func orderedWorkspaceIds(for project: ProjectSnapshot) -> [UUID] {
-            var seen = Set<UUID>()
-            var ordered: [UUID] = []
+    private func orderedWorkspaceIds(
+        for project: ProjectSnapshot,
+        workspaces: [WorkspaceSnapshot],
+        workspaceIds: Set<UUID>,
+        workspaceById: [UUID: WorkspaceSnapshot]
+    ) -> [UUID] {
+        var seen = Set<UUID>()
+        var ordered: [UUID] = []
 
-            for workspaceId in project.workspaceIds where workspaceIds.contains(workspaceId) {
-                guard let workspace = reconciledWorkspaceById[workspaceId],
-                      workspace.projectId == project.id,
-                      seen.insert(workspaceId).inserted
-                else { continue }
-                ordered.append(workspaceId)
-            }
-
-            for workspace in reconciledWorkspaces where workspace.projectId == project.id {
-                guard seen.insert(workspace.id).inserted else { continue }
-                ordered.append(workspace.id)
-            }
-
-            return ordered
+        for workspaceId in project.workspaceIds where workspaceIds.contains(workspaceId) {
+            guard let workspace = workspaceById[workspaceId],
+                workspace.projectId == project.id,
+                seen.insert(workspaceId).inserted
+            else { continue }
+            ordered.append(workspaceId)
         }
 
-        let reconciledNamedProjects = namedProjects.map { project in
-            ProjectSnapshot(
-                id: project.id,
-                repositoryPath: project.repositoryPath,
-                isCatchAll: false,
-                displayName: project.displayName,
-                mainBranch: project.mainBranch,
-                workspaceIds: orderedWorkspaceIds(for: project),
-                isExpanded: project.isExpanded,
-                color: project.color
-            )
+        for workspace in workspaces where workspace.projectId == project.id {
+            guard seen.insert(workspace.id).inserted else { continue }
+            ordered.append(workspace.id)
         }
-        let reconciledCatchAll = ProjectSnapshot(
-            id: firstCatchAll.id,
-            repositoryPath: "",
-            isCatchAll: true,
-            displayName: firstCatchAll.displayName.isEmpty ? "Workspaces" : firstCatchAll.displayName,
-            mainBranch: "",
-            workspaceIds: orderedWorkspaceIds(for: firstCatchAll),
-            isExpanded: firstCatchAll.isExpanded,
-            color: firstCatchAll.color
-        )
-        let selectedId = selectedWorkspaceId.flatMap { workspaceIds.contains($0) ? $0 : nil }
-            ?? reconciledWorkspaces.first?.id
 
-        return ArgusSessionSnapshot(
-            schemaVersion: schemaVersion,
-            selectedWorkspaceId: selectedId,
-            projects: reconciledNamedProjects + [reconciledCatchAll],
-            workspaces: reconciledWorkspaces
+        return ordered
+    }
+
+    private func reconciledProject(
+        _ project: ProjectSnapshot,
+        workspaces: [WorkspaceSnapshot],
+        workspaceIds: Set<UUID>,
+        workspaceById: [UUID: WorkspaceSnapshot]
+    ) -> ProjectSnapshot {
+        ProjectSnapshot(
+            id: project.id,
+            repositoryPath: project.repositoryPath,
+            isCatchAll: false,
+            displayName: project.displayName,
+            mainBranch: project.mainBranch,
+            workspaceIds: orderedWorkspaceIds(
+                for: project,
+                workspaces: workspaces,
+                workspaceIds: workspaceIds,
+                workspaceById: workspaceById
+            ),
+            isExpanded: project.isExpanded,
+            color: project.color
         )
     }
 
-    init(
-        schemaVersion: Int = Self.currentSchemaVersion,
-        selectedWorkspaceId: UUID?,
-        projects: [ProjectSnapshot],
-        workspaces: [WorkspaceSnapshot]
-    ) {
-        self.schemaVersion = schemaVersion
-        self.selectedWorkspaceId = selectedWorkspaceId
-        self.projects = projects
-        self.workspaces = workspaces
+    private func reconciledCatchAll(
+        _ catchAll: ProjectSnapshot,
+        workspaces: [WorkspaceSnapshot],
+        workspaceIds: Set<UUID>,
+        workspaceById: [UUID: WorkspaceSnapshot]
+    ) -> ProjectSnapshot {
+        ProjectSnapshot(
+            id: catchAll.id,
+            repositoryPath: "",
+            isCatchAll: true,
+            displayName: catchAll.displayName.isEmpty ? "Workspaces" : catchAll.displayName,
+            mainBranch: "",
+            workspaceIds: orderedWorkspaceIds(
+                for: catchAll,
+                workspaces: workspaces,
+                workspaceIds: workspaceIds,
+                workspaceById: workspaceById
+            ),
+            isExpanded: catchAll.isExpanded,
+            color: catchAll.color
+        )
     }
 }

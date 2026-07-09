@@ -17,9 +17,10 @@ final class AgentStatusStore: ObservableObject {
         surfaceId: UUID? = nil
     ) -> AgentStatusEntry {
         latestRevision &+= 1
-        let scope = surfaceId.map {
-            AgentStatusScope.terminalSurface(workspaceId: workspaceId, surfaceId: $0)
-        } ?? .workspace(workspaceId)
+        let scope =
+            surfaceId.map {
+                AgentStatusScope.terminalSurface(workspaceId: workspaceId, surfaceId: $0)
+            } ?? .workspace(workspaceId)
         let entry = AgentStatusEntry(
             agentKey: agentKey,
             scope: scope,
@@ -33,9 +34,10 @@ final class AgentStatusStore: ObservableObject {
     /// Resolves a Terminal Surface override before its Workspace-level fallback.
     func effectiveStatus(workspaceId: UUID, surfaceId: UUID? = nil) -> AgentStatusEntry? {
         if let surfaceId,
-           let panelEntry = newestStatus(
-               in: .terminalSurface(workspaceId: workspaceId, surfaceId: surfaceId)
-           ) {
+            let panelEntry = newestStatus(
+                in: .terminalSurface(workspaceId: workspaceId, surfaceId: surfaceId)
+            )
+        {
             return panelEntry
         }
         return newestStatus(in: .workspace(workspaceId))
@@ -52,7 +54,8 @@ final class AgentStatusStore: ObservableObject {
         }
 
         if includesNonterminalPanels || terminalSurfaceIds.isEmpty,
-           let workspaceEntry = effectiveStatus(workspaceId: workspaceId) {
+            let workspaceEntry = effectiveStatus(workspaceId: workspaceId)
+        {
             effectiveEntries.append(workspaceEntry)
         }
 
@@ -65,17 +68,19 @@ final class AgentStatusStore: ObservableObject {
         workspaceId: UUID,
         surfaceId: UUID? = nil
     ) {
-        let scope = surfaceId.map {
-            AgentStatusScope.terminalSurface(workspaceId: workspaceId, surfaceId: $0)
-        } ?? .workspace(workspaceId)
+        let scope =
+            surfaceId.map {
+                AgentStatusScope.terminalSurface(workspaceId: workspaceId, surfaceId: $0)
+            } ?? .workspace(workspaceId)
         entries.removeValue(forKey: AgentStatusEntryID(scope: scope, agentKey: agentKey))
     }
 
     /// Clears every agent from one exact Workspace or Terminal Surface scope.
     func clearStatuses(workspaceId: UUID, surfaceId: UUID? = nil) {
-        let scope = surfaceId.map {
-            AgentStatusScope.terminalSurface(workspaceId: workspaceId, surfaceId: $0)
-        } ?? .workspace(workspaceId)
+        let scope =
+            surfaceId.map {
+                AgentStatusScope.terminalSurface(workspaceId: workspaceId, surfaceId: $0)
+            } ?? .workspace(workspaceId)
         entries = entries.filter { $0.key.scope != scope }
     }
 
