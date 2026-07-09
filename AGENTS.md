@@ -11,6 +11,11 @@ Use canonical terms from `CONTEXT.md` in code, docs, task descriptions, tests, a
 Do not introduce synonyms for existing concepts unless updating `CONTEXT.md` first.
 Do not duplicate the full context contract inside `AGENTS.md`.
 
+## UI Design
+
+Before creating or materially changing UI, read `@UI_DESIGN_PRINCIPLES.md`.
+Follow its UI behavior contract. The application spec remains authoritative for product behavior.
+
 ## What This Is
 
 Argus is a **personal macOS terminal workspace manager** built on libghostty. Single user, single machine, not distributed. Simplicity and correctness are the priorities — do not over-engineer.

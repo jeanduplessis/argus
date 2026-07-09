@@ -336,15 +336,14 @@ Real-time git status with file operations.
 Save and restore full application state.
 
 1. **Snapshot model** — Codable structs for windows, projects,
-   workspaces, panels, sidebar state.
-2. **Terminal scrollback capture** — Up to 400K chars, ANSI-safe
-   truncation at sequence boundaries, reset code wrapping.
-3. **Browser state capture** — URL, zoom, dev tools state.
-4. **Autosave** — 8-second interval during quiet periods, synchronous
+   workspaces, sidebar state, and panel types with explicit durable
+   state.
+2. **Browser state capture** — URL, zoom, dev tools state.
+3. **Autosave** — 8-second interval during quiet periods, synchronous
    save on quit.
-5. **Restore** — On launch, restore previous session (skip if env var
+4. **Restore** — On launch, restore previous session (skip if env var
    disables, or launched with arguments).
-6. **Resource limits** — v1 is single-window; the snapshot schema
+5. **Resource limits** — v1 is single-window; the snapshot schema
    stores a window array for forward-compatibility but MUST contain
    exactly one entry. Schema-level caps: 12 windows, 128 workspaces
    per window.

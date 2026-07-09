@@ -386,9 +386,9 @@ tool.
 
 ### Session Persistence
 
-1. The system MUST persist the full application state to disk,
-   including the window, workspaces, panels, projects, and sidebar
-   state.
+1. The system MUST persist durable application state to disk,
+   including the window, workspace metadata, projects, sidebar state,
+   and panel types with explicit persistence requirements below.
 
 2. The system MUST autosave at regular intervals of approximately
    8 seconds during typing-quiet periods.
@@ -411,28 +411,18 @@ tool.
    path, and worktree branch name when the workspace belongs to a
    project.
 
-8. Terminal scrollback MUST be captured up to a maximum of 400,000
-   characters per terminal panel.
-
-9. When truncating scrollback, the system MUST detect partial ANSI
-   escape sequences at the truncation boundary and advance to the
-   next complete sequence to avoid replaying malformed control bytes.
-
-10. Truncated scrollback MUST be wrapped in ANSI reset codes to
-    preserve color state during replay.
-
-11. Status entries, agent PIDs, and other ephemeral runtime state MUST
+8. Status entries, agent PIDs, and other ephemeral runtime state MUST
     NOT be restored across app restarts, as the associated processes
     no longer exist.
 
-12. Browser panels MUST persist and restore the current URL, page zoom
+9. Browser panels MUST persist and restore the current URL, page zoom
     level, and developer tools visibility.
 
-13. The session format MUST use a single schema version. The system
+10. The session format MUST use a single schema version. The system
     MUST NOT implement schema migration; if the snapshot version does
     not match, the system MUST discard it and start fresh.
 
-14. The system MUST enforce resource limits during persistence: a
+11. The system MUST enforce resource limits during persistence: a
     maximum of 128 workspaces. The persistence schema SHOULD model
     a window array for forward-compatibility with multi-window
     support, but v1 MUST contain exactly one window entry. The
