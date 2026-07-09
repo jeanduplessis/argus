@@ -4,6 +4,13 @@
 
 **Before any work, read `.specs/argus-application.md`** — it is the authoritative specification. The implementation plan at `docs/argus-implementation-plan.md` provides additional context (architecture, phasing, rationale) but the spec governs correctness.
 
+## Domain Context
+
+Before changing domain behavior, read `CONTEXT.md`.
+Use canonical terms from `CONTEXT.md` in code, docs, task descriptions, tests, and agent outputs.
+Do not introduce synonyms for existing concepts unless updating `CONTEXT.md` first.
+Do not duplicate the full context contract inside `AGENTS.md`.
+
 ## What This Is
 
 Argus is a **personal macOS terminal workspace manager** built on libghostty. Single user, single machine, not distributed. Simplicity and correctness are the priorities — do not over-engineer.

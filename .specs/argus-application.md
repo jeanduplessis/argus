@@ -86,9 +86,10 @@ tool.
    tabbed panels.
 
 2. Each workspace MUST display a tab bar showing all top-level tabs.
-   Terminal tabs MUST be labeled by ordinal position as "Tab 1",
-   "Tab 2", and so on, rather than by working directory or process
-   title.
+   Terminal tabs MUST default to labels based on ordinal position as
+   "Terminal 1", "Terminal 2", and so on, rather than by working
+   directory or process title. A user-assigned terminal title MUST take
+   precedence over the ordinal label.
 
 3. Exactly one top-level tab per workspace MUST be active at a
    time; selecting a tab MUST switch the active tab. A terminal tab
@@ -96,10 +97,12 @@ tool.
    focused for keyboard input at a time.
 
 4. The tab bar MUST provide a button to create a new terminal panel
-   within the current workspace.
+   within the current workspace. New terminal tabs MUST be appended to
+   the end of the tab order and selected.
 
 5. Each tab MUST provide a close button to remove the panel from the
-   workspace.
+   workspace. Terminal tabs MUST provide a context menu with Close and
+   Rename actions.
 
 6. Tabs MUST be reorderable within a workspace via drag and drop.
 
@@ -317,17 +320,17 @@ tool.
 8. The system MUST refresh git status immediately after any file
    operation completes.
 
-9. The system MUST offer a diff preview that opens a floating utility
-   panel displaying colorized diff output.
+9. The system MUST offer a diff preview that opens as a tab in the
+   central content area and displays colorized diff output.
 
-10. The system MUST offer a blame preview that opens a floating
-    utility panel displaying colorized blame output.
+10. The system MUST offer a blame preview that opens as a tab in the
+    central content area and displays colorized blame output.
 
-11. Preview panels MUST be dismissible with the Escape key or a close
-    button.
+11. Preview tabs MUST use the workspace tab lifecycle, including tab
+    selection, reordering, and closing.
 
-12. Preview panels SHOULD position themselves adjacent to the parent
-    window, clamped to the visible screen area.
+12. Reopening the same preview SHOULD refresh and select its existing
+    tab instead of creating a duplicate tab.
 
 13. If the current directory is not a git repository, the sidebar MUST
     offer to initialize one.
