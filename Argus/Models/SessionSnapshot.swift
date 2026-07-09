@@ -16,6 +16,7 @@ struct WorkspaceSnapshot: Codable, Sendable {
     let currentDirectory: String
     let panelCount: Int
     let terminalDirectories: [String]
+    let terminalCustomTitles: [String?]
 
     var restoredTerminalDirectories: [String] {
         let total = max(panelCount, 1)
@@ -30,6 +31,18 @@ struct WorkspaceSnapshot: Codable, Sendable {
         return sanitized + Array(repeating: currentDirectory, count: total - sanitized.count)
     }
 
+    var restoredTerminalCustomTitles: [String?] {
+        let total = restoredTerminalDirectories.count
+        let sanitized = terminalCustomTitles.map { title -> String? in
+            let trimmed = title?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed?.isEmpty == false ? trimmed : nil
+        }
+        if sanitized.count >= total {
+            return Array(sanitized.prefix(total))
+        }
+        return sanitized + Array(repeating: nil, count: total - sanitized.count)
+    }
+
     init(
         id: UUID,
         projectId: UUID?,
@@ -40,7 +53,8 @@ struct WorkspaceSnapshot: Codable, Sendable {
         customTitle: String?,
         currentDirectory: String,
         panelCount: Int,
-        terminalDirectories: [String]? = nil
+        terminalDirectories: [String]? = nil,
+        terminalCustomTitles: [String?]? = nil
     ) {
         self.id = id
         self.projectId = projectId
@@ -53,6 +67,10 @@ struct WorkspaceSnapshot: Codable, Sendable {
         self.panelCount = panelCount
         self.terminalDirectories = terminalDirectories ?? Array(
             repeating: currentDirectory,
+            count: max(panelCount, 1)
+        )
+        self.terminalCustomTitles = terminalCustomTitles ?? Array(
+            repeating: nil,
             count: max(panelCount, 1)
         )
     }
@@ -68,6 +86,7 @@ struct WorkspaceSnapshot: Codable, Sendable {
         case currentDirectory
         case panelCount
         case terminalDirectories
+        case terminalCustomTitles
     }
 
     init(from decoder: Decoder) throws {
@@ -82,6 +101,10 @@ struct WorkspaceSnapshot: Codable, Sendable {
         let currentDirectory = try container.decode(String.self, forKey: .currentDirectory)
         let panelCount = try container.decode(Int.self, forKey: .panelCount)
         let terminalDirectories = try container.decodeIfPresent([String].self, forKey: .terminalDirectories)
+        let terminalCustomTitles = try container.decodeIfPresent(
+            [String?].self,
+            forKey: .terminalCustomTitles
+        )
 
         self.init(
             id: id,
@@ -93,7 +116,8 @@ struct WorkspaceSnapshot: Codable, Sendable {
             customTitle: customTitle,
             currentDirectory: currentDirectory,
             panelCount: panelCount,
-            terminalDirectories: terminalDirectories
+            terminalDirectories: terminalDirectories,
+            terminalCustomTitles: terminalCustomTitles
         )
     }
 }
@@ -142,7 +166,8 @@ struct ArgusSessionSnapshot: Codable, Sendable {
                     customTitle: workspace.customTitle,
                     currentDirectory: workspace.currentDirectory,
                     panelCount: workspace.panelCount,
-                    terminalDirectories: workspace.terminalDirectories
+                    terminalDirectories: workspace.terminalDirectories,
+                    terminalCustomTitles: workspace.terminalCustomTitles
                 )
             }
             return workspace

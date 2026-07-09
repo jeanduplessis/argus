@@ -59,22 +59,19 @@ final class GitStatusViewModel: ObservableObject {
     private let pathClipboard: any GitStatusPathCopying
     private let fileOperationConfirmer: any GitStatusFileOperationConfirming
     private let previewService: any GitPreviewProviding
-    private let previewPresenter: any GitPreviewPresenting
 
     init(
         service: any GitStatusProviding = GitStatusService(),
         resolver: GitStatusRootResolver = GitStatusRootResolver(),
         pathClipboard: any GitStatusPathCopying = PasteboardGitStatusPathClipboard(),
         fileOperationConfirmer: any GitStatusFileOperationConfirming = AlertGitStatusFileOperationConfirmer(),
-        previewService: any GitPreviewProviding = GitPreviewService(),
-        previewPresenter: any GitPreviewPresenting = AppKitGitPreviewPresenter()
+        previewService: any GitPreviewProviding = GitPreviewService()
     ) {
         self.service = service
         self.resolver = resolver
         self.pathClipboard = pathClipboard
         self.fileOperationConfirmer = fileOperationConfirmer
         self.previewService = previewService
-        self.previewPresenter = previewPresenter
     }
 
     func rootPath(for context: GitStatusRootContext) -> String {
@@ -172,19 +169,12 @@ final class GitStatusViewModel: ObservableObject {
         await performSectionFileOperation(operation, sectionKey: sectionKey, context: context)
     }
 
-    func showPreview(
+    func loadPreview(
         kind: GitPreviewKind,
         file: GitFileChange,
-        context: GitStatusRootContext,
-        parentWindow: NSWindow?
-    ) async {
+        context: GitStatusRootContext
+    ) async -> GitPreviewLoadState {
         let rootPath = resolver.root(for: context)
-        let result = await previewService.preview(kind: kind, rootPath: rootPath, file: file)
-        switch result {
-        case .loaded(let preview):
-            previewPresenter.show(preview: preview, parentWindow: parentWindow)
-        case .failed(let kind, let path, let message):
-            previewPresenter.showFailure(kind: kind, path: path, message: message, parentWindow: parentWindow)
-        }
+        return await previewService.preview(kind: kind, rootPath: rootPath, file: file)
     }
 }

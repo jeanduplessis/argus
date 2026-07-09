@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 struct GitFileTreeNode: Identifiable, Equatable {
@@ -253,6 +252,7 @@ private enum GitFileSectionAction: String, Identifiable {
 }
 
 struct GitSidebarView: View {
+    let showsHeader: Bool
     @EnvironmentObject private var workspaceManager: WorkspaceManager
     @EnvironmentObject private var viewModel: GitStatusViewModel
     @State private var autoRefreshController = GitStatusAutoRefreshController()
@@ -264,14 +264,24 @@ struct GitSidebarView: View {
     @State private var hoveredFileActionId: String?
     @State private var hoveredSectionActionId: String?
 
+    init(showsHeader: Bool = true) {
+        self.showsHeader = showsHeader
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            header
+            if showsHeader {
+                header
+            }
 
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(VisualEffectView(material: .sidebar, blendingMode: .behindWindow))
+        .background {
+            if showsHeader {
+                VisualEffectView(material: .sidebar, blendingMode: .behindWindow)
+            }
+        }
         .task {
             startAutoRefresh()
             await refresh()
@@ -291,7 +301,7 @@ struct GitSidebarView: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.secondary)
                 .frame(width: 18)
-            Text("Git Status")
+            Text("Changes")
                 .font(.system(size: 14, weight: .semibold))
             Spacer()
             ZStack {
@@ -578,9 +588,9 @@ struct GitSidebarView: View {
 
     private func fileRow(_ file: GitFileChange, name: String, depth: Int) -> some View {
         HStack(spacing: 7) {
-            Image(systemName: file.status.systemImage)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(file.status.tintColor)
+            Circle()
+                .fill(file.status.tintColor)
+                .frame(width: 5.5, height: 5.5)
                 .frame(width: 14)
             Text(name)
                 .font(.system(size: 11))
@@ -647,9 +657,17 @@ struct GitSidebarView: View {
         .padding(.trailing, 12)
         .padding(.vertical, 3)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(hoveredFileId == file.id ? ChromeColors.hoveredTabFill : Color.clear)
+        }
         .contentShape(Rectangle())
         .onHover { isHovering in
-            hoveredFileId = isHovering ? file.id : nil
+            if isHovering {
+                hoveredFileId = file.id
+            } else if hoveredFileId == file.id {
+                hoveredFileId = nil
+            }
         }
         .accessibilityLabel(file.path)
     }
@@ -778,8 +796,26 @@ struct GitSidebarView: View {
     }
 
     private func showPreview(kind: GitPreviewKind, file: GitFileChange) async {
-        guard let context = statusContext() else { return }
-        await viewModel.showPreview(kind: kind, file: file, context: context, parentWindow: NSApp.mainWindow)
+        guard let workspace = workspaceManager.selectedWorkspace,
+              let context = statusContext()
+        else { return }
+
+        let workspaceId = workspace.id
+        let rootPath = viewModel.rootPath(for: context)
+        let result = await viewModel.loadPreview(kind: kind, file: file, context: context)
+        guard let sourceWorkspace = workspaceManager.workspaces.first(where: { $0.id == workspaceId }) else {
+            return
+        }
+
+        switch result {
+        case .loaded(let preview):
+            sourceWorkspace.openGitPreviewPanel(rootPath: rootPath, preview: preview)
+        case .failed(let kind, let path, let message):
+            sourceWorkspace.openGitPreviewPanel(
+                rootPath: rootPath,
+                preview: GitPreview(kind: kind, path: path, content: .ansiText(message))
+            )
+        }
     }
 
     private func startAutoRefresh() {
@@ -795,24 +831,9 @@ struct GitSidebarView: View {
 
     private func statusContext() -> GitStatusRootContext? {
         guard let workspace = workspaceManager.selectedWorkspace else { return nil }
-        let project = workspaceManager.project(for: workspace.id)
-        let projectRepositoryPath = project?.isCatchAll == false ? project?.repositoryPath : nil
-
-        let kind: GitStatusRootContext.WorkspaceKind
-        switch workspace.workspaceType {
-        case .worktree:
-            kind = .worktree
-        case .mainCheckout:
-            kind = .mainCheckout
-        case .external:
-            kind = .standalone
-        }
-
-        return GitStatusRootContext(
-            kind: kind,
-            currentDirectory: workspace.currentDirectory,
-            worktreePath: workspace.worktreePath,
-            projectRepositoryPath: projectRepositoryPath
+        return gitStatusContext(
+            workspace: workspace,
+            project: workspaceManager.project(for: workspace.id)
         )
     }
 }

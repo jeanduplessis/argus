@@ -24,7 +24,8 @@ struct TerminalDirectorySnapshotTests {
         "/repo/.argus/worktree/app",
         "/repo/.argus/worktree/docs",
         "/tmp/scratch",
-      ]
+      ],
+      terminalCustomTitles: ["Server", nil, "Scratch"]
     )
 
     let encoded = try JSONEncoder().encode(workspace)
@@ -38,6 +39,11 @@ struct TerminalDirectorySnapshotTests {
       decoded.restoredTerminalDirectories,
       decoded.terminalDirectories,
       "restore uses persisted terminal directories"
+    )
+    assertEqual(
+      decoded.restoredTerminalCustomTitles,
+      ["Server", nil, "Scratch"],
+      "terminal custom titles round-trip by tab order"
     )
 
     let legacyJSON = """
@@ -58,6 +64,11 @@ struct TerminalDirectorySnapshotTests {
       legacy.restoredTerminalDirectories,
       ["/repo/worktree", "/repo/worktree"],
       "legacy snapshots fall back to workspace directory for each terminal"
+    )
+    assertEqual(
+      legacy.restoredTerminalCustomTitles,
+      [nil, nil],
+      "legacy snapshots restore ordinal terminal titles"
     )
 
     let invalidProject = UUID(uuidString: "CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC")!
@@ -86,7 +97,8 @@ struct TerminalDirectorySnapshotTests {
           customTitle: nil,
           currentDirectory: "/repo",
           panelCount: 2,
-          terminalDirectories: ["/repo/api", "/repo/web"]
+          terminalDirectories: ["/repo/api", "/repo/web"],
+          terminalCustomTitles: [nil, "Frontend"]
         )
       ]
     ).reconciledForRestore()
@@ -94,6 +106,11 @@ struct TerminalDirectorySnapshotTests {
       reconciled.workspaces[0].terminalDirectories,
       ["/repo/api", "/repo/web"],
       "reconciliation preserves terminal directories"
+    )
+    assertEqual(
+      reconciled.workspaces[0].terminalCustomTitles,
+      [nil, "Frontend"],
+      "reconciliation preserves terminal custom titles"
     )
   }
 

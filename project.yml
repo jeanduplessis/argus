@@ -21,6 +21,9 @@ targets:
       - path: Argus
         excludes:
           - "**/.DS_Store"
+          - "Resources/pierre-diffs-bundle.js"
+      - path: Argus/Resources/pierre-diffs-bundle.js
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.argus.app

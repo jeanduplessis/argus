@@ -2,7 +2,7 @@
 // Argus
 //
 // Per-workspace tab bar displayed at the top of the content area.
-// Shows one tab per panel in tab order, with a close button on hover
+// Shows one tab per panel in tab order, with a close button
 // and a "+" button to add a new terminal tab.
 
 import SwiftUI
@@ -11,6 +11,10 @@ import UniformTypeIdentifiers
 struct TabBarView: View {
     @ObservedObject var workspace: Workspace
     @EnvironmentObject var workspaceManager: WorkspaceManager
+
+    @State private var renamePanelId: UUID?
+    @State private var renameText = ""
+    @State private var showRenameAlert = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -24,6 +28,11 @@ struct TabBarView: View {
                                 title: workspace.tabDisplayTitle(for: panelId),
                                 isActive: panelId == workspace.activeTabId,
                                 onSelect: { workspace.selectPanel(panelId) },
+                                onRename: panel.panelType == .terminal ? {
+                                    renamePanelId = panelId
+                                    renameText = workspace.tabDisplayTitle(for: panelId)
+                                    showRenameAlert = true
+                                } : nil,
                                 onClose: {
                                     if workspace.panelOrder.count == 1,
                                        workspaceManager.shouldConfirmWorktreeDeletionBeforeClosing(workspace.id) {
@@ -74,6 +83,15 @@ struct TabBarView: View {
         .overlay(alignment: .bottom) {
             ChromeColors.separator.frame(height: 1)
         }
+        .alert("Rename Terminal", isPresented: $showRenameAlert) {
+            TextField("Terminal title", text: $renameText)
+            Button("Cancel", role: .cancel) { }
+            Button("Rename") {
+                if let renamePanelId {
+                    workspace.renameTerminalPanel(renamePanelId, title: renameText)
+                }
+            }
+        }
     }
 }
 
@@ -108,6 +126,7 @@ struct TabItemView: View {
     let title: String
     let isActive: Bool
     let onSelect: () -> Void
+    let onRename: (() -> Void)?
     let onClose: () -> Void
 
     @State private var isHovered = false
@@ -135,16 +154,14 @@ struct TabItemView: View {
                 .truncationMode(.middle)
                 .frame(maxWidth: 140)
 
-            // Close button — visible on hover or when tab is active
-            if isHovered || isActive {
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(.secondary)
-                }
-                .buttonStyle(.plain)
-                .frame(width: 14, height: 14)
+            // Close button
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(.secondary)
             }
+            .buttonStyle(.plain)
+            .frame(width: 14, height: 14)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
@@ -155,5 +172,11 @@ struct TabItemView: View {
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
         .onTapGesture(perform: onSelect)
+        .contextMenu {
+            Button("Close", role: .destructive, action: onClose)
+            if let onRename {
+                Button("Rename", action: onRename)
+            }
+        }
     }
 }

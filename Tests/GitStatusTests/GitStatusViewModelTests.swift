@@ -17,8 +17,8 @@ struct GitStatusViewModelTests {
     await sectionBulkOperationUsesSectionScopeForCappedResults()
     await sectionBulkOperationKeepsLoadedContentVisibleWhileRefreshing()
     await destructiveSectionBulkOperationConfirmsTotalSectionCount()
-    await previewUsesResolvedRootAndPresentsOutput()
-    await previewFailureIsPresentedWithoutReplacingStatusState()
+    await previewUsesResolvedRootAndReturnsOutput()
+    await previewFailureIsReturnedWithoutReplacingStatusState()
     await automaticRefreshUsesSameLoadingRefreshPath()
   }
 
@@ -275,13 +275,16 @@ struct GitStatusViewModelTests {
   }
 
   @MainActor
-  private func previewUsesResolvedRootAndPresentsOutput() async {
+  private func previewUsesResolvedRootAndReturnsOutput() async {
     let service = FakeStatusService(result: .idle)
     let previewService = RecordingPreviewService(
-      result: .loaded(GitPreview(kind: .diff, path: "file.txt", output: "diff output")))
-    let presenter = RecordingPreviewPresenter()
+      result: .loaded(GitPreview(
+        kind: .diff,
+        path: "file.txt",
+        content: .diff(GitDiffPreview(
+          fileName: "file.txt", oldContent: "old", newContent: "new")))))
     let viewModel = GitStatusViewModel(
-      service: service, previewService: previewService, previewPresenter: presenter)
+      service: service, previewService: previewService)
     let context = GitStatusRootContext(
       kind: .worktree,
       currentDirectory: "/tmp/worktree/subdir",
@@ -290,20 +293,24 @@ struct GitStatusViewModelTests {
     )
     let file = GitFileChange(path: "file.txt", status: .modified, sectionKey: "unstaged")
 
-    await viewModel.showPreview(kind: .diff, file: file, context: context, parentWindow: nil)
+    let result = await viewModel.loadPreview(kind: .diff, file: file, context: context)
 
     assertEqual(
       previewService.requests.map { "\($0.0)-\($0.1)-\($0.2.path)" },
       ["diff-/tmp/worktree-file.txt"], "preview uses resolved status root and selected row")
     assertEqual(
-      presenter.presentedPreviews,
-      [GitPreview(kind: .diff, path: "file.txt", output: "diff output")],
-      "loaded preview is presented")
+      result,
+      .loaded(GitPreview(
+        kind: .diff,
+        path: "file.txt",
+        content: .diff(GitDiffPreview(
+          fileName: "file.txt", oldContent: "old", newContent: "new")))),
+      "loaded preview is returned for tab presentation")
     assertEqual(viewModel.state, .idle, "preview does not replace git status state")
   }
 
   @MainActor
-  private func previewFailureIsPresentedWithoutReplacingStatusState() async {
+  private func previewFailureIsReturnedWithoutReplacingStatusState() async {
     let current = GitStatusLoadState.loaded(
       GitStatusSummary(
         rootPath: "/tmp/repo", branchName: "main", upstreamName: nil, aheadCount: 0, behindCount: 0)
@@ -311,22 +318,21 @@ struct GitStatusViewModelTests {
     let service = FakeStatusService(result: current)
     let previewService = RecordingPreviewService(
       result: .failed(kind: .blame, path: "missing.txt", message: "fatal: no such path"))
-    let presenter = RecordingPreviewPresenter()
     let viewModel = GitStatusViewModel(
-      service: service, previewService: previewService, previewPresenter: presenter)
+      service: service, previewService: previewService)
     let context = GitStatusRootContext(
       kind: .standalone, currentDirectory: "/tmp/repo", worktreePath: nil,
       projectRepositoryPath: nil)
     await viewModel.refresh(context: context)
 
-    await viewModel.showPreview(
+    let result = await viewModel.loadPreview(
       kind: .blame,
       file: GitFileChange(path: "missing.txt", status: .modified, sectionKey: "unstaged"),
-      context: context, parentWindow: nil)
+      context: context)
 
     assertEqual(
-      presenter.presentedFailures, ["blame-missing.txt-fatal: no such path"],
-      "preview failure is presented non-destructively")
+      result, .failed(kind: .blame, path: "missing.txt", message: "fatal: no such path"),
+      "preview failure is returned for tab presentation")
     assertEqual(viewModel.state, current, "preview failure does not replace loaded status state")
   }
 
@@ -507,19 +513,6 @@ private final class RecordingPathClipboard: GitStatusPathCopying {
 
   func copyPath(_ path: String) {
     copiedPaths.append(path)
-  }
-}
-
-private final class RecordingPreviewPresenter: GitPreviewPresenting {
-  private(set) var presentedPreviews: [GitPreview] = []
-  private(set) var presentedFailures: [String] = []
-
-  func show(preview: GitPreview, parentWindow: NSWindow?) {
-    presentedPreviews.append(preview)
-  }
-
-  func showFailure(kind: GitPreviewKind, path: String, message: String, parentWindow: NSWindow?) {
-    presentedFailures.append("\(kind)-\(path)-\(message)")
   }
 }
 

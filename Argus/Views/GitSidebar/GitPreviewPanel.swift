@@ -1,112 +1,89 @@
 import AppKit
 import SwiftUI
 
-@MainActor
-protocol GitPreviewPanelClosing: AnyObject {
-    func close()
-}
+enum GitPreviewPanelContentKind: Equatable {
+    case diff
+    case ansiText
 
-extension NSPanel: GitPreviewPanelClosing {}
-
-protocol GitPreviewPresenting: AnyObject {
-    @MainActor
-    func show(preview: GitPreview, parentWindow: NSWindow?)
-
-    @MainActor
-    func showFailure(kind: GitPreviewKind, path: String, message: String, parentWindow: NSWindow?)
-}
-
-@MainActor
-final class GitPreviewPanelController {
-    private weak var panel: (any GitPreviewPanelClosing)?
-
-    init(panel: any GitPreviewPanelClosing) {
-        self.panel = panel
-    }
-
-    func dismiss() {
-        panel?.close()
-    }
-}
-
-final class AppKitGitPreviewPresenter: GitPreviewPresenting {
-    private var controller: GitPreviewPanelController?
-
-    @MainActor
-    func show(preview: GitPreview, parentWindow: NSWindow?) {
-        present(title: title(for: preview.kind, path: preview.path), output: preview.output, parentWindow: parentWindow)
-    }
-
-    @MainActor
-    func showFailure(kind: GitPreviewKind, path: String, message: String, parentWindow: NSWindow?) {
-        present(title: title(for: kind, path: path), output: message, parentWindow: parentWindow)
-    }
-
-    @MainActor
-    private func present(title: String, output: String, parentWindow: NSWindow?) {
-        let panelSize = NSSize(width: 720, height: 520)
-        let visibleFrame = parentWindow?.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 900, height: 700)
-        let parentFrame = parentWindow?.frame ?? visibleFrame
-        let panel = EscapeClosingGitPreviewPanel(
-            contentRect: GitPreviewPanelLayout.frame(adjacentTo: parentFrame, panelSize: panelSize, visibleFrame: visibleFrame),
-            styleMask: [.titled, .utilityWindow, .closable, .resizable, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-        let controller = GitPreviewPanelController(panel: panel)
-        panel.title = title
-        panel.isFloatingPanel = true
-        panel.hidesOnDeactivate = false
-        panel.contentView = NSHostingView(rootView: GitPreviewPanelContent(title: title, output: output) {
-            controller.dismiss()
-        })
-        self.controller = controller
-        parentWindow?.addChildWindow(panel, ordered: .above)
-        panel.orderFrontRegardless()
-    }
-
-    private func title(for kind: GitPreviewKind, path: String) -> String {
-        switch kind {
+    init(content: GitPreviewContent) {
+        switch content {
         case .diff:
-            return "Diff: \(path)"
-        case .blame:
-            return "Blame: \(path)"
+            self = .diff
+        case .ansiText:
+            self = .ansiText
         }
     }
 }
 
-final class EscapeClosingGitPreviewPanel: NSPanel {
-    override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 {
-            close()
-        } else {
-            super.keyDown(with: event)
-        }
-    }
-}
+struct GitPreviewPanelContentView: View {
+    @ObservedObject var panel: GitPreviewPanel
 
-private struct GitPreviewPanelContent: View {
-    let title: String
-    let output: String
-    let close: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var diffStyle = ArgusDiffStyle.split
+    @State private var overflow = ArgusDiffOverflow.scroll
+    @State private var rendererError: String?
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text(title)
+                Text(panel.preview.path)
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Spacer()
-                Button("Close", action: close)
-                    .keyboardShortcut(.cancelAction)
+                if case .diff = panel.preview.content {
+                    Picker("Layout", selection: $diffStyle) {
+                        Text("Split").tag(ArgusDiffStyle.split)
+                        Text("Unified").tag(ArgusDiffStyle.unified)
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(width: 130)
+
+                    Picker("Overflow", selection: $overflow) {
+                        Text("Scroll").tag(ArgusDiffOverflow.scroll)
+                        Text("Wrap").tag(ArgusDiffOverflow.wrap)
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(width: 130)
+                }
             }
             .padding(10)
 
             Divider()
 
-            GitPreviewANSITextView(output: output)
+            previewContent
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(ChromeColors.contentBackground)
+        .onChange(of: panel.preview) { _, _ in
+            rendererError = nil
+        }
+    }
+
+    @ViewBuilder
+    private var previewContent: some View {
+        if let rendererError {
+            GitPreviewANSITextView(output: rendererError)
+        } else {
+            switch panel.preview.content {
+            case .diff(let preview):
+                ArgusDiffView(
+                    input: ArgusDiffInput(
+                        oldFile: ArgusDiffFile(name: preview.fileName, contents: preview.oldContent),
+                        newFile: ArgusDiffFile(name: preview.fileName, contents: preview.newContent),
+                        options: ArgusDiffOptions(
+                            theme: colorScheme == .dark ? .dark : .light,
+                            style: diffStyle,
+                            overflow: overflow
+                        )
+                    ),
+                    onError: { rendererError = $0 }
+                )
+            case .ansiText(let output):
+                GitPreviewANSITextView(output: output)
+            }
         }
     }
 }
@@ -232,20 +209,5 @@ private struct GitPreviewANSITextView: NSViewRepresentable {
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
         textView.textStorage?.setAttributedString(GitPreviewANSITextRenderer.attributedString(for: output))
-    }
-}
-
-enum GitPreviewPanelLayout {
-    static func frame(adjacentTo parentFrame: NSRect, panelSize: NSSize, visibleFrame: NSRect) -> NSRect {
-        let horizontalGap: CGFloat = 12
-        var origin = NSPoint(x: parentFrame.maxX + horizontalGap, y: parentFrame.maxY - panelSize.height)
-
-        if origin.x + panelSize.width > visibleFrame.maxX {
-            origin.x = parentFrame.minX - horizontalGap - panelSize.width
-        }
-        origin.x = min(max(origin.x, visibleFrame.minX), visibleFrame.maxX - panelSize.width)
-        origin.y = min(max(origin.y, visibleFrame.minY), visibleFrame.maxY - panelSize.height)
-
-        return NSRect(origin: origin, size: panelSize)
     }
 }

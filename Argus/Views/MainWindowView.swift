@@ -2,7 +2,7 @@
 // Argus
 //
 // Root view for the main window. Three-column layout with draggable dividers:
-// left sidebar | content area | right git sidebar.
+// left sidebar | content area | right side panel.
 
 import SwiftUI
 
@@ -54,14 +54,14 @@ struct MainWindowView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(ChromeColors.contentBackground)
 
-                // Right git sidebar
+                // Right side panel
                 if gitSidebarState.isVisible {
                     GitSidebarDivider(
                         position: $gitSidebarState.width,
                         minValue: 180,
                         maxValue: 600
                     )
-                    GitSidebarView()
+                    RightSidebarView()
                         .frame(width: gitSidebarState.width)
                 }
             }

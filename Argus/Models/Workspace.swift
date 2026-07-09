@@ -120,6 +120,9 @@ final class Workspace: Identifiable, ObservableObject {
     /// panel id. Tabs without an entry are single-pane tabs.
     @Published private(set) var tabLayouts: [UUID: PanelLayoutNode] = [:]
 
+    /// User-assigned terminal tab titles, keyed by top-level panel id.
+    @Published private(set) var terminalCustomTitles: [UUID: String] = [:]
+
     // MARK: - Computed properties
 
     /// The currently active panel instance.
@@ -160,8 +163,11 @@ final class Workspace: Identifiable, ObservableObject {
 
     /// Returns the ordinal label shown in the tab bar for a top-level tab.
     func tabDisplayTitle(for panelId: UUID) -> String {
-        guard let index = panelOrder.firstIndex(of: panelId) else { return "Tab" }
-        return "Tab \(index + 1)"
+        guard let index = panelOrder.firstIndex(of: panelId) else { return "Terminal" }
+        if let panel = panels[panelId], panel.panelType != .terminal {
+            return panel.displayTitle
+        }
+        return terminalCustomTitles[panelId] ?? "Terminal \(index + 1)"
     }
 
     // MARK: - Initializer
@@ -227,16 +233,27 @@ final class Workspace: Identifiable, ObservableObject {
         self.worktreePath = snapshot.worktreePath
 
         let terminalDirectories = snapshot.restoredTerminalDirectories
+        let terminalCustomTitles = snapshot.restoredTerminalCustomTitles
         let firstPanel = TerminalPanel(workspaceId: id, workingDirectory: terminalDirectories[0])
         addPanel(firstPanel)
-        for directory in terminalDirectories.dropFirst() {
-            addTerminalPanel(workingDirectory: directory)
+        if let customTitle = terminalCustomTitles[0] {
+            renameTerminalPanel(firstPanel.id, title: customTitle)
+        }
+        for (directory, customTitle) in zip(
+            terminalDirectories.dropFirst(),
+            terminalCustomTitles.dropFirst()
+        ) {
+            let panel = addTerminalPanel(workingDirectory: directory)
+            if let customTitle {
+                renameTerminalPanel(panel.id, title: customTitle)
+            }
         }
     }
 
     /// Creates a minimal durable snapshot for Phase 2 persistence.
     func snapshot() -> WorkspaceSnapshot {
-        WorkspaceSnapshot(
+        let terminalDirectories = terminalDirectoriesForSnapshot()
+        return WorkspaceSnapshot(
             id: id,
             projectId: projectId,
             branchName: branchName,
@@ -245,8 +262,9 @@ final class Workspace: Identifiable, ObservableObject {
             title: title,
             customTitle: customTitle,
             currentDirectory: currentDirectory,
-            panelCount: max(panelOrder.count, 1),
-            terminalDirectories: terminalDirectoriesForSnapshot()
+            panelCount: terminalDirectories.count,
+            terminalDirectories: terminalDirectories,
+            terminalCustomTitles: terminalCustomTitlesForSnapshot()
         )
     }
 
@@ -257,6 +275,12 @@ final class Workspace: Identifiable, ObservableObject {
             return directory.isEmpty ? currentDirectory : directory
         }
         return directories.isEmpty ? [currentDirectory] : directories
+    }
+
+    private func terminalCustomTitlesForSnapshot() -> [String?] {
+        panelOrder
+            .filter { panels[$0] is TerminalPanel }
+            .map { terminalCustomTitles[$0] }
     }
 
     // MARK: - Panel Management
@@ -286,7 +310,27 @@ final class Workspace: Identifiable, ObservableObject {
             workingDirectory: workingDirectory ?? currentDirectory
         )
 
-        // Insert after the currently active tab (standard tab UX).
+        panels[panel.id] = panel
+        panelOrder.append(panel.id)
+        tabLayouts[panel.id] = .leaf(panel.id)
+        selectPanel(panel.id)
+
+        return panel
+    }
+
+    /// Opens a workspace file as a top-level tab. If the same file is already
+    /// open in this workspace, that tab is selected instead of duplicated.
+    @discardableResult
+    func openFilePanel(rootPath: String, relativePath: String) -> FilePanel {
+        let standardizedRootPath = URL(fileURLWithPath: rootPath).standardizedFileURL.path
+        if let existing = panels.values.compactMap({ $0 as? FilePanel }).first(where: {
+            $0.rootPath == standardizedRootPath && $0.relativePath == relativePath
+        }) {
+            selectPanel(existing.id)
+            return existing
+        }
+
+        let panel = FilePanel(rootPath: standardizedRootPath, relativePath: relativePath)
         panels[panel.id] = panel
         if let tabId = activeTabId,
            let activeIndex = panelOrder.firstIndex(of: tabId) {
@@ -296,8 +340,44 @@ final class Workspace: Identifiable, ObservableObject {
         }
         tabLayouts[panel.id] = .leaf(panel.id)
         selectPanel(panel.id)
-
         return panel
+    }
+
+    /// Opens a git diff or blame preview as a top-level tab. Reopening the same
+    /// preview refreshes its content instead of creating a duplicate tab.
+    @discardableResult
+    func openGitPreviewPanel(rootPath: String, preview: GitPreview) -> GitPreviewPanel {
+        let standardizedRootPath = URL(fileURLWithPath: rootPath).standardizedFileURL.path
+        if let existing = panels.values.compactMap({ $0 as? GitPreviewPanel }).first(where: {
+            $0.rootPath == standardizedRootPath
+                && $0.preview.kind == preview.kind
+                && $0.preview.path == preview.path
+        }) {
+            existing.update(preview: preview)
+            selectPanel(existing.id)
+            return existing
+        }
+
+        let panel = GitPreviewPanel(rootPath: standardizedRootPath, preview: preview)
+        panels[panel.id] = panel
+        if let tabId = activeTabId,
+           let activeIndex = panelOrder.firstIndex(of: tabId) {
+            panelOrder.insert(panel.id, at: activeIndex + 1)
+        } else {
+            panelOrder.append(panel.id)
+        }
+        tabLayouts[panel.id] = .leaf(panel.id)
+        selectPanel(panel.id)
+        return panel
+    }
+
+    func updateOpenFilePanel(rootPath: String, oldPath: String, newPath: String) {
+        let standardizedRootPath = URL(fileURLWithPath: rootPath).standardizedFileURL.path
+        for panel in panels.values.compactMap({ $0 as? FilePanel })
+            where panel.rootPath == standardizedRootPath && panel.relativePath == oldPath
+        {
+            panel.updatePath(rootPath: standardizedRootPath, relativePath: newPath)
+        }
     }
 
     /// Splits the focused terminal pane inside the active tab. The new pane
@@ -401,6 +481,7 @@ final class Workspace: Identifiable, ObservableObject {
         for leafId in leafIds {
             panels[leafId]?.close()
             panels.removeValue(forKey: leafId)
+            terminalCustomTitles.removeValue(forKey: leafId)
         }
         panelOrder.removeAll { $0 == tabId }
         tabLayouts.removeValue(forKey: tabId)
@@ -434,6 +515,17 @@ final class Workspace: Identifiable, ObservableObject {
     }
 
     // MARK: - Title Management
+
+    /// Sets a terminal tab's custom title. A blank title restores its ordinal label.
+    func renameTerminalPanel(_ panelId: UUID, title newTitle: String) {
+        guard panelOrder.contains(panelId), panels[panelId] is TerminalPanel else { return }
+        let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            terminalCustomTitles.removeValue(forKey: panelId)
+        } else {
+            terminalCustomTitles[panelId] = trimmed
+        }
+    }
 
     /// Updates the derived title (from shell cwd / process title).
     ///

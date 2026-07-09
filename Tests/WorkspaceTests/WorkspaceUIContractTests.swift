@@ -1,4 +1,7 @@
+import AppKit
 import Testing
+
+@testable import Argus
 
 @Suite
 struct WorkspaceUIContractTests {
@@ -39,14 +42,47 @@ struct WorkspaceUIContractTests {
     let workspace = try SourceContract("Argus/Models/Workspace.swift")
     let addTerminal = try workspace.section(
       after: "func addTerminalPanel(workingDirectory: String? = nil) -> TerminalPanel",
-      before: "func splitActiveTerminal"
+      before: "/// Opens a workspace file"
     )
 
     #expect(addTerminal.contains("selectPanel(panel.id)"))
+    #expect(addTerminal.contains("panelOrder.append(panel.id)"))
+    #expect(!addTerminal.contains("panelOrder.insert"))
     try SourceContract("Argus/Views/Content/ContentAreaView.swift").contains(
       ".id(terminalPanel.surface.id)",
       "terminal content must be keyed by surface id"
     )
+  }
+
+  @Test
+  func terminalClipboardKeepsPlainTextSeparateFromHTML() {
+    let pasteboard = NSPasteboard(name: .init("ArgusTests.TerminalClipboard"))
+    let plainText = "selected terminal text"
+    let html = "<pre><span>selected terminal text</span></pre>"
+
+    writeTerminalClipboard(
+      [
+        (mimeType: "text/plain", text: plainText),
+        (mimeType: "text/html", text: html),
+      ],
+      to: pasteboard
+    )
+
+    #expect(pasteboard.string(forType: .string) == plainText)
+    #expect(pasteboard.string(forType: .html) == html)
+  }
+
+  @Test
+  func newTabUsesCommandT() throws {
+    let app = try SourceContract("Argus/App/ArgusApp.swift")
+    let newTab = try app.section(
+      after: "Button(\"New Tab\")",
+      before: "Button(\"Split Vertically\")"
+    )
+
+    #expect(newTab.contains("workspaceManager.addTab()"))
+    #expect(newTab.contains(".keyboardShortcut(\"t\", modifiers: [.command])"))
+    #expect(!newTab.contains(".keyboardShortcut(\"n\", modifiers: [.command])"))
   }
 
   @Test
@@ -94,14 +130,15 @@ struct WorkspaceUIContractTests {
   }
 
   @Test
-  func tabsUseOrdinalTitles() throws {
+  func terminalTabsUseOrdinalTitlesAndSupportRenaming() throws {
     let workspace = try SourceContract("Argus/Models/Workspace.swift")
     workspace.contains("func tabDisplayTitle(for panelId: UUID) -> String", "ordinal title API")
     let formatter = try workspace.section(
       after: "func tabDisplayTitle(for panelId: UUID) -> String",
       before: "\n    ///"
     )
-    #expect(formatter.contains(#""Tab \(index + 1)""#))
+    #expect(formatter.contains(#""Terminal \(index + 1)""#))
+    #expect(formatter.contains("terminalCustomTitles[panelId]"))
 
     let tabBar = try SourceContract("Argus/Views/Content/TabBarView.swift")
     tabBar.containsAll(
@@ -109,7 +146,11 @@ struct WorkspaceUIContractTests {
         "workspace.tabDisplayTitle(for: panelId)",
         "let title: String",
         "Text(title)",
-      ], "tab bar must render explicit ordinal titles")
+        ".contextMenu {",
+        "Button(\"Close\", role: .destructive, action: onClose)",
+        "Button(\"Rename\", action: onRename)",
+        "workspace.renameTerminalPanel(renamePanelId, title: renameText)",
+      ], "tab bar must render and rename explicit terminal titles")
     tabBar.excludes(
       "Text(panel.displayTitle)",
       "tab items must not use terminal path or process titles"

@@ -9,38 +9,30 @@ struct GitPreviewPanelTests {
   @MainActor
   @Test
   func coveredBehaviors() {
-    clampsPreviewPanelToVisibleScreen()
-    dismissesPreviewPanelThroughController()
+    modelsPreviewTabTitleAndIcon()
     rendersANSIColorsWithoutEscapeCodes()
     resetsANSIColorAfterSGRReset()
-  }
-
-  private func clampsPreviewPanelToVisibleScreen() {
-    let visibleFrame = NSRect(x: 0, y: 0, width: 800, height: 600)
-    let parentFrame = NSRect(x: 700, y: 500, width: 240, height: 160)
-    let panelSize = NSSize(width: 360, height: 320)
-
-    let frame = GitPreviewPanelLayout.frame(
-      adjacentTo: parentFrame,
-      panelSize: panelSize,
-      visibleFrame: visibleFrame
-    )
-
-    assertEqual(frame.size, panelSize, "layout preserves requested panel size")
-    assertEqual(frame.maxX <= visibleFrame.maxX, true, "layout clamps right edge")
-    assertEqual(frame.maxY <= visibleFrame.maxY, true, "layout clamps top edge")
-    assertEqual(frame.minX >= visibleFrame.minX, true, "layout keeps left edge visible")
-    assertEqual(frame.minY >= visibleFrame.minY, true, "layout keeps bottom edge visible")
+    selectsRendererForPreviewContent()
   }
 
   @MainActor
-  private func dismissesPreviewPanelThroughController() {
-    let panel = RecordingPreviewPanel()
-    let controller = GitPreviewPanelController(panel: panel)
+  private func modelsPreviewTabTitleAndIcon() {
+    let panel = GitPreviewPanel(
+      rootPath: "/tmp/repo",
+      preview: GitPreview(
+        kind: .diff,
+        path: "Sources/App.swift",
+        content: .ansiText("diff")))
 
-    controller.dismiss()
+    assertEqual(panel.panelType, .gitPreview, "preview uses generic workspace tab model")
+    assertEqual(panel.displayTitle, "Diff: App.swift", "diff tab uses compact file title")
+    assertEqual(panel.displayIcon, "doc.text.magnifyingglass", "diff tab uses preview icon")
 
-    assertEqual(panel.closeCount, 1, "dismiss closes the preview panel")
+    panel.update(preview: GitPreview(
+      kind: .blame,
+      path: "Sources/App.swift",
+      content: .ansiText("blame")))
+    assertEqual(panel.displayTitle, "Blame: App.swift", "updated blame preview refreshes tab title")
   }
 
   private func rendersANSIColorsWithoutEscapeCodes() {
@@ -61,6 +53,17 @@ struct GitPreviewPanelTests {
     assertColor(rendered, at: 7, equals: .textColor, "SGR reset restores default foreground color")
   }
 
+  private func selectsRendererForPreviewContent() {
+    let diff = GitPreviewContent.diff(GitDiffPreview(
+      fileName: "file.txt", oldContent: "old", newContent: "new"))
+    assertEqual(
+      GitPreviewPanelContentKind(content: diff), .diff,
+      "structured diff content selects Pierre renderer")
+    assertEqual(
+      GitPreviewPanelContentKind(content: .ansiText("blame")), .ansiText,
+      "blame and failure text select ANSI renderer")
+  }
+
   private func assertColor(
     _ text: NSAttributedString, at index: Int, equals expected: NSColor, _ message: String
   ) {
@@ -70,13 +73,5 @@ struct GitPreviewPanelTests {
 
   private func assertEqual<T: Equatable>(_ actual: T, _ expected: T, _ message: String) {
     #expect(actual == expected, Comment(rawValue: message))
-  }
-}
-
-private final class RecordingPreviewPanel: GitPreviewPanelClosing {
-  private(set) var closeCount = 0
-
-  func close() {
-    closeCount += 1
   }
 }

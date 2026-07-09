@@ -482,6 +482,33 @@ private func ghosttyConfirmReadClipboardCallback(
 }
 
 /// Write clipboard callback — writes to NSPasteboard.
+func writeTerminalClipboard(
+    _ contents: [(mimeType: String, text: String)],
+    to pasteboard: NSPasteboard
+) {
+    pasteboard.clearContents()
+
+    for content in contents {
+        let mimeType = content.mimeType
+            .split(separator: ";", maxSplits: 1)
+            .first?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        let pasteboardType: NSPasteboard.PasteboardType
+        switch mimeType {
+        case "text/plain":
+            pasteboardType = .string
+        case "text/html":
+            pasteboardType = .html
+        default:
+            continue
+        }
+
+        pasteboard.setString(content.text, forType: pasteboardType)
+    }
+}
+
 private func ghosttyWriteClipboardCallback(
     _ userdata: UnsafeMutableRawPointer?,
     _ clipboard: ghostty_clipboard_e,
@@ -491,16 +518,15 @@ private func ghosttyWriteClipboardCallback(
 ) {
     guard count > 0, let contents else { return }
 
-    let pasteboard = NSPasteboard.general
-    pasteboard.clearContents()
-
-    // Write each content item to the pasteboard
+    var clipboardContents: [(mimeType: String, text: String)] = []
+    clipboardContents.reserveCapacity(count)
     for i in 0..<count {
         let item = contents[i]
-        guard let dataPtr = item.data else { continue }
-        let string = String(cString: dataPtr)
-        pasteboard.setString(string, forType: .string)
+        guard let mime = item.mime, let data = item.data else { continue }
+        clipboardContents.append((String(cString: mime), String(cString: data)))
     }
+
+    writeTerminalClipboard(clipboardContents, to: .general)
 }
 
 /// Close surface callback — posts notification for WorkspaceManager.

@@ -5,14 +5,15 @@ import AppKit
 public enum PanelType: String, Codable, Sendable {
     case terminal
     case browser
+    case file
+    case gitPreview
 }
 
-/// Protocol for all panel types (terminal, browser).
+/// Protocol for all panel types.
 ///
-/// Each panel owns an independent content surface (terminal or browser) and
-/// appears as a tab within a workspace. The protocol is `@MainActor` because
-/// panel state drives SwiftUI views. Conformers must be classes
-/// (`AnyObject`) so workspaces can hold them by reference.
+/// Each panel appears as a tab within a workspace. The protocol is
+/// `@MainActor` because panel state drives SwiftUI views. Conformers must be
+/// classes (`AnyObject`) so workspaces can hold them by reference.
 @MainActor
 public protocol Panel: AnyObject, Identifiable, ObservableObject where ID == UUID {
     var id: UUID { get }
@@ -32,4 +33,89 @@ public protocol Panel: AnyObject, Identifiable, ObservableObject where ID == UUI
 extension Panel {
     public var displayIcon: String? { nil }
     public var isDirty: Bool { false }
+}
+
+/// Lightweight panel for a file opened from the Files sidebar.
+///
+/// File tabs are runtime UI state only. They are not currently included in
+/// session snapshots, which still restore terminal panels only.
+@MainActor
+final class FilePanel: Panel, ObservableObject {
+    let id: UUID
+    let panelType: PanelType = .file
+
+    @Published private(set) var rootPath: String
+    @Published private(set) var relativePath: String
+
+    init(id: UUID = UUID(), rootPath: String, relativePath: String) {
+        self.id = id
+        self.rootPath = URL(fileURLWithPath: rootPath).standardizedFileURL.path
+        self.relativePath = relativePath
+    }
+
+    var displayTitle: String {
+        let name = (relativePath as NSString).lastPathComponent
+        return name.isEmpty ? "File" : name
+    }
+
+    var displayIcon: String? { "doc.text" }
+
+    var fileURL: URL {
+        URL(fileURLWithPath: rootPath)
+            .appendingPathComponent(relativePath, isDirectory: false)
+            .standardizedFileURL
+    }
+
+    func updatePath(rootPath: String, relativePath: String) {
+        self.rootPath = URL(fileURLWithPath: rootPath).standardizedFileURL.path
+        self.relativePath = relativePath
+    }
+
+    func close() {}
+    func focus() {}
+    func unfocus() {}
+}
+
+/// Runtime-only diff or blame preview opened from the Changes sidebar.
+@MainActor
+final class GitPreviewPanel: Panel, ObservableObject {
+    let id: UUID
+    let panelType: PanelType = .gitPreview
+    let rootPath: String
+
+    @Published private(set) var preview: GitPreview
+
+    init(id: UUID = UUID(), rootPath: String, preview: GitPreview) {
+        self.id = id
+        self.rootPath = URL(fileURLWithPath: rootPath).standardizedFileURL.path
+        self.preview = preview
+    }
+
+    var displayTitle: String {
+        let name = (preview.path as NSString).lastPathComponent
+        let path = name.isEmpty ? preview.path : name
+        switch preview.kind {
+        case .diff:
+            return "Diff: \(path)"
+        case .blame:
+            return "Blame: \(path)"
+        }
+    }
+
+    var displayIcon: String? {
+        switch preview.kind {
+        case .diff:
+            return "doc.text.magnifyingglass"
+        case .blame:
+            return "person.line.dotted.person"
+        }
+    }
+
+    func update(preview: GitPreview) {
+        self.preview = preview
+    }
+
+    func close() {}
+    func focus() {}
+    func unfocus() {}
 }

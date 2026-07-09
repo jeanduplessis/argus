@@ -36,12 +36,12 @@ struct ArgusApp: App {
                 Button("New Workspace") {
                     workspaceManager.addWorkspace()
                 }
-                .keyboardShortcut("t", modifiers: [.command])
+                .keyboardShortcut("n", modifiers: [.command])
 
                 Button("New Tab") {
                     workspaceManager.addTab()
                 }
-                .keyboardShortcut("n", modifiers: [.command])
+                .keyboardShortcut("t", modifiers: [.command])
 
                 Button("Split Vertically") {
                     workspaceManager.splitActiveTerminal(direction: .vertical)
@@ -71,7 +71,7 @@ struct ArgusApp: App {
                 }
                 .keyboardShortcut("b", modifiers: [.command])
 
-                Button("Toggle Git Sidebar") {
+                Button("Toggle Right Sidebar") {
                     NotificationCenter.default.post(
                         name: .toggleGitSidebar, object: nil
                     )
