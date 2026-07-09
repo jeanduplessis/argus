@@ -4,10 +4,12 @@ set -euo pipefail
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$project_root"
 
+host_arch="$(uname -m)"
+
 xcodebuild test \
   -project Argus.xcodeproj \
   -scheme Argus \
-  -destination "platform=macOS" \
+  -destination "platform=macOS,arch=${host_arch}" \
   CODE_SIGNING_ALLOWED=NO
 
 swift build --product argus
