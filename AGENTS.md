@@ -2,7 +2,7 @@
 
 ## First Thing: Read the Spec
 
-**Before any work, read `.specs/argus-application.md`** — it is the authoritative specification. The implementation plan at `docs/argus-implementation-plan.md` provides additional context (architecture, phasing, rationale) but the spec governs correctness.
+**Before any work, read `docs/SPEC.md`** — it is the authoritative specification. The implementation plan at `docs/argus-implementation-plan.md` provides additional context (architecture, phasing, rationale) but the spec governs correctness.
 
 ## Domain Context
 
@@ -13,7 +13,7 @@ Do not duplicate the full context contract inside `AGENTS.md`.
 
 ## UI Design
 
-Before creating or materially changing UI, read `@UI_DESIGN_PRINCIPLES.md`.
+Before creating or materially changing UI, read `docs/UI_DESIGN_PRINCIPLES.md`.
 Follow its UI behavior contract. The application spec remains authoritative for product behavior.
 
 ## What This Is

@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1240" viewBox="0 0 1600 1240" role="img" aria-labelledby="title description">
+  <title id="title">Argus Right Sidebar annotated wireframe</title>
+  <desc id="description">Wireframe of the Argus Changes View with numbered terminology annotations for sidebar components.</desc>
+
+  <defs>
+    <style>
+      .page { fill: #f7f7f5; }
+      .sidebar { fill: #ffffff; stroke: #232323; stroke-width: 2; }
+      .surface { fill: #f0f0ee; stroke: #6e6e68; stroke-width: 1.5; }
+      .selected { fill: #deded9; }
+      .row { fill: #ffffff; stroke: #a5a59f; stroke-width: 1; }
+      .muted-row { fill: #fafaf8; stroke: #c4c4be; stroke-width: 1; }
+      .rule { stroke: #8e8e88; stroke-width: 1; }
+      .ink { fill: #252525; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .mono { fill: #252525; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .title { font-size: 28px; font-weight: 700; }
+      .subtitle { fill: #666660; font-size: 15px; }
+      .ui { font-size: 15px; font-weight: 600; }
+      .ui-small { font-size: 13px; }
+      .ui-mono { font-size: 13px; font-weight: 600; }
+      .legend-heading { font-size: 17px; font-weight: 700; }
+      .legend-term { font-size: 14px; font-weight: 700; }
+      .legend-note { fill: #666660; font-size: 12px; }
+      .annotation { fill: none; stroke: #c63b32; stroke-width: 1.5; stroke-dasharray: 5 4; }
+      .marker { fill: #c63b32; stroke: #ffffff; stroke-width: 2; }
+      .marker-text { fill: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .add { fill: #237a3b; }
+      .delete { fill: #b8322a; }
+    </style>
+
+    <g id="chevron-down">
+      <path d="M0 0 L5 5 L10 0" fill="none" stroke="#444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <g id="branch-icon">
+      <circle cx="2" cy="2" r="1.8" fill="none" stroke="#333" stroke-width="1.4"/>
+      <circle cx="10" cy="2" r="1.8" fill="none" stroke="#333" stroke-width="1.4"/>
+      <circle cx="6" cy="13" r="1.8" fill="none" stroke="#333" stroke-width="1.4"/>
+      <path d="M2 4 V6 C2 9 6 8 6 11 M10 4 V6 C10 9 6 8 6 11" fill="none" stroke="#333" stroke-width="1.4"/>
+    </g>
+    <g id="refresh-icon">
+      <path d="M13 4 A7 7 0 1 0 15 10" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M10 3 H14 V7" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <g id="file-icon">
+      <path d="M2 1 H9 L13 5 V16 H2 Z M9 1 V5 H13" fill="none" stroke="#333" stroke-width="1.4" stroke-linejoin="round"/>
+    </g>
+  </defs>
+
+  <rect class="page" width="1600" height="1240"/>
+  <text class="ink title" x="62" y="52">Argus Right Sidebar</text>
+  <text class="ink subtitle" x="62" y="78">Annotated wireframe, Changes View selected</text>
+
+  <!-- Right Sidebar -->
+  <rect class="sidebar" x="62" y="110" width="520" height="1055" rx="8"/>
+  <rect class="annotation" x="53" y="101" width="538" height="1073" rx="12"/>
+
+  <!-- Right Sidebar header -->
+  <rect class="surface" x="62" y="110" width="520" height="72" rx="8"/>
+  <rect class="selected" x="182" y="111" width="245" height="70"/>
+  <line class="rule" x1="62" y1="182" x2="582" y2="182"/>
+
+  <!-- Files View selector -->
+  <g transform="translate(84 136)">
+    <use href="#file-icon"/>
+    <text class="ink ui" x="26" y="14">Files</text>
+  </g>
+
+  <!-- Changes View selector -->
+  <g transform="translate(205 136)">
+    <use href="#branch-icon"/>
+    <text class="ink ui" x="28" y="14">Changes</text>
+    <rect x="105" y="-6" width="30" height="27" rx="14" fill="#c8c8c3"/>
+    <text class="ink ui-small" x="120" y="13" text-anchor="middle">1</text>
+  </g>
+
+  <!-- Refresh Changes button -->
+  <rect class="row" x="535" y="128" width="30" height="34" rx="5"/>
+  <g transform="translate(541 136)"><use href="#refresh-icon"/></g>
+
+  <!-- Branch summary bar -->
+  <rect class="muted-row" x="62" y="182" width="520" height="48"/>
+  <g transform="translate(82 198)"><use href="#branch-icon"/></g>
+  <text class="mono ui-mono" x="105" y="212">main</text>
+  <text class="mono ui-mono" x="177" y="212" fill="#666660">1 file</text>
+  <text class="mono ui-mono add" x="232" y="212">+16</text>
+  <text class="mono ui-mono delete" x="268" y="212">-1</text>
+  <rect class="row" x="535" y="190" width="30" height="32" rx="5"/>
+  <path d="M542 200 H558 M550 196 V206 M542 212 H558 M550 208 V218" fill="none" stroke="#333" stroke-width="1.4" stroke-linecap="round"/>
+
+  <!-- Changes View content / Change Tree -->
+  <rect class="annotation" x="69" y="239" width="506" height="914" rx="5"/>
+
+  <!-- Staged Change Section -->
+  <rect class="muted-row" x="74" y="246" width="496" height="50" rx="4"/>
+  <g transform="translate(91 266)"><use href="#chevron-down"/></g>
+  <text class="ink ui" x="113" y="279">Staged</text>
+  <text class="ink ui-small" x="548" y="279" text-anchor="end">0</text>
+
+  <!-- Unstaged Change Section -->
+  <rect class="surface" x="74" y="306" width="496" height="205" rx="4"/>
+  <g transform="translate(91 326)"><use href="#chevron-down"/></g>
+  <text class="ink ui" x="113" y="339">Unstaged</text>
+  <rect class="row" x="405" y="315" width="95" height="30" rx="4"/>
+  <text class="ink ui-small" x="452" y="335" text-anchor="middle">Stage All Files</text>
+  <circle cx="521" cy="330" r="11" fill="#ffffff" stroke="#777" stroke-width="1.2"/>
+  <circle cx="516" cy="330" r="1.4" fill="#444"/>
+  <circle cx="521" cy="330" r="1.4" fill="#444"/>
+  <circle cx="526" cy="330" r="1.4" fill="#444"/>
+  <text class="ink ui-small" x="553" y="335" text-anchor="middle">1</text>
+
+  <!-- Change Tree directory row -->
+  <rect class="row" x="88" y="360" width="468" height="46" rx="4"/>
+  <g transform="translate(102 377)"><use href="#chevron-down"/></g>
+  <text class="ink ui-small" x="126" y="389">scripts</text>
+
+  <!-- Git File Change row -->
+  <rect class="row" x="112" y="418" width="444" height="52" rx="4"/>
+  <path d="M128 451 L141 438 M137 437 L142 442" fill="none" stroke="#9b681c" stroke-width="2" stroke-linecap="round"/>
+  <text class="mono ui-small" x="156" y="449">build.sh</text>
+  <text class="mono ui-small add" x="488" y="449">+16</text>
+  <text class="mono ui-small delete" x="525" y="449">-1</text>
+
+  <!-- Untracked Change Section -->
+  <rect class="muted-row" x="74" y="521" width="496" height="50" rx="4"/>
+  <g transform="translate(91 541)"><use href="#chevron-down"/></g>
+  <text class="ink ui" x="113" y="554">Untracked</text>
+  <text class="ink ui-small" x="548" y="554" text-anchor="end">0</text>
+
+  <!-- Numbered markers -->
+  <g><circle class="marker" cx="57" cy="112" r="12"/><text class="marker-text" x="57" y="112">1</text></g>
+  <g><circle class="marker" cx="72" cy="123" r="12"/><text class="marker-text" x="72" y="123">2</text></g>
+  <g><circle class="marker" cx="93" cy="151" r="12"/><text class="marker-text" x="93" y="151">3</text></g>
+  <g><circle class="marker" cx="216" cy="151" r="12"/><text class="marker-text" x="216" y="151">4</text></g>
+  <g><circle class="marker" cx="329" cy="137" r="12"/><text class="marker-text" x="329" y="137">5</text></g>
+  <g><circle class="marker" cx="563" cy="126" r="12"/><text class="marker-text" x="563" y="126">6</text></g>
+  <g><circle class="marker" cx="72" cy="191" r="12"/><text class="marker-text" x="72" y="191">7</text></g>
+  <g><circle class="marker" cx="112" cy="197" r="12"/><text class="marker-text" x="112" y="197">8</text></g>
+  <g><circle class="marker" cx="276" cy="197" r="12"/><text class="marker-text" x="276" y="197">9</text></g>
+  <g><circle class="marker" cx="563" cy="190" r="12"/><text class="marker-text" x="563" y="190">10</text></g>
+  <g><circle class="marker" cx="570" cy="630" r="12"/><text class="marker-text" x="570" y="630">11</text></g>
+  <g><circle class="marker" cx="74" cy="256" r="12"/><text class="marker-text" x="74" y="256">12</text></g>
+  <g><circle class="marker" cx="74" cy="317" r="12"/><text class="marker-text" x="74" y="317">13</text></g>
+  <g><circle class="marker" cx="74" cy="531" r="12"/><text class="marker-text" x="74" y="531">14</text></g>
+  <g><circle class="marker" cx="95" cy="324" r="12"/><text class="marker-text" x="95" y="324">15</text></g>
+  <g><circle class="marker" cx="452" cy="315" r="12"/><text class="marker-text" x="452" y="315">16</text></g>
+  <g><circle class="marker" cx="521" cy="314" r="12"/><text class="marker-text" x="521" y="314">17</text></g>
+  <g><circle class="marker" cx="552" cy="314" r="12"/><text class="marker-text" x="552" y="314">18</text></g>
+  <g><circle class="marker" cx="91" cy="370" r="12"/><text class="marker-text" x="91" y="370">19</text></g>
+  <g><circle class="marker" cx="111" cy="427" r="12"/><text class="marker-text" x="111" y="427">20</text></g>
+  <g><circle class="marker" cx="130" cy="451" r="12"/><text class="marker-text" x="130" y="451">21</text></g>
+  <g><circle class="marker" cx="180" cy="432" r="12"/><text class="marker-text" x="180" y="432">22</text></g>
+  <g><circle class="marker" cx="543" cy="451" r="12"/><text class="marker-text" x="543" y="451">23</text></g>
+
+  <!-- Terminology key -->
+  <text class="ink legend-heading" x="640" y="122">Terminology key</text>
+  <line class="rule" x1="640" y1="138" x2="1538" y2="138"/>
+
+  <g transform="translate(640 166)">
+    <g transform="translate(0 0)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">1</text><text class="ink legend-term" x="34" y="10">Right Sidebar</text><text class="ink legend-note" x="34" y="28">Whole toggleable right column.</text></g>
+    <g transform="translate(0 62)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">2</text><text class="ink legend-term" x="34" y="10">Right Sidebar header</text><text class="ink legend-note" x="34" y="28">View navigation and refresh chrome.</text></g>
+    <g transform="translate(0 124)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">3</text><text class="ink legend-term" x="34" y="10">Files View selector</text><text class="ink legend-note" x="34" y="28">Selects Workspace File Tree navigation.</text></g>
+    <g transform="translate(0 186)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">4</text><text class="ink legend-term" x="34" y="10">Changes View selector</text><text class="ink legend-note" x="34" y="28">Selects Git Status Snapshot navigation.</text></g>
+    <g transform="translate(0 248)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">5</text><text class="ink legend-term" x="34" y="10">Changes count badge</text><text class="ink legend-note" x="34" y="28">Total Git File Change count.</text></g>
+    <g transform="translate(0 310)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">6</text><text class="ink legend-term" x="34" y="10">Refresh Changes button</text><text class="ink legend-note" x="34" y="28">Manually reloads Git Status Snapshot.</text></g>
+    <g transform="translate(0 372)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">7</text><text class="ink legend-term" x="34" y="10">Branch summary bar</text><text class="ink legend-note" x="34" y="28">Branch and aggregate change information.</text></g>
+    <g transform="translate(0 434)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">8</text><text class="ink legend-term" x="34" y="10">Branch indicator</text><text class="ink legend-note" x="34" y="28">Branch icon and branch name.</text></g>
+    <g transform="translate(0 496)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">9</text><text class="ink legend-term" x="34" y="10">Aggregate change summary</text><text class="ink legend-note" x="34" y="28">File, addition, and deletion totals.</text></g>
+    <g transform="translate(0 558)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">10</text><text class="ink legend-term" x="34" y="10">Expand/Collapse All Sections button</text><text class="ink legend-note" x="34" y="28">Changes every Change Section disclosure state.</text></g>
+    <g transform="translate(0 620)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">11</text><text class="ink legend-term" x="34" y="10">Change Tree</text><text class="ink legend-note" x="34" y="28">Hierarchy of sections, directories, and changes.</text></g>
+    <g transform="translate(0 682)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">12</text><text class="ink legend-term" x="34" y="10">Staged Change Section</text><text class="ink legend-note" x="34" y="28">Changes already added to Git index.</text></g>
+  </g>
+
+  <g transform="translate(1090 166)">
+    <g transform="translate(0 0)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">13</text><text class="ink legend-term" x="34" y="10">Unstaged Change Section</text><text class="ink legend-note" x="34" y="28">Tracked working-tree changes.</text></g>
+    <g transform="translate(0 62)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">14</text><text class="ink legend-term" x="34" y="10">Untracked Change Section</text><text class="ink legend-note" x="34" y="28">Paths not tracked by Git.</text></g>
+    <g transform="translate(0 124)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">15</text><text class="ink legend-term" x="34" y="10">Section disclosure control</text><text class="ink legend-note" x="34" y="28">Expands or collapses one Change Section.</text></g>
+    <g transform="translate(0 186)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">16</text><text class="ink legend-term" x="34" y="10">Section Operation</text><text class="ink legend-note" x="34" y="28">Git Mutation applied to whole section.</text></g>
+    <g transform="translate(0 248)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">17</text><text class="ink legend-term" x="34" y="10">Section actions menu</text><text class="ink legend-note" x="34" y="28">Additional section-scoped operations.</text></g>
+    <g transform="translate(0 310)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">18</text><text class="ink legend-term" x="34" y="10">Section count</text><text class="ink legend-note" x="34" y="28">Git File Change count for one section.</text></g>
+    <g transform="translate(0 372)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">19</text><text class="ink legend-term" x="34" y="10">Change Tree directory row</text><text class="ink legend-note" x="34" y="28">Directory grouping changed paths.</text></g>
+    <g transform="translate(0 434)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">20</text><text class="ink legend-term" x="34" y="10">Git File Change row</text><text class="ink legend-note" x="34" y="28">One section-specific changed-path entry.</text></g>
+    <g transform="translate(0 496)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">21</text><text class="ink legend-term" x="34" y="10">Git File Status icon</text><text class="ink legend-note" x="34" y="28">Icon and color identify change kind.</text></g>
+    <g transform="translate(0 558)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">22</text><text class="ink legend-term" x="34" y="10">Changed path</text><text class="ink legend-note" x="34" y="28">Path represented by Git File Change.</text></g>
+    <g transform="translate(0 620)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">23</text><text class="ink legend-term" x="34" y="10">Per-file diff statistics</text><text class="ink legend-note" x="34" y="28">Lines added and removed for one change.</text></g>
+  </g>
+
+  <rect x="640" y="914" width="898" height="164" rx="8" fill="#eeeeeb" stroke="#aaa9a2"/>
+  <text class="ink legend-heading" x="664" y="946">Usage note</text>
+  <text class="ink legend-note" x="664" y="974">Use Right-sidebar View for Files or Changes generically. Do not call them panels or workspace tabs.</text>
+  <text class="ink legend-note" x="664" y="999">Use Change Section for Staged, Unstaged, or Untracked. Use Git File Change for an individual changed-path entry.</text>
+  <text class="ink legend-note" x="664" y="1024">Use Change Tree for Changes hierarchy; Workspace File Tree is reserved for Files View filesystem navigation.</text>
+  <text class="ink legend-note" x="664" y="1049">Use Section Operation for stage all, unstage all, discard all, or delete all within one Change Section.</text>
+</svg>

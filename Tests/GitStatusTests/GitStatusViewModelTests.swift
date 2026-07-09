@@ -452,10 +452,10 @@ private actor SuspendingSectionStatusService: GitStatusProviding {
   }
 }
 
-private final class ViewModelTestWatcher: GitStatusFileWatching, @unchecked Sendable {
+private final class ViewModelTestWatcher: FileSystemEventWatching, @unchecked Sendable {
   var onEvents: (@MainActor @Sendable ([String]) -> Void)?
 
-  func start(rootPath: String, onEvents: @escaping @MainActor @Sendable ([String]) -> Void) {
+  func start(paths: [String], onEvents: @escaping @MainActor @Sendable ([String]) -> Void) {
     self.onEvents = onEvents
   }
 
@@ -468,7 +468,7 @@ private final class ViewModelTestWatcher: GitStatusFileWatching, @unchecked Send
 }
 
 @MainActor
-private final class ViewModelTestScheduler: GitStatusRefreshScheduling {
+private final class ViewModelTestScheduler: RefreshScheduling {
   private var operation: (@MainActor @Sendable () async -> Void)?
 
   func schedule(

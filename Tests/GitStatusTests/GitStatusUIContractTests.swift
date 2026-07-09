@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 
@@ -327,14 +328,51 @@ struct GitStatusUIContractTests {
   func markdownFileTabsExposeSourceAndRenderedDisplays() throws {
     try SourceContract("Argus/Views/Content/ContentAreaView.swift").containsAll(
       [
-        "enum MarkdownDisplayMode", "case source", "case rendered",
-        "return \"doc.plaintext\"", "return \"doc.richtext\"",
+        "enum FileDisplayMode", "case source", "case preview",
+        "return \"doc.plaintext\"", "isSVG ? \"photo\" : \"doc.richtext\"",
         "Show Markdown source", "Show rendered Markdown",
-        "if isMarkdownFile, markdownDisplayMode == .rendered",
+        "if isMarkdownFile, displayMode == .preview",
         "MarkdownRenderedView(",
         ".cursor(.pointingHand)",
         ".accessibilityValue(isSelected ? \"Selected\" : \"\")",
       ], "Markdown File Tab display controls")
+  }
+
+  @Test
+  func filePanelClassifiesRasterImagesAndSVGContent() throws {
+    let pngData = try #require(Data(base64Encoded:
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="))
+    let pngURL = URL(fileURLWithPath: "/tmp/pixel.png")
+    #expect(FilePanelContentLoader.content(data: pngData, url: pngURL) == .loaded(.image(pngData)))
+    #expect(NSImage(data: pngData) != nil)
+
+    let svgSource = """
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20">
+        <rect width="20" height="20" fill="red"/>
+      </svg>
+      """
+    let svgData = Data(svgSource.utf8)
+    let svgURL = URL(fileURLWithPath: "/tmp/icon.svg")
+    #expect(FilePanelContentLoader.content(data: svgData, url: svgURL) ==
+      .loaded(.svg(source: svgSource, data: svgData)))
+    #expect(NSImage(data: svgData) != nil)
+  }
+
+  @Test
+  func imageFileTabsPreviewRasterImagesAndOfferSVGSourceMode() throws {
+    try SourceContract("Argus/Views/Content/ContentAreaView.swift").containsAll(
+      [
+        "case image(Data)",
+        "case svg(source: String, data: Data)",
+        "type.conforms(to: .image)",
+        "CGImageSourceCreateWithData",
+        "FileImagePreview(data: data, accessibilityLabel: panel.displayTitle)",
+        "Show SVG source", "Show SVG preview",
+        "if displayMode == .preview",
+        "Image(nsImage: image)",
+        ".aspectRatio(contentMode: .fit)",
+        "Image preview is unavailable",
+      ], "image File Tab previews")
   }
 
   @Test

@@ -1,0 +1,205 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1750" height="1280" viewBox="0 0 1750 1280" role="img" aria-labelledby="title description">
+  <title id="title">Argus Left Sidebar annotated wireframe</title>
+  <desc id="description">Wireframe of the Argus Left Sidebar with numbered terminology annotations for Project and Workspace components.</desc>
+
+  <defs>
+    <style>
+      .page { fill: #f7f7f5; }
+      .sidebar { fill: #ffffff; stroke: #232323; stroke-width: 2; }
+      .surface { fill: #f0f0ee; stroke: #6e6e68; stroke-width: 1.5; }
+      .selected { fill: #57575d; stroke: #303035; stroke-width: 1.5; }
+      .row { fill: #ffffff; stroke: #a5a59f; stroke-width: 1; }
+      .muted-row { fill: #fafaf8; stroke: #c4c4be; stroke-width: 1; }
+      .rule { stroke: #8e8e88; stroke-width: 1; }
+      .ink { fill: #252525; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .mono { fill: #252525; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .title { font-size: 28px; font-weight: 700; }
+      .subtitle { fill: #666660; font-size: 15px; }
+      .ui { font-size: 15px; font-weight: 600; }
+      .ui-small { font-size: 13px; }
+      .ui-tiny { font-size: 11px; }
+      .ui-mono { font-size: 12px; font-weight: 600; }
+      .selected-text { fill: #ffffff; }
+      .selected-secondary { fill: #d5d5d8; }
+      .legend-heading { font-size: 17px; font-weight: 700; }
+      .legend-term { font-size: 14px; font-weight: 700; }
+      .legend-note { fill: #666660; font-size: 12px; }
+      .annotation { fill: none; stroke: #c63b32; stroke-width: 1.5; stroke-dasharray: 5 4; }
+      .marker { fill: #c63b32; stroke: #ffffff; stroke-width: 2; }
+      .marker-text { fill: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+    </style>
+
+    <g id="chevron-down">
+      <path d="M0 0 L5 5 L10 0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <g id="folder-icon">
+      <path d="M1 4 H6 L8 6 H15 V15 H1 Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+    </g>
+    <g id="branch-icon">
+      <circle cx="2" cy="2" r="1.8" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <circle cx="10" cy="2" r="1.8" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <circle cx="6" cy="13" r="1.8" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <path d="M2 4 V6 C2 9 6 8 6 11 M10 4 V6 C10 9 6 8 6 11" fill="none" stroke="currentColor" stroke-width="1.4"/>
+    </g>
+    <g id="agent-icon">
+      <circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M9 1.5 L5.5 8 H8 L6.5 14.5 L11 7.5 H8.5 Z" fill="currentColor"/>
+    </g>
+    <g id="standalone-icon">
+      <path d="M1 4 H6 L8 6 H15 V15 H1 Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+      <circle cx="13" cy="4" r="4" fill="#ffffff" stroke="currentColor" stroke-width="1.2"/>
+      <text x="13" y="6" fill="currentColor" font-family="sans-serif" font-size="6" font-weight="700" text-anchor="middle">?</text>
+    </g>
+  </defs>
+
+  <rect class="page" width="1750" height="1280"/>
+  <text class="ink title" x="62" y="52">Argus Left Sidebar</text>
+  <text class="ink subtitle" x="62" y="78">Annotated wireframe, Project and Workspace hierarchy</text>
+
+  <!-- Left Sidebar -->
+  <rect class="sidebar" x="62" y="110" width="520" height="1095" rx="8"/>
+  <rect class="annotation" x="53" y="101" width="538" height="1113" rx="12"/>
+
+  <!-- Sidebar header and titlebar inset -->
+  <rect class="surface" x="62" y="110" width="520" height="102" rx="8"/>
+  <circle cx="84" cy="130" r="6" fill="#d6d6d0" stroke="#888"/>
+  <circle cx="104" cy="130" r="6" fill="#d6d6d0" stroke="#888"/>
+  <circle cx="124" cy="130" r="6" fill="#d6d6d0" stroke="#888"/>
+  <text class="ink ui-tiny" x="82" y="188" letter-spacing="1.2">PROJECTS</text>
+  <rect class="row" x="535" y="163" width="30" height="30" rx="5"/>
+  <path d="M550 170 V186 M542 178 H558" fill="none" stroke="#333" stroke-width="1.6" stroke-linecap="round"/>
+  <line class="rule" x1="62" y1="212" x2="582" y2="212"/>
+
+  <!-- Project list -->
+  <rect class="annotation" x="69" y="220" width="506" height="973" rx="5"/>
+
+  <!-- Named Project section -->
+  <rect class="surface" x="74" y="230" width="496" height="437" rx="5"/>
+
+  <!-- Named Project header -->
+  <rect class="muted-row" x="82" y="240" width="480" height="46" rx="4"/>
+  <g transform="translate(98 259)" style="color:#444"><use href="#chevron-down"/></g>
+  <circle cx="126" cy="264" r="5" fill="#587db7" stroke="#36547e"/>
+  <text class="ink ui" x="142" y="270">Argus</text>
+  <rect class="row" x="522" y="248" width="28" height="28" rx="4"/>
+  <path d="M536 255 V269 M529 262 H543" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Selected Main-checkout Workspace -->
+  <rect class="selected" x="94" y="300" width="456" height="72" rx="6"/>
+  <text class="mono ui-mono selected-secondary" x="111" y="340">1</text>
+  <g transform="translate(137 324)" style="color:#fff"><use href="#folder-icon"/></g>
+  <text class="ink ui selected-text" x="169" y="330">Main Workspace</text>
+  <text class="ink ui-tiny selected-secondary" x="169" y="351">main</text>
+  <rect x="508" y="322" width="28" height="24" rx="5" fill="#737379" stroke="#98989d"/>
+  <text class="ink ui-tiny selected-text" x="522" y="338" text-anchor="middle">3</text>
+
+  <!-- Workspace with Agent Status Entry -->
+  <rect class="row" x="94" y="384" width="456" height="72" rx="6"/>
+  <text class="mono ui-mono" x="111" y="424">2</text>
+  <g transform="translate(137 408)" style="color:#3d72b4"><use href="#agent-icon"/></g>
+  <text class="ink ui" x="169" y="414">Sidebar Wireframes</text>
+  <text class="ink ui-tiny" x="169" y="435" fill="#666660">docs/sidebar-wireframes</text>
+
+  <!-- Worktree Workspace -->
+  <rect class="row" x="94" y="468" width="456" height="72" rx="6"/>
+  <text class="mono ui-mono" x="111" y="508">3</text>
+  <g transform="translate(139 492)" style="color:#555"><use href="#branch-icon"/></g>
+  <text class="ink ui" x="169" y="498">Settings</text>
+  <text class="ink ui-tiny" x="169" y="519" fill="#666660">feature/settings</text>
+  <rect x="508" y="490" width="28" height="24" rx="5" fill="#e0e0dc" stroke="#aaa"/>
+  <text class="ink ui-tiny" x="522" y="506" text-anchor="middle">2</text>
+
+  <!-- Collapsed Named Project -->
+  <rect class="muted-row" x="82" y="552" width="480" height="46" rx="4"/>
+  <path d="M100 566 L105 571 L100 576" fill="none" stroke="#444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="126" cy="575" r="5" fill="#8d6fb3" stroke="#62457f"/>
+  <text class="ink ui" x="142" y="580">Website</text>
+
+  <!-- Catch-all Project section -->
+  <rect class="surface" x="74" y="680" width="496" height="184" rx="5"/>
+  <rect class="muted-row" x="82" y="690" width="480" height="46" rx="4"/>
+  <g transform="translate(98 709)" style="color:#444"><use href="#chevron-down"/></g>
+  <text class="ink ui" x="126" y="720">Workspaces</text>
+  <rect class="row" x="522" y="698" width="28" height="28" rx="4"/>
+  <path d="M536 705 V719 M529 712 H543" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Standalone Workspace -->
+  <rect class="row" x="94" y="750" width="456" height="72" rx="6"/>
+  <text class="mono ui-mono" x="111" y="790">4</text>
+  <g transform="translate(137 774)" style="color:#555"><use href="#standalone-icon"/></g>
+  <text class="ink ui" x="169" y="780">Scratch</text>
+  <text class="ink ui-tiny" x="169" y="801" fill="#666660">No Git branch</text>
+
+  <!-- Left Sidebar divider -->
+  <rect x="578" y="110" width="4" height="1095" fill="#c2c2bd"/>
+  <rect class="annotation" x="574" y="101" width="16" height="1113" rx="4"/>
+
+  <!-- Numbered markers -->
+  <g><circle class="marker" cx="57" cy="112" r="12"/><text class="marker-text" x="57" y="112">1</text></g>
+  <g><circle class="marker" cx="72" cy="160" r="12"/><text class="marker-text" x="72" y="160">2</text></g>
+  <g><circle class="marker" cx="102" cy="176" r="12"/><text class="marker-text" x="102" y="176">3</text></g>
+  <g><circle class="marker" cx="550" cy="162" r="12"/><text class="marker-text" x="550" y="162">4</text></g>
+  <g><circle class="marker" cx="570" cy="900" r="12"/><text class="marker-text" x="570" y="900">5</text></g>
+  <g><circle class="marker" cx="74" cy="230" r="12"/><text class="marker-text" x="74" y="230">6</text></g>
+  <g><circle class="marker" cx="82" cy="240" r="12"/><text class="marker-text" x="82" y="240">7</text></g>
+  <g><circle class="marker" cx="100" cy="259" r="12"/><text class="marker-text" x="100" y="259">8</text></g>
+  <g><circle class="marker" cx="126" cy="248" r="12"/><text class="marker-text" x="126" y="248">9</text></g>
+  <g><circle class="marker" cx="170" cy="254" r="12"/><text class="marker-text" x="170" y="254">10</text></g>
+  <g><circle class="marker" cx="536" cy="248" r="12"/><text class="marker-text" x="536" y="248">11</text></g>
+  <g><circle class="marker" cx="94" cy="384" r="12"/><text class="marker-text" x="94" y="384">12</text></g>
+  <g><circle class="marker" cx="94" cy="300" r="12"/><text class="marker-text" x="94" y="300">13</text></g>
+  <g><circle class="marker" cx="112" cy="320" r="12"/><text class="marker-text" x="112" y="320">14</text></g>
+  <g><circle class="marker" cx="145" cy="310" r="12"/><text class="marker-text" x="145" y="310">15</text></g>
+  <g><circle class="marker" cx="145" cy="352" r="12"/><text class="marker-text" x="145" y="352">16</text></g>
+  <g><circle class="marker" cx="145" cy="492" r="12"/><text class="marker-text" x="145" y="492">17</text></g>
+  <g><circle class="marker" cx="145" cy="774" r="12"/><text class="marker-text" x="145" y="774">18</text></g>
+  <g><circle class="marker" cx="145" cy="408" r="12"/><text class="marker-text" x="145" y="408">19</text></g>
+  <g><circle class="marker" cx="215" cy="310" r="12"/><text class="marker-text" x="215" y="310">20</text></g>
+  <g><circle class="marker" cx="220" cy="351" r="12"/><text class="marker-text" x="220" y="351">21</text></g>
+  <g><circle class="marker" cx="522" cy="322" r="12"/><text class="marker-text" x="522" y="322">22</text></g>
+  <g><circle class="marker" cx="74" cy="680" r="12"/><text class="marker-text" x="74" y="680">23</text></g>
+  <g><circle class="marker" cx="126" cy="698" r="12"/><text class="marker-text" x="126" y="698">24</text></g>
+  <g><circle class="marker" cx="582" cy="112" r="12"/><text class="marker-text" x="582" y="112">25</text></g>
+
+  <!-- Terminology key -->
+  <text class="ink legend-heading" x="640" y="122">Terminology key</text>
+  <line class="rule" x1="640" y1="138" x2="1688" y2="138"/>
+
+  <g transform="translate(640 166)">
+    <g transform="translate(0 0)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">1</text><text class="ink legend-term" x="34" y="10">Left Sidebar</text><text class="ink legend-note" x="34" y="28">Project and Workspace navigation column.</text></g>
+    <g transform="translate(0 62)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">2</text><text class="ink legend-term" x="34" y="10">Left Sidebar header</text><text class="ink legend-note" x="34" y="28">Column title and global creation control.</text></g>
+    <g transform="translate(0 124)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">3</text><text class="ink legend-term" x="34" y="10">Projects label</text><text class="ink legend-note" x="34" y="28">Names Project hierarchy below.</text></g>
+    <g transform="translate(0 186)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">4</text><text class="ink legend-term" x="34" y="10">New Workspace or Project menu</text><text class="ink legend-note" x="34" y="28">Global creation menu in sidebar header.</text></g>
+    <g transform="translate(0 248)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">5</text><text class="ink legend-term" x="34" y="10">Project list</text><text class="ink legend-note" x="34" y="28">Scrollable hierarchy of Project sections.</text></g>
+    <g transform="translate(0 310)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">6</text><text class="ink legend-term" x="34" y="10">Named Project section</text><text class="ink legend-note" x="34" y="28">Repository-backed Project and child Workspaces.</text></g>
+    <g transform="translate(0 372)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">7</text><text class="ink legend-term" x="34" y="10">Project header row</text><text class="ink legend-note" x="34" y="28">Project disclosure, identity, and actions.</text></g>
+    <g transform="translate(0 434)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">8</text><text class="ink legend-term" x="34" y="10">Project disclosure control</text><text class="ink legend-note" x="34" y="28">Expands or collapses child Workspace rows.</text></g>
+    <g transform="translate(0 496)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">9</text><text class="ink legend-term" x="34" y="10">Project color indicator</text><text class="ink legend-note" x="34" y="28">Optional visual identifier for a Project.</text></g>
+    <g transform="translate(0 558)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">10</text><text class="ink legend-term" x="34" y="10">Project display name</text><text class="ink legend-note" x="34" y="28">Mutable user-facing Project label.</text></g>
+    <g transform="translate(0 620)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">11</text><text class="ink legend-term" x="34" y="10">Add Workspace button</text><text class="ink legend-note" x="34" y="28">Creates a Workspace in this Project.</text></g>
+    <g transform="translate(0 682)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">12</text><text class="ink legend-term" x="34" y="10">Workspace row</text><text class="ink legend-note" x="34" y="28">Selectable child representing one Workspace.</text></g>
+    <g transform="translate(0 744)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">13</text><text class="ink legend-term" x="34" y="10">Selected Workspace</text><text class="ink legend-note" x="34" y="28">Application-level Workspace selection.</text></g>
+  </g>
+
+  <g transform="translate(1165 166)">
+    <g transform="translate(0 0)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">14</text><text class="ink legend-term" x="34" y="10">Workspace Number</text><text class="ink legend-note" x="34" y="28">Global one-based sidebar position.</text></g>
+    <g transform="translate(0 62)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">15</text><text class="ink legend-term" x="34" y="10">Workspace state/type icon</text><text class="ink legend-note" x="34" y="28">Workspace classification or effective Agent Status.</text></g>
+    <g transform="translate(0 124)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">16</text><text class="ink legend-term" x="34" y="10">Main-checkout Workspace</text><text class="ink legend-note" x="34" y="28">Workspace rooted at Project repository checkout.</text></g>
+    <g transform="translate(0 186)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">17</text><text class="ink legend-term" x="34" y="10">Worktree Workspace</text><text class="ink legend-note" x="34" y="28">Workspace rooted at a secondary git worktree.</text></g>
+    <g transform="translate(0 248)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">18</text><text class="ink legend-term" x="34" y="10">Standalone Workspace</text><text class="ink legend-note" x="34" y="28">Workspace not associated with a Named Project.</text></g>
+    <g transform="translate(0 310)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">19</text><text class="ink legend-term" x="34" y="10">Agent Status Entry icon</text><text class="ink legend-note" x="34" y="28">Replaces Workspace type icon when active.</text></g>
+    <g transform="translate(0 372)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">20</text><text class="ink legend-term" x="34" y="10">Workspace display title</text><text class="ink legend-note" x="34" y="28">Mutable user-facing Workspace label.</text></g>
+    <g transform="translate(0 434)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">21</text><text class="ink legend-term" x="34" y="10">Branch name</text><text class="ink legend-note" x="34" y="28">Current branch shown beneath Workspace title.</text></g>
+    <g transform="translate(0 496)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">22</text><text class="ink legend-term" x="34" y="10">Top-level Tab count badge</text><text class="ink legend-note" x="34" y="28">Shown when Workspace has more than one tab.</text></g>
+    <g transform="translate(0 558)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">23</text><text class="ink legend-term" x="34" y="10">Catch-all Project section</text><text class="ink legend-note" x="34" y="28">Synthetic Project containing Standalone Workspaces.</text></g>
+    <g transform="translate(0 620)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">24</text><text class="ink legend-term" x="34" y="10">Catch-all Project display name</text><text class="ink legend-note" x="34" y="28">Displayed as &quot;Workspaces&quot; in the sidebar.</text></g>
+    <g transform="translate(0 682)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">25</text><text class="ink legend-term" x="34" y="10">Left Sidebar divider</text><text class="ink legend-note" x="34" y="28">Resizable boundary with enlarged drag target.</text></g>
+  </g>
+
+  <rect x="640" y="1010" width="1048" height="172" rx="8" fill="#eeeeeb" stroke="#aaa9a2"/>
+  <text class="ink legend-heading" x="664" y="1042">Usage note</text>
+  <text class="ink legend-note" x="664" y="1070">Use Project for grouping and Workspace for selectable work context. Do not use repository, terminal, worktree, or tab as synonyms.</text>
+  <text class="ink legend-note" x="664" y="1096">Use Selected Workspace for application-level selection. Active Tab and Focused Pane describe state inside that Workspace.</text>
+  <text class="ink legend-note" x="664" y="1122">Use Standalone Workspace, not External Workspace. Use Catch-all Project for the synthetic Project displayed as &quot;Workspaces&quot;.</text>
+  <text class="ink legend-note" x="664" y="1148">Use Top-level Tab count badge, not panel count badge. Split Panes do not increase this displayed count.</text>
+</svg>

@@ -12,14 +12,16 @@ struct GitStatusAutoRefreshTests {
     await switchesWatchedRootWithoutStoppingBeforeFirstStart()
     await schedulesRefreshAfterDebounceForWorktreeEvents()
     await suppressesFilesystemEventsDuringPostRefreshCooldown()
+    await refreshesWorkspaceFilesAfterDebouncedEvent()
+    try await reloadsExpandedDirectoryAfterExternalFileCreation()
     try watchesLinkedWorktreeGitDirectory()
     try await startsAndStopsFSEventsWatcherForRoot()
   }
 
   @MainActor
   private func ignoresGitInternalEvents() async {
-    let watcher = RecordingGitStatusFileWatcher()
-    let scheduler = RecordingGitStatusRefreshScheduler()
+    let watcher = RecordingFileSystemEventWatcher()
+    let scheduler = RecordingRefreshScheduler()
     let controller = GitStatusAutoRefreshController(
       watcher: watcher,
       scheduler: scheduler,
@@ -38,8 +40,8 @@ struct GitStatusAutoRefreshTests {
 
   @MainActor
   private func refreshesForCommitMetadataEvents() async {
-    let watcher = RecordingGitStatusFileWatcher()
-    let scheduler = RecordingGitStatusRefreshScheduler()
+    let watcher = RecordingFileSystemEventWatcher()
+    let scheduler = RecordingRefreshScheduler()
     let controller = GitStatusAutoRefreshController(
       watcher: watcher,
       scheduler: scheduler,
@@ -58,8 +60,8 @@ struct GitStatusAutoRefreshTests {
 
   @MainActor
   private func switchesWatchedRootWithoutStoppingBeforeFirstStart() async {
-    let watcher = RecordingGitStatusFileWatcher()
-    let scheduler = RecordingGitStatusRefreshScheduler()
+    let watcher = RecordingFileSystemEventWatcher()
+    let scheduler = RecordingRefreshScheduler()
     let controller = GitStatusAutoRefreshController(
       watcher: watcher,
       scheduler: scheduler,
@@ -76,8 +78,8 @@ struct GitStatusAutoRefreshTests {
 
   @MainActor
   private func schedulesRefreshAfterDebounceForWorktreeEvents() async {
-    let watcher = RecordingGitStatusFileWatcher()
-    let scheduler = RecordingGitStatusRefreshScheduler()
+    let watcher = RecordingFileSystemEventWatcher()
+    let scheduler = RecordingRefreshScheduler()
     let controller = GitStatusAutoRefreshController(
       watcher: watcher,
       scheduler: scheduler,
@@ -100,8 +102,8 @@ struct GitStatusAutoRefreshTests {
 
   @MainActor
   private func suppressesFilesystemEventsDuringPostRefreshCooldown() async {
-    let watcher = RecordingGitStatusFileWatcher()
-    let scheduler = RecordingGitStatusRefreshScheduler()
+    let watcher = RecordingFileSystemEventWatcher()
+    let scheduler = RecordingRefreshScheduler()
     var currentTime = Date(timeIntervalSince1970: 100)
     let controller = GitStatusAutoRefreshController(
       watcher: watcher,
@@ -133,6 +135,66 @@ struct GitStatusAutoRefreshTests {
       ], "events after cooldown schedule again")
   }
 
+  @MainActor
+  private func refreshesWorkspaceFilesAfterDebouncedEvent() async {
+    let watcher = RecordingFileSystemEventWatcher()
+    let scheduler = RecordingRefreshScheduler()
+    let controller = WorkspaceFilesAutoRefreshController(
+      watcher: watcher,
+      scheduler: scheduler)
+    var refreshCount = 0
+
+    controller.start(rootPath: "/workspace") {
+      refreshCount += 1
+    }
+    watcher.emit(paths: ["/workspace/Sources/NewFile.swift"])
+
+    assertEqual(
+      scheduler.scheduledDelays, [WorkspaceFilesAutoRefreshController.debounceInterval],
+      "workspace file events schedule a debounced refresh")
+    assertEqual(refreshCount, 0, "workspace file refresh waits for debounce")
+    await scheduler.runScheduled()
+    assertEqual(refreshCount, 1, "workspace file event refreshes the tree")
+  }
+
+  @MainActor
+  private func reloadsExpandedDirectoryAfterExternalFileCreation() async throws {
+    let root = FileManager.default.temporaryDirectory
+      .appendingPathComponent("argus-files-auto-refresh-\(UUID().uuidString)", isDirectory: true)
+    let sources = root.appendingPathComponent("Sources", isDirectory: true)
+    try FileManager.default.createDirectory(at: sources, withIntermediateDirectories: true)
+    try "existing\n".write(
+      to: sources.appendingPathComponent("Existing.swift"),
+      atomically: true,
+      encoding: .utf8)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let request = WorkspaceFileTreeRequest(workspaceId: UUID(), rootPath: root.path)
+    let viewModel = WorkspaceFilesViewModel()
+    viewModel.activate(request: request)
+    await viewModel.refresh(request: request)
+    await viewModel.loadChildren(request: request, directoryPath: "Sources")
+
+    try "new\n".write(
+      to: sources.appendingPathComponent("NewFile.swift"),
+      atomically: true,
+      encoding: .utf8)
+    await viewModel.refresh(request: request)
+
+    guard case .loaded(let snapshot) = viewModel.state else {
+      Issue.record("expected refreshed workspace file tree")
+      return
+    }
+    let sourceNames = snapshot.nodes
+      .first(where: { $0.path == "Sources" })?
+      .children
+      .map(\.name)
+    assertEqual(
+      sourceNames, ["Existing.swift", "NewFile.swift"],
+      "refresh reloads previously expanded directory children")
+    #expect(snapshot.loadedDirectoryPaths.contains("Sources"))
+  }
+
   private func watchesLinkedWorktreeGitDirectory() throws {
     let base = FileManager.default.temporaryDirectory
       .appendingPathComponent("argus-linked-worktree-\(UUID().uuidString)", isDirectory: true)
@@ -145,7 +207,7 @@ struct GitStatusAutoRefreshTests {
     defer { try? FileManager.default.removeItem(at: base) }
 
     assertEqual(
-      FSEventsGitStatusFileWatcher.watchedPaths(for: worktree.path),
+      GitStatusAutoRefreshController.watchedPaths(for: worktree.path),
       [worktree.standardizedFileURL.path, gitDirectory.standardizedFileURL.path],
       "linked worktrees watch their external git directory for commit metadata")
   }
@@ -157,8 +219,8 @@ struct GitStatusAutoRefreshTests {
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: directory) }
 
-    let watcher = FSEventsGitStatusFileWatcher()
-    watcher.start(rootPath: directory.path) { _ in }
+    let watcher = FSEventsFileWatcher()
+    watcher.start(paths: [directory.path]) { _ in }
     watcher.stop()
   }
 
@@ -167,13 +229,13 @@ struct GitStatusAutoRefreshTests {
   }
 }
 
-private final class RecordingGitStatusFileWatcher: GitStatusFileWatching, @unchecked Sendable {
+private final class RecordingFileSystemEventWatcher: FileSystemEventWatching, @unchecked Sendable {
   var onEvents: (@MainActor @Sendable ([String]) -> Void)?
   private(set) var startedRoots: [String] = []
   private(set) var stopCount = 0
 
-  func start(rootPath: String, onEvents: @escaping @MainActor @Sendable ([String]) -> Void) {
-    startedRoots.append(rootPath)
+  func start(paths: [String], onEvents: @escaping @MainActor @Sendable ([String]) -> Void) {
+    startedRoots.append(contentsOf: paths)
     self.onEvents = onEvents
   }
 
@@ -188,7 +250,7 @@ private final class RecordingGitStatusFileWatcher: GitStatusFileWatching, @unche
 }
 
 @MainActor
-private final class RecordingGitStatusRefreshScheduler: GitStatusRefreshScheduling {
+private final class RecordingRefreshScheduler: RefreshScheduling {
   private(set) var scheduledDelays: [TimeInterval] = []
   private(set) var cancelCount = 0
   private var scheduledOperation: (@MainActor @Sendable () async -> Void)?

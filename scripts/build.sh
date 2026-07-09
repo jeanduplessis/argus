@@ -115,9 +115,24 @@ launch_app() {
     local app_path="$1"
     if [[ $OPEN_APP -eq 1 ]]; then
         log "Launching ${APP_NAME}..."
+        local launch_output
+        if launch_output="$(
+            unset ARGUS_SOCKET_PATH ARGUS_WORKSPACE_ID ARGUS_SURFACE_ID
+            open -n "$app_path" 2>&1
+        )"; then
+            return 0
+        fi
+
+        if [[ "$launch_output" != *"error -600"* ]]; then
+            printf '%s\n' "$launch_output" >&2
+            return 1
+        fi
+
+        log "Launch Services was still releasing ${APP_NAME}; retrying..."
+        sleep 1
         (
             unset ARGUS_SOCKET_PATH ARGUS_WORKSPACE_ID ARGUS_SURFACE_ID
-            open "$app_path"
+            open -n "$app_path"
         )
     fi
 }

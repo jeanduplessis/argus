@@ -212,6 +212,13 @@ tool.
 11. Workspace rows MUST provide a context menu with options to
     rename, close, and reorder the workspace.
 
+### File Tabs
+
+1. Binary image files supported by the native image decoder MUST render an
+   image preview in their File Tab instead of the generic binary-file state.
+
+2. SVG files MUST provide source and image-preview displays in their File Tab.
+
 ### Git Worktrees
 
 1. The system MUST create isolated git worktrees when users create

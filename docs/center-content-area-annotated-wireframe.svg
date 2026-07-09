@@ -1,0 +1,209 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1850" height="1300" viewBox="0 0 1850 1300" role="img" aria-labelledby="title description">
+  <title id="title">Argus Center Content Area annotated wireframe</title>
+  <desc id="description">Wireframe of the Argus Center Content Area with numbered terminology annotations for the Titlebar, Tab Bar, Top-level Tabs, Active Tab Content, and split Panes.</desc>
+
+  <defs>
+    <style>
+      .page { fill: #f7f7f5; }
+      .content-area { fill: #ffffff; stroke: #232323; stroke-width: 2; }
+      .surface { fill: #f0f0ee; stroke: #6e6e68; stroke-width: 1.5; }
+      .selected { fill: #deded9; stroke: #8e8e88; stroke-width: 1; }
+      .tab { fill: #fafaf8; stroke: #aaa9a2; stroke-width: 1; }
+      .terminal { fill: #242426; stroke: #59595e; stroke-width: 1.5; }
+      .focused { fill: #202023; stroke: #6e91c7; stroke-width: 3; }
+      .rule { stroke: #8e8e88; stroke-width: 1; }
+      .split-rule { stroke: #8e8e88; stroke-width: 2; }
+      .ink { fill: #252525; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .mono { fill: #252525; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .terminal-text { fill: #d7d7d9; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+      .terminal-dim { fill: #888890; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+      .title { font-size: 28px; font-weight: 700; }
+      .subtitle { fill: #666660; font-size: 15px; }
+      .ui { font-size: 15px; font-weight: 600; }
+      .ui-small { font-size: 13px; }
+      .ui-tiny { font-size: 11px; }
+      .ui-mono { font-size: 12px; font-weight: 600; }
+      .legend-heading { font-size: 17px; font-weight: 700; }
+      .legend-term { font-size: 14px; font-weight: 700; }
+      .legend-note { fill: #666660; font-size: 12px; }
+      .annotation { fill: none; stroke: #c63b32; stroke-width: 1.5; stroke-dasharray: 5 4; }
+      .marker { fill: #c63b32; stroke: #ffffff; stroke-width: 2; }
+      .marker-text { fill: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .add { fill: #2e8b4b; }
+      .delete { fill: #b8322a; }
+    </style>
+
+    <g id="terminal-icon">
+      <rect x="1" y="1" width="15" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <path d="M4 5 L7 7.5 L4 10 M9 10 H13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <g id="browser-icon">
+      <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <path d="M1 8 H15 M8 1 C11 4 11 12 8 15 M8 1 C5 4 5 12 8 15" fill="none" stroke="currentColor" stroke-width="1.1"/>
+    </g>
+    <g id="file-icon">
+      <path d="M2 1 H9 L13 5 V16 H2 Z M9 1 V5 H13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+    </g>
+    <g id="diff-icon">
+      <path d="M3 2 V14 M1 4 L3 2 L5 4 M11 2 V14 M9 12 L11 14 L13 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </defs>
+
+  <rect class="page" width="1850" height="1300"/>
+  <text class="ink title" x="62" y="52">Argus Center Content Area</text>
+  <text class="ink subtitle" x="62" y="78">Annotated wireframe, Active Tab with split terminal Panes</text>
+
+  <!-- Center Content Area -->
+  <rect class="content-area" x="62" y="110" width="750" height="1120" rx="8"/>
+  <rect class="annotation" x="53" y="101" width="768" height="1138" rx="12"/>
+
+  <!-- Titlebar -->
+  <rect class="surface" x="62" y="110" width="750" height="78" rx="8"/>
+  <text class="ink ui" x="88" y="157">Argus</text>
+  <text class="ink ui" x="140" y="157" fill="#777770">/</text>
+  <text class="ink ui" x="160" y="157">Sidebar Wireframes</text>
+  <text class="mono ui-mono" x="318" y="157" fill="#666660">main</text>
+  <text class="mono ui-mono add" x="360" y="157">+16</text>
+  <text class="mono ui-mono delete" x="397" y="157">-1</text>
+  <line class="rule" x1="62" y1="188" x2="812" y2="188"/>
+
+  <!-- Tab Bar -->
+  <rect class="surface" x="62" y="188" width="750" height="62"/>
+  <line class="rule" x1="62" y1="250" x2="812" y2="250"/>
+
+  <!-- Top-level Tab strip -->
+  <rect class="annotation" x="71" y="196" width="650" height="45" rx="5"/>
+
+  <!-- Active Terminal Top-level Tab -->
+  <rect class="selected" x="82" y="202" width="145" height="34" rx="5"/>
+  <g transform="translate(94 210)" style="color:#333"><use href="#terminal-icon"/></g>
+  <text class="ink ui-small" x="118" y="224">Terminal 1</text>
+  <rect x="197" y="208" width="22" height="22" rx="4" fill="#efefec" stroke="#aaa"/>
+  <path d="M204 215 L212 223 M212 215 L204 223" stroke="#444" stroke-width="1.4" stroke-linecap="round"/>
+
+  <!-- Browser Top-level Tab -->
+  <rect class="tab" x="232" y="202" width="130" height="34" rx="5"/>
+  <g transform="translate(243 210)" style="color:#666"><use href="#browser-icon"/></g>
+  <text class="ink ui-small" x="268" y="224" fill="#666660">Browser</text>
+  <path d="M345 215 L353 223 M353 215 L345 223" stroke="#777" stroke-width="1.3" stroke-linecap="round"/>
+
+  <!-- File Tab -->
+  <rect class="tab" x="367" y="202" width="145" height="34" rx="5"/>
+  <g transform="translate(378 210)" style="color:#666"><use href="#file-icon"/></g>
+  <text class="ink ui-small" x="402" y="224" fill="#666660">README.md</text>
+  <path d="M495 215 L503 223 M503 215 L495 223" stroke="#777" stroke-width="1.3" stroke-linecap="round"/>
+
+  <!-- Git Preview Tab -->
+  <rect class="tab" x="517" y="202" width="185" height="34" rx="5"/>
+  <g transform="translate(528 210)" style="color:#666"><use href="#diff-icon"/></g>
+  <text class="ink ui-small" x="552" y="224" fill="#666660">Diff build.sh</text>
+  <path d="M684 215 L692 223 M692 215 L684 223" stroke="#777" stroke-width="1.3" stroke-linecap="round"/>
+
+  <!-- Add Tab control -->
+  <rect class="tab" x="769" y="202" width="30" height="34" rx="5"/>
+  <path d="M784 210 V228 M775 219 H793" fill="none" stroke="#444" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Active Tab Content and split layout -->
+  <rect class="annotation" x="69" y="258" width="736" height="963" rx="5"/>
+
+  <!-- Focused Pane, left side of vertical split -->
+  <rect class="focused" x="76" y="266" width="425" height="947" rx="3"/>
+  <text class="terminal-dim" x="94" y="294">Focused Pane - Terminal 1A</text>
+  <text class="terminal-text" x="94" y="334">argus % git status --short</text>
+  <text class="terminal-text" x="94" y="362">?? docs/center-content-wireframe.svg</text>
+  <text class="terminal-text" x="94" y="405">argus % _</text>
+
+  <!-- Vertical split divider -->
+  <rect x="501" y="266" width="1" height="947" fill="#8e8e88"/>
+  <rect class="annotation" x="496" y="266" width="12" height="947"/>
+
+  <!-- Right top Pane -->
+  <rect class="terminal" x="502" y="266" width="296" height="450" rx="3"/>
+  <text class="terminal-dim" x="520" y="294">Pane - Terminal 1B</text>
+  <text class="terminal-text" x="520" y="334">argus % swift test</text>
+  <text class="terminal-text" x="520" y="362">Build complete!</text>
+  <text class="terminal-text" x="520" y="390">argus % _</text>
+
+  <!-- Horizontal split divider -->
+  <rect x="502" y="716" width="296" height="1" fill="#8e8e88"/>
+  <rect class="annotation" x="502" y="711" width="296" height="12"/>
+
+  <!-- Right bottom Pane -->
+  <rect class="terminal" x="502" y="717" width="296" height="496" rx="3"/>
+  <text class="terminal-dim" x="520" y="745">Pane - Terminal 1C</text>
+  <text class="terminal-text" x="520" y="785">argus % git diff --stat</text>
+  <text class="terminal-text" x="520" y="813">docs/...svg | 320 +++++</text>
+  <text class="terminal-text" x="520" y="841">argus % _</text>
+
+  <!-- Numbered markers -->
+  <g><circle class="marker" cx="57" cy="112" r="12"/><text class="marker-text" x="57" y="112">1</text></g>
+  <g><circle class="marker" cx="72" cy="122" r="12"/><text class="marker-text" x="72" y="122">2</text></g>
+  <g><circle class="marker" cx="98" cy="140" r="12"/><text class="marker-text" x="98" y="140">3</text></g>
+  <g><circle class="marker" cx="190" cy="140" r="12"/><text class="marker-text" x="190" y="140">4</text></g>
+  <g><circle class="marker" cx="397" cy="140" r="12"/><text class="marker-text" x="397" y="140">5</text></g>
+  <g><circle class="marker" cx="72" cy="198" r="12"/><text class="marker-text" x="72" y="198">6</text></g>
+  <g><circle class="marker" cx="712" cy="196" r="12"/><text class="marker-text" x="712" y="196">7</text></g>
+  <g><circle class="marker" cx="232" cy="202" r="12"/><text class="marker-text" x="232" y="202">8</text></g>
+  <g><circle class="marker" cx="82" cy="202" r="12"/><text class="marker-text" x="82" y="202">9</text></g>
+  <g><circle class="marker" cx="102" cy="210" r="12"/><text class="marker-text" x="102" y="210">10</text></g>
+  <g><circle class="marker" cx="150" cy="202" r="12"/><text class="marker-text" x="150" y="202">11</text></g>
+  <g><circle class="marker" cx="209" cy="208" r="12"/><text class="marker-text" x="209" y="208">12</text></g>
+  <g><circle class="marker" cx="784" cy="202" r="12"/><text class="marker-text" x="784" y="202">13</text></g>
+  <g><circle class="marker" cx="297" cy="236" r="12"/><text class="marker-text" x="297" y="236">14</text></g>
+  <g><circle class="marker" cx="126" cy="236" r="12"/><text class="marker-text" x="126" y="236">15</text></g>
+  <g><circle class="marker" cx="255" cy="210" r="12"/><text class="marker-text" x="255" y="210">16</text></g>
+  <g><circle class="marker" cx="390" cy="210" r="12"/><text class="marker-text" x="390" y="210">17</text></g>
+  <g><circle class="marker" cx="540" cy="210" r="12"/><text class="marker-text" x="540" y="210">18</text></g>
+  <g><circle class="marker" cx="72" cy="270" r="12"/><text class="marker-text" x="72" y="270">19</text></g>
+  <g><circle class="marker" cx="792" cy="1200" r="12"/><text class="marker-text" x="792" y="1200">20</text></g>
+  <g><circle class="marker" cx="514" cy="280" r="12"/><text class="marker-text" x="514" y="280">21</text></g>
+  <g><circle class="marker" cx="88" cy="280" r="12"/><text class="marker-text" x="88" y="280">22</text></g>
+  <g><circle class="marker" cx="160" cy="294" r="12"/><text class="marker-text" x="160" y="294">23</text></g>
+  <g><circle class="marker" cx="255" cy="390" r="12"/><text class="marker-text" x="255" y="390">24</text></g>
+  <g><circle class="marker" cx="501" cy="400" r="12"/><text class="marker-text" x="501" y="400">25</text></g>
+  <g><circle class="marker" cx="785" cy="716" r="12"/><text class="marker-text" x="785" y="716">26</text></g>
+  <g><circle class="marker" cx="501" cy="716" r="12"/><text class="marker-text" x="501" y="716">27</text></g>
+
+  <!-- Terminology key -->
+  <text class="ink legend-heading" x="870" y="122">Terminology key</text>
+  <line class="rule" x1="870" y1="138" x2="1790" y2="138"/>
+
+  <g transform="translate(870 166)">
+    <g transform="translate(0 0)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">1</text><text class="ink legend-term" x="34" y="10">Center Content Area</text><text class="ink legend-note" x="34" y="28">Center column containing title, tabs, and content.</text></g>
+    <g transform="translate(0 62)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">2</text><text class="ink legend-term" x="34" y="10">Titlebar</text><text class="ink legend-note" x="34" y="28">Selected Workspace context and Git summary.</text></g>
+    <g transform="translate(0 124)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">3</text><text class="ink legend-term" x="34" y="10">Title context</text><text class="ink legend-note" x="34" y="28">Project name or Standalone Workspace context.</text></g>
+    <g transform="translate(0 186)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">4</text><text class="ink legend-term" x="34" y="10">Selected Workspace title</text><text class="ink legend-note" x="34" y="28">Display title of application-level selection.</text></g>
+    <g transform="translate(0 248)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">5</text><text class="ink legend-term" x="34" y="10">Titlebar Git context</text><text class="ink legend-note" x="34" y="28">Branch, dirty state, and upstream summary.</text></g>
+    <g transform="translate(0 310)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">6</text><text class="ink legend-term" x="34" y="10">Tab Bar</text><text class="ink legend-note" x="34" y="28">Top-level Tab navigation and creation row.</text></g>
+    <g transform="translate(0 372)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">7</text><text class="ink legend-term" x="34" y="10">Top-level Tab strip</text><text class="ink legend-note" x="34" y="28">Scrollable ordered collection of tabs.</text></g>
+    <g transform="translate(0 434)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">8</text><text class="ink legend-term" x="34" y="10">Top-level Tab</text><text class="ink legend-note" x="34" y="28">Tab Bar unit represented by root Panel ID.</text></g>
+    <g transform="translate(0 496)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">9</text><text class="ink legend-term" x="34" y="10">Active Tab</text><text class="ink legend-note" x="34" y="28">Top-level Tab currently shown in Workspace.</text></g>
+    <g transform="translate(0 558)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">10</text><text class="ink legend-term" x="34" y="10">Top-level Tab icon/status</text><text class="ink legend-note" x="34" y="28">Loading, Agent Status, or content-type icon.</text></g>
+    <g transform="translate(0 620)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">11</text><text class="ink legend-term" x="34" y="10">Top-level Tab label</text><text class="ink legend-note" x="34" y="28">Terminal ordinal, custom title, or Panel title.</text></g>
+    <g transform="translate(0 682)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">12</text><text class="ink legend-term" x="34" y="10">Close Top-level Tab button</text><text class="ink legend-note" x="34" y="28">Closes every Pane in this tab split layout.</text></g>
+    <g transform="translate(0 744)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">13</text><text class="ink legend-term" x="34" y="10">Add Tab control</text><text class="ink legend-note" x="34" y="28">Creates Terminal or Browser Top-level Tab.</text></g>
+    <g transform="translate(0 806)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">14</text><text class="ink legend-term" x="34" y="10">Inactive Top-level Tab</text><text class="ink legend-note" x="34" y="28">Ordered tab not currently displayed.</text></g>
+  </g>
+
+  <g transform="translate(1340 166)">
+    <g transform="translate(0 0)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">15</text><text class="ink legend-term" x="34" y="10">Terminal Top-level Tab</text><text class="ink legend-note" x="34" y="28">Tab backed by terminal split layout.</text></g>
+    <g transform="translate(0 62)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">16</text><text class="ink legend-term" x="34" y="10">Browser Top-level Tab</text><text class="ink legend-note" x="34" y="28">Tab backed by Browser Panel.</text></g>
+    <g transform="translate(0 124)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">17</text><text class="ink legend-term" x="34" y="10">File Tab</text><text class="ink legend-note" x="34" y="28">Top-level Tab backed by File Panel.</text></g>
+    <g transform="translate(0 186)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">18</text><text class="ink legend-term" x="34" y="10">Git Preview Tab</text><text class="ink legend-note" x="34" y="28">Diff or blame Top-level Tab.</text></g>
+    <g transform="translate(0 248)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">19</text><text class="ink legend-term" x="34" y="10">Active Tab Content</text><text class="ink legend-note" x="34" y="28">Visible content beneath Tab Bar.</text></g>
+    <g transform="translate(0 310)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">20</text><text class="ink legend-term" x="34" y="10">Split layout</text><text class="ink legend-note" x="34" y="28">Recursive Pane tree owned by Active Tab.</text></g>
+    <g transform="translate(0 372)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">21</text><text class="ink legend-term" x="34" y="10">Pane</text><text class="ink legend-note" x="34" y="28">Leaf position backed by one Panel.</text></g>
+    <g transform="translate(0 434)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">22</text><text class="ink legend-term" x="34" y="10">Focused Pane</text><text class="ink legend-note" x="34" y="28">Pane selected for keyboard input.</text></g>
+    <g transform="translate(0 496)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">23</text><text class="ink legend-term" x="34" y="10">Terminal Panel content</text><text class="ink legend-note" x="34" y="28">Panel model content rendered in a Pane.</text></g>
+    <g transform="translate(0 558)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">24</text><text class="ink legend-term" x="34" y="10">Terminal Surface</text><text class="ink legend-note" x="34" y="28">Ghostty rendering, input, shell, and PWD.</text></g>
+    <g transform="translate(0 620)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">25</text><text class="ink legend-term" x="34" y="10">Vertical split</text><text class="ink legend-note" x="34" y="28">Side-by-side Pane arrangement.</text></g>
+    <g transform="translate(0 682)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">26</text><text class="ink legend-term" x="34" y="10">Horizontal split</text><text class="ink legend-note" x="34" y="28">Stacked Pane arrangement.</text></g>
+    <g transform="translate(0 744)"><circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">27</text><text class="ink legend-term" x="34" y="10">Split divider</text><text class="ink legend-note" x="34" y="28">Resizable boundary with 12-point drag target.</text></g>
+  </g>
+
+  <rect x="870" y="1085" width="920" height="154" rx="8" fill="#eeeeeb" stroke="#aaa9a2"/>
+  <text class="ink legend-heading" x="894" y="1117">Usage note</text>
+  <text class="ink legend-note" x="894" y="1145">Use Top-level Tab for Tab Bar order, Pane for a split-tree leaf, and Panel for the content object backing either role.</text>
+  <text class="ink legend-note" x="894" y="1171">Use Selected Workspace, Active Tab, and Focused Pane for distinct selection and focus levels.</text>
+  <text class="ink legend-note" x="894" y="1197">Only Terminal Panels own Terminal Surfaces. Avoid calling the Center Content Area a main panel.</text>
+</svg>

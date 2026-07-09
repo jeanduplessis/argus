@@ -2,6 +2,8 @@
 // Argus
 
 import SwiftUI
+import ImageIO
+import UniformTypeIdentifiers
 
 struct ContentAreaView: View {
     @EnvironmentObject var workspaceManager: WorkspaceManager
@@ -234,11 +236,58 @@ struct PanelContentView: View {
     }
 }
 
-private enum FilePanelContentState: Equatable {
+enum FilePanelLoadedContent: Equatable, Sendable {
+    case text(String)
+    case image(Data)
+    case svg(source: String, data: Data)
+}
+
+enum FilePanelContentState: Equatable, Sendable {
     case loading
-    case loaded(String)
+    case loaded(FilePanelLoadedContent)
     case binary
     case failed(String)
+}
+
+enum FilePanelContentLoader {
+    static func load(url: URL) -> FilePanelContentState {
+        do {
+            let data = try Data(contentsOf: url)
+            return content(data: data, url: url)
+        } catch {
+            return .failed(error.localizedDescription)
+        }
+    }
+
+    static func content(data: Data, url: URL) -> FilePanelContentState {
+        if url.pathExtension.lowercased() == "svg" {
+            guard let source = String(data: data, encoding: .utf8) else {
+                return .failed("SVG source is not valid UTF-8")
+            }
+            return .loaded(.svg(source: source, data: data))
+        }
+
+        if isImage(data: data, url: url) {
+            return .loaded(.image(data))
+        }
+
+        if data.contains(0) {
+            return .binary
+        }
+        guard let text = String(data: data, encoding: .utf8) else {
+            return .binary
+        }
+        return .loaded(.text(text))
+    }
+
+    private static func isImage(data: Data, url: URL) -> Bool {
+        if let type = UTType(filenameExtension: url.pathExtension),
+           type.conforms(to: .image)
+        {
+            return true
+        }
+        return CGImageSourceCreateWithData(data as CFData, nil) != nil
+    }
 }
 
 enum FileSourceText {
@@ -259,25 +308,25 @@ enum FileSourceText {
     }
 }
 
-private enum MarkdownDisplayMode: CaseIterable {
+private enum FileDisplayMode: CaseIterable {
     case source
-    case rendered
+    case preview
 
-    var systemImage: String {
+    func systemImage(isSVG: Bool) -> String {
         switch self {
         case .source:
             return "doc.plaintext"
-        case .rendered:
-            return "doc.richtext"
+        case .preview:
+            return isSVG ? "photo" : "doc.richtext"
         }
     }
 
-    var accessibilityLabel: String {
+    func accessibilityLabel(isSVG: Bool) -> String {
         switch self {
         case .source:
-            return "Show Markdown source"
-        case .rendered:
-            return "Show rendered Markdown"
+            return isSVG ? "Show SVG source" : "Show Markdown source"
+        case .preview:
+            return isSVG ? "Show SVG preview" : "Show rendered Markdown"
         }
     }
 }
@@ -285,8 +334,8 @@ private enum MarkdownDisplayMode: CaseIterable {
 private struct FilePanelContentView: View {
     @ObservedObject var panel: FilePanel
     @State private var state: FilePanelContentState = .loading
-    @State private var markdownDisplayMode: MarkdownDisplayMode = .source
-    @State private var hoveredMarkdownDisplayMode: MarkdownDisplayMode?
+    @State private var displayMode: FileDisplayMode = .source
+    @State private var hoveredDisplayMode: FileDisplayMode?
     @State private var lineWrapEnabled = true
     @State private var isLineWrapButtonHovered = false
 
@@ -304,7 +353,7 @@ private struct FilePanelContentView: View {
 
     private var fileHeader: some View {
         HStack(spacing: 8) {
-            Image(systemName: "doc.text")
+            Image(systemName: fileIcon)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(.secondary)
             Text(panel.relativePath)
@@ -313,13 +362,13 @@ private struct FilePanelContentView: View {
                 .truncationMode(.middle)
             Spacer(minLength: 0)
 
-            if !isMarkdownFile || markdownDisplayMode == .source {
+            if showsSource {
                 lineWrapButton
             }
 
-            if isMarkdownFile {
-                ForEach(MarkdownDisplayMode.allCases, id: \.self) { mode in
-                    markdownDisplayButton(mode)
+            if supportsSourcePreview {
+                ForEach(FileDisplayMode.allCases, id: \.self) { mode in
+                    displayModeButton(mode)
                 }
             }
         }
@@ -336,14 +385,25 @@ private struct FilePanelContentView: View {
         case .loading:
             ProgressView()
                 .controlSize(.small)
-        case .loaded(let text):
-            if isMarkdownFile, markdownDisplayMode == .rendered {
-                MarkdownRenderedView(
-                    source: text,
-                    baseURL: panel.fileURL.deletingLastPathComponent()
-                )
-            } else {
-                sourceContent(text)
+        case .loaded(let loadedContent):
+            switch loadedContent {
+            case .text(let text):
+                if isMarkdownFile, displayMode == .preview {
+                    MarkdownRenderedView(
+                        source: text,
+                        baseURL: panel.fileURL.deletingLastPathComponent()
+                    )
+                } else {
+                    sourceContent(text)
+                }
+            case .image(let data):
+                FileImagePreview(data: data, accessibilityLabel: panel.displayTitle)
+            case .svg(let source, let data):
+                if displayMode == .preview {
+                    FileImagePreview(data: data, accessibilityLabel: panel.displayTitle)
+                } else {
+                    sourceContent(source)
+                }
             }
         case .binary:
             fileMessage("Binary file", systemImage: "doc.fill")
@@ -354,6 +414,34 @@ private struct FilePanelContentView: View {
 
     private var isMarkdownFile: Bool {
         ["md", "markdown"].contains(panel.fileURL.pathExtension.lowercased())
+    }
+
+    private var isSVGFile: Bool {
+        panel.fileURL.pathExtension.lowercased() == "svg"
+    }
+
+    private var supportsSourcePreview: Bool {
+        isMarkdownFile || isSVGFile
+    }
+
+    private var showsSource: Bool {
+        switch state {
+        case .loaded(.text):
+            return !supportsSourcePreview || displayMode == .source
+        case .loaded(.svg):
+            return displayMode == .source
+        default:
+            return false
+        }
+    }
+
+    private var fileIcon: String {
+        switch state {
+        case .loaded(.image), .loaded(.svg):
+            return "photo"
+        default:
+            return "doc.text"
+        }
     }
 
     private var lineWrapButton: some View {
@@ -389,14 +477,15 @@ private struct FilePanelContentView: View {
         }
     }
 
-    private func markdownDisplayButton(_ mode: MarkdownDisplayMode) -> some View {
-        let isSelected = markdownDisplayMode == mode
-        let isHovered = hoveredMarkdownDisplayMode == mode
+    private func displayModeButton(_ mode: FileDisplayMode) -> some View {
+        let isSelected = displayMode == mode
+        let isHovered = hoveredDisplayMode == mode
+        let label = mode.accessibilityLabel(isSVG: isSVGFile)
 
         return Button {
-            markdownDisplayMode = mode
+            displayMode = mode
         } label: {
-            Image(systemName: mode.systemImage)
+            Image(systemName: mode.systemImage(isSVG: isSVGFile))
                 .font(.system(size: 11, weight: .medium))
                 .foregroundColor(isSelected ? .primary : .secondary)
                 .frame(width: 20, height: 20)
@@ -410,11 +499,11 @@ private struct FilePanelContentView: View {
         }
         .buttonStyle(.plain)
         .cursor(.pointingHand)
-        .help(mode.accessibilityLabel)
-        .accessibilityLabel(mode.accessibilityLabel)
+        .help(label)
+        .accessibilityLabel(label)
         .accessibilityValue(isSelected ? "Selected" : "")
         .onHover { hovering in
-            hoveredMarkdownDisplayMode = hovering ? mode : nil
+            hoveredDisplayMode = hovering ? mode : nil
         }
     }
 
@@ -534,19 +623,35 @@ private struct FilePanelContentView: View {
         state = .loading
         let url = panel.fileURL
         state = await Task.detached(priority: .userInitiated) {
-            do {
-                let data = try Data(contentsOf: url)
-                if data.contains(0) {
-                    return .binary
-                }
-                guard let text = String(data: data, encoding: .utf8) else {
-                    return .binary
-                }
-                return .loaded(text)
-            } catch {
-                return .failed(error.localizedDescription)
-            }
+            FilePanelContentLoader.load(url: url)
         }.value
+    }
+}
+
+private struct FileImagePreview: View {
+    let data: Data
+    let accessibilityLabel: String
+
+    var body: some View {
+        if let image = NSImage(data: data) {
+            Image(nsImage: image)
+                .resizable()
+                .interpolation(.high)
+                .aspectRatio(contentMode: .fit)
+                .padding(24)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityLabel(accessibilityLabel)
+        } else {
+            VStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 24))
+                    .foregroundColor(.secondary.opacity(0.5))
+                Text("Image preview is unavailable")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
     }
 }
 

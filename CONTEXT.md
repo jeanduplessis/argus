@@ -14,9 +14,9 @@ worktree, terminal, repository-status, UI, persistence, IPC, and agent behavior.
 | **Worktree management** | Repository validation, branch discovery, worktree creation/removal, managed storage, and orphan discovery | `Argus/Services/WorktreeService.swift` | All git operations use spawned `git` processes; no libgit2. |
 | **Terminal runtime** | Global Ghostty engine, terminal surfaces, shell processes, rendering, terminal input, and first-responder behavior | `Argus/Ghostty/`, `Argus/Models/TerminalPanel.swift` | One global `GhosttyApp`; one Terminal Surface per Terminal Panel. |
 | **Files and Changes** | Right-sidebar navigation, workspace file tree, Git status snapshot, change actions, filesystem item actions, and file/preview loading | `Argus/Views/GitSidebar/`, `Argus/Models/GitStatus.swift`, `Argus/Services/GitStatus*`, `Argus/Services/GitPreviewService.swift` | Git Status Root never follows a terminal's live working directory. |
-| **User interface** | Single-window surface placement, tab behavior, interaction affordances, chrome, and accessibility contract | `Argus/Views/`, `UI_DESIGN_PRINCIPLES.md` | Inspectable content belongs in Workspace tabs, not independent windows. |
+| **User interface** | Single-window surface placement, tab behavior, interaction affordances, chrome, and accessibility contract | `Argus/Views/`, `docs/UI_DESIGN_PRINCIPLES.md` | Inspectable content belongs in Workspace tabs, not independent windows. |
 | **Session persistence** | Session snapshots, restore validation, Project/Workspace reconciliation, and sidebar preferences | `Argus/Models/SessionSnapshot.swift`, `Argus/Services/WorkspaceManager.swift`, `Argus/Views/Sidebar/SidebarState.swift` | Durable state and ephemeral runtime state must remain distinct. |
-| **IPC and agent integration** | Embedded socket protocol, companion CLI, Agent Status, PID tracking, Agent Notifications, and TTS announcements | `.specs/argus-application.md`, `ArgusCLI/` | Target context is specified but mostly unimplemented; no daemon process. |
+| **IPC and agent integration** | Embedded socket protocol, companion CLI, Agent Status, PID tracking, Agent Notifications, and TTS announcements | `docs/SPEC.md`, `ArgusCLI/` | Target context is specified but mostly unimplemented; no daemon process. |
 
 ## Canonical Terms
 
@@ -105,8 +105,8 @@ worktree, terminal, repository-status, UI, persistence, IPC, and agent behavior.
 
 ## Agent Rules
 
-- Read `.specs/argus-application.md` before changing behavior; it governs correctness.
-- Read `UI_DESIGN_PRINCIPLES.md` before changing UI behavior or placement.
+- Read `docs/SPEC.md` before changing behavior; it governs correctness.
+- Read `docs/UI_DESIGN_PRINCIPLES.md` before changing UI behavior or placement.
 - Use Project ID, Workspace ID, and Panel ID for identity; never use a mutable display name as a key.
 - Use `~/.argus/worktrees/<project-uuid>/<branch-slug>/` for Managed Worktree paths.
 - Use **Standalone Workspace** in prose; `WorkspaceType.external` is a legacy code spelling, not the canonical concept name.
@@ -173,7 +173,7 @@ worktree, terminal, repository-status, UI, persistence, IPC, and agent behavior.
 
 ## Decision References
 
-- `.specs/argus-application.md` is authoritative for product behavior and non-negotiable architecture constraints.
-- `UI_DESIGN_PRINCIPLES.md` governs UI placement, interaction affordances, focus preservation, and accessibility.
+- `docs/SPEC.md` is authoritative for product behavior and non-negotiable architecture constraints.
+- `docs/UI_DESIGN_PRINCIPLES.md` governs UI placement, interaction affordances, focus preservation, and accessibility.
 - `docs/argus-implementation-plan.md` provides historical rationale only; its tabs-only split model and floating preview panel are superseded by the spec.
 - No terminology or context ADRs exist under `docs/adr/` at this time.

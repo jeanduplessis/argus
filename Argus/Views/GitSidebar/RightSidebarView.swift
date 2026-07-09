@@ -542,6 +542,13 @@ enum WorkspaceFileTree {
         }
     }
 
+    static func containsDirectory(path: String, in nodes: [WorkspaceFileTreeNode]) -> Bool {
+        nodes.contains { node in
+            guard case .directory(let children) = node.content else { return false }
+            return node.path == path || containsDirectory(path: path, in: children)
+        }
+    }
+
     private static func rows(
         nodes: [WorkspaceFileTreeNode],
         depth: Int,
@@ -831,6 +838,7 @@ final class WorkspaceFilesViewModel: ObservableObject {
     func refresh(request: WorkspaceFileTreeRequest) async {
         guard !(isRefreshing && activeRequest == request) else { return }
 
+        let directoryPathsToReload = reloadableDirectoryPaths(for: request)
         invalidateRequests()
         let generation = requestGeneration
         let previousRequest = activeRequest
@@ -863,7 +871,7 @@ final class WorkspaceFilesViewModel: ObservableObject {
                 state = .error(path: snapshot.rootPath, message: "Workspace root changed while loading")
                 return
             }
-            state = .loaded(WorkspaceFileTreeSnapshot(
+            var rebuiltSnapshot = WorkspaceFileTreeSnapshot(
                 request: request,
                 rootPath: snapshot.rootPath,
                 nodes: snapshot.nodes,
@@ -873,8 +881,47 @@ final class WorkspaceFilesViewModel: ObservableObject {
                 omittedEntryCount: snapshot.omittedEntryCount,
                 isCapped: snapshot.isCapped,
                 loadedDirectoryPaths: snapshot.loadedDirectoryPaths
-            ))
-            directoryErrors = [:]
+            )
+            var refreshedDirectoryErrors: [String: WorkspaceFileTreeDirectoryError] = [:]
+
+            for directoryPath in directoryPathsToReload {
+                let directoryResult = await provider.loadChildren(
+                    rootPath: request.rootPath,
+                    directoryPath: directoryPath
+                )
+                guard !Task.isCancelled,
+                      requestGeneration == generation,
+                      activeRequest == request
+                else {
+                    return
+                }
+
+                switch directoryResult {
+                case .loaded(let directory):
+                    if let merged = mergedSnapshot(
+                        directory: directory,
+                        into: rebuiltSnapshot,
+                        request: request
+                    ) {
+                        rebuiltSnapshot = merged
+                    }
+                case .missingDirectory:
+                    break
+                case .error(let path, let message):
+                    if WorkspaceFileTree.containsDirectory(
+                        path: directoryPath,
+                        in: rebuiltSnapshot.nodes
+                    ) {
+                        refreshedDirectoryErrors[directoryPath] = WorkspaceFileTreeDirectoryError(
+                            path: path,
+                            message: message
+                        )
+                    }
+                }
+            }
+
+            state = .loaded(rebuiltSnapshot)
+            directoryErrors = refreshedDirectoryErrors
         case .missingDirectory(let path):
             state = .missingDirectory(path: path)
         case .error(let path, let message):
@@ -919,36 +966,12 @@ final class WorkspaceFilesViewModel: ObservableObject {
                 return
             }
 
-            let remainingBudget = max(
-                0,
-                WorkspaceFileTreeSnapshot.displayedEntryLimit - current.displayedEntryCount
-            )
-            let displayedNodes = Array(directory.nodes.prefix(remainingBudget))
-            let displayedDirectoryCounts = WorkspaceFileTree.countEntries(nodes: displayedNodes)
-            let displayedDirectoryEntryCount = displayedDirectoryCounts.files
-                + displayedDirectoryCounts.directories
-            let omittedDirectoryEntryCount = max(
-                directory.omittedEntryCount,
-                directory.totalEntryCount - displayedDirectoryEntryCount
-            )
-            let updatedNodes = WorkspaceFileTree.replacingChildren(
-                in: current.nodes,
-                directoryPath: directory.directoryPath,
-                with: displayedNodes
-            )
-            let counts = WorkspaceFileTree.countEntries(nodes: updatedNodes)
-            let omittedEntryCount = current.omittedEntryCount + omittedDirectoryEntryCount
-            state = .loaded(WorkspaceFileTreeSnapshot(
-                request: request,
-                rootPath: current.rootPath,
-                nodes: updatedNodes,
-                fileCount: counts.files,
-                directoryCount: counts.directories,
-                totalEntryCount: current.totalEntryCount + directory.totalEntryCount,
-                omittedEntryCount: omittedEntryCount,
-                isCapped: omittedEntryCount > 0,
-                loadedDirectoryPaths: current.loadedDirectoryPaths.union([directory.directoryPath])
-            ))
+            guard let merged = mergedSnapshot(
+                directory: directory,
+                into: current,
+                request: request
+            ) else { return }
+            state = .loaded(merged)
             directoryErrors[directoryPath] = nil
         case .missingDirectory(let path):
             directoryErrors[directoryPath] = WorkspaceFileTreeDirectoryError(
@@ -1019,6 +1042,73 @@ final class WorkspaceFilesViewModel: ObservableObject {
         requestGeneration &+= 1
     }
 
+    private func reloadableDirectoryPaths(for request: WorkspaceFileTreeRequest) -> [String] {
+        guard case .loaded(let snapshot) = state,
+              snapshot.request == request,
+              activeRequest == request
+        else {
+            return []
+        }
+
+        return snapshot.loadedDirectoryPaths
+            .union(loadingDirectoryPaths)
+            .union(directoryErrors.keys)
+            .filter { !$0.isEmpty }
+            .sorted { lhs, rhs in
+                let lhsDepth = lhs.split(separator: "/").count
+                let rhsDepth = rhs.split(separator: "/").count
+                if lhsDepth != rhsDepth { return lhsDepth < rhsDepth }
+                return lhs.localizedStandardCompare(rhs) == .orderedAscending
+            }
+    }
+
+    private func mergedSnapshot(
+        directory: WorkspaceFileTreeDirectorySnapshot,
+        into current: WorkspaceFileTreeSnapshot,
+        request: WorkspaceFileTreeRequest
+    ) -> WorkspaceFileTreeSnapshot? {
+        guard current.request == request,
+              current.rootPath == directory.rootPath,
+              WorkspaceFileTree.containsDirectory(
+                  path: directory.directoryPath,
+                  in: current.nodes
+              )
+        else {
+            return nil
+        }
+
+        let remainingBudget = max(
+            0,
+            WorkspaceFileTreeSnapshot.displayedEntryLimit - current.displayedEntryCount
+        )
+        let displayedNodes = Array(directory.nodes.prefix(remainingBudget))
+        let displayedDirectoryCounts = WorkspaceFileTree.countEntries(nodes: displayedNodes)
+        let displayedDirectoryEntryCount = displayedDirectoryCounts.files
+            + displayedDirectoryCounts.directories
+        let omittedDirectoryEntryCount = max(
+            directory.omittedEntryCount,
+            directory.totalEntryCount - displayedDirectoryEntryCount
+        )
+        let updatedNodes = WorkspaceFileTree.replacingChildren(
+            in: current.nodes,
+            directoryPath: directory.directoryPath,
+            with: displayedNodes
+        )
+        let counts = WorkspaceFileTree.countEntries(nodes: updatedNodes)
+        let omittedEntryCount = current.omittedEntryCount + omittedDirectoryEntryCount
+        return WorkspaceFileTreeSnapshot(
+            request: request,
+            rootPath: current.rootPath,
+            nodes: updatedNodes,
+            fileCount: counts.files,
+            directoryCount: counts.directories,
+            totalEntryCount: current.totalEntryCount + directory.totalEntryCount,
+            omittedEntryCount: omittedEntryCount,
+            isCapped: omittedEntryCount > 0,
+            loadedDirectoryPaths: current.loadedDirectoryPaths.union([directory.directoryPath])
+        )
+    }
+
     private func finishDirectoryLoad(directoryPath: String, generation: UInt64) {
         guard directoryLoadGenerations[directoryPath] == generation else { return }
         directoryLoadGenerations[directoryPath] = nil
@@ -1031,6 +1121,7 @@ struct WorkspaceFilesView: View {
     let workspaceId: UUID?
     let rootPath: String?
     @EnvironmentObject private var workspaceManager: WorkspaceManager
+    @State private var autoRefreshController = WorkspaceFilesAutoRefreshController()
     @State private var expandedDirectoryIds: Set<String> = []
     @State private var selectedItemId: String?
     @State private var selectedItemPath: String?
@@ -1040,12 +1131,23 @@ struct WorkspaceFilesView: View {
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .id(request)
-            .task(id: rootPath) {
+            .task(id: request) {
                 expandedDirectoryIds = []
                 selectedItemId = nil
                 selectedItemPath = nil
                 hoveredItemId = nil
-                await refresh()
+                guard let request else {
+                    autoRefreshController.stop()
+                    viewModel.reset()
+                    return
+                }
+                autoRefreshController.start(rootPath: request.rootPath) {
+                    await viewModel.refresh(request: request)
+                }
+                await viewModel.refresh(request: request)
+            }
+            .onDisappear {
+                autoRefreshController.stop()
             }
     }
 
