@@ -5,6 +5,7 @@ struct GitChangeDirectoryRow: View {
     let depth: Int
     let isExpanded: Bool
     let toggle: () -> Void
+    @EnvironmentObject private var appSettings: AppSettings
 
     @State private var isHovered = false
 
@@ -16,7 +17,7 @@ struct GitChangeDirectoryRow: View {
                     .foregroundColor(.secondary)
                     .frame(width: 12)
                 Text(directory.name)
-                    .font(.system(size: 11))
+                    .font(.system(size: appSettings.presentationMetrics.textSize(forBaseSize: 11)))
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Spacer(minLength: 0)
@@ -26,7 +27,7 @@ struct GitChangeDirectoryRow: View {
         .buttonStyle(.plain)
         .padding(.leading, treeRowLeadingPadding)
         .padding(.trailing, 12)
-        .padding(.vertical, 3)
+        .padding(.vertical, appSettings.presentationMetrics.treeRowVerticalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 4, style: .continuous)
@@ -81,7 +82,7 @@ extension GitSidebarView {
                 .foregroundColor(.secondary)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 7)
+        .padding(.vertical, appSettings.presentationMetrics.changeSectionHeaderVerticalPadding)
     }
 
     private func sectionDisclosureButton(
@@ -99,7 +100,8 @@ extension GitSidebarView {
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundColor(.secondary)
                     Text(section.title)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(
+                            .system(size: appSettings.presentationMetrics.textSize(forBaseSize: 12), weight: .semibold))
                 }
                 .frame(minHeight: 20)
                 .background {

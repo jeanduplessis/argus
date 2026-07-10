@@ -193,14 +193,17 @@ enum WorkspaceFileTree {
 }
 
 protocol WorkspaceFileTreeProviding: Sendable {
-    func loadTree(rootPath: String) async -> WorkspaceFileTreeLoadState
-    func loadChildren(rootPath: String, directoryPath: String) async -> WorkspaceFileTreeDirectoryLoadState
+    func loadTree(request: WorkspaceFileTreeRequest) async -> WorkspaceFileTreeLoadState
+    func loadChildren(
+        request: WorkspaceFileTreeRequest,
+        directoryPath: String
+    ) async -> WorkspaceFileTreeDirectoryLoadState
 }
 
 struct FileManagerWorkspaceFileTreeProvider: WorkspaceFileTreeProviding {
-    func loadTree(rootPath: String) async -> WorkspaceFileTreeLoadState {
+    func loadTree(request: WorkspaceFileTreeRequest) async -> WorkspaceFileTreeLoadState {
         let task = Task.detached(priority: .userInitiated) {
-            WorkspaceFileTreeLoader.load(rootPath: rootPath)
+            WorkspaceFileTreeLoader.load(request: request)
         }
         return await withTaskCancellationHandler {
             await task.value
@@ -209,9 +212,12 @@ struct FileManagerWorkspaceFileTreeProvider: WorkspaceFileTreeProviding {
         }
     }
 
-    func loadChildren(rootPath: String, directoryPath: String) async -> WorkspaceFileTreeDirectoryLoadState {
+    func loadChildren(
+        request: WorkspaceFileTreeRequest,
+        directoryPath: String
+    ) async -> WorkspaceFileTreeDirectoryLoadState {
         let task = Task.detached(priority: .userInitiated) {
-            WorkspaceFileTreeLoader.loadChildren(rootPath: rootPath, directoryPath: directoryPath)
+            WorkspaceFileTreeLoader.loadChildren(request: request, directoryPath: directoryPath)
         }
         return await withTaskCancellationHandler {
             await task.value
@@ -222,8 +228,8 @@ struct FileManagerWorkspaceFileTreeProvider: WorkspaceFileTreeProviding {
 }
 
 private enum WorkspaceFileTreeLoader {
-    static func load(rootPath: String) -> WorkspaceFileTreeLoadState {
-        switch loadDirectory(rootPath: rootPath, directoryPath: "") {
+    static func load(request: WorkspaceFileTreeRequest) -> WorkspaceFileTreeLoadState {
+        switch loadDirectory(request: request, directoryPath: "") {
         case .loaded(let directory):
             let counts = WorkspaceFileTree.countEntries(nodes: directory.nodes)
             return .loaded(
@@ -244,16 +250,19 @@ private enum WorkspaceFileTreeLoader {
         }
     }
 
-    static func loadChildren(rootPath: String, directoryPath: String) -> WorkspaceFileTreeDirectoryLoadState {
-        loadDirectory(rootPath: rootPath, directoryPath: directoryPath)
+    static func loadChildren(
+        request: WorkspaceFileTreeRequest,
+        directoryPath: String
+    ) -> WorkspaceFileTreeDirectoryLoadState {
+        loadDirectory(request: request, directoryPath: directoryPath)
     }
 
     private static func loadDirectory(
-        rootPath: String,
+        request: WorkspaceFileTreeRequest,
         directoryPath: String
     ) -> WorkspaceFileTreeDirectoryLoadState {
         let fileManager = FileManager.default
-        let rootURL = URL(fileURLWithPath: rootPath).standardizedFileURL
+        let rootURL = URL(fileURLWithPath: request.rootPath).standardizedFileURL
         let directoryURL =
             directoryPath.isEmpty
             ? rootURL
@@ -282,22 +291,23 @@ private enum WorkspaceFileTreeLoader {
         }
 
         return loadDirectorySnapshot(
-            fileManager: fileManager,
             rootURL: rootURL,
             rootPathWithSlash: rootPathWithSlash,
             directoryURL: directoryURL,
-            directoryPath: directoryPath
+            directoryPath: directoryPath,
+            showHiddenFiles: request.showHiddenFiles
         )
     }
 
     private static func loadDirectorySnapshot(
-        fileManager: FileManager,
         rootURL: URL,
         rootPathWithSlash: String,
         directoryURL: URL,
-        directoryPath: String
+        directoryPath: String,
+        showHiddenFiles: Bool
     ) -> WorkspaceFileTreeDirectoryLoadState {
-        let resourceKeys: Set<URLResourceKey> = [.isDirectoryKey, .isSymbolicLinkKey]
+        let fileManager = FileManager.default
+        let resourceKeys: Set<URLResourceKey> = [.isDirectoryKey, .isHiddenKey, .isSymbolicLinkKey]
         do {
             let urls = try fileManager.contentsOfDirectory(
                 at: directoryURL,
@@ -308,7 +318,7 @@ private enum WorkspaceFileTreeLoader {
                 let result = collectEntries(
                     urls,
                     rootPathWithSlash: rootPathWithSlash,
-                    resourceKeys: resourceKeys
+                    showHiddenFiles: showHiddenFiles
                 )
             else {
                 return .error(path: directoryURL.path, message: "Loading cancelled")
@@ -332,14 +342,21 @@ private enum WorkspaceFileTreeLoader {
     private static func collectEntries(
         _ urls: [URL],
         rootPathWithSlash: String,
-        resourceKeys: Set<URLResourceKey>
+        showHiddenFiles: Bool
     ) -> (entries: [WorkspaceFileTreeEntry], totalCount: Int)? {
+        let resourceKeys: Set<URLResourceKey> = [.isDirectoryKey, .isHiddenKey, .isSymbolicLinkKey]
         var entries: [WorkspaceFileTreeEntry] = []
         var totalCount = 0
 
         for url in urls {
             if Task.isCancelled { return nil }
             if url.lastPathComponent == ".git" { continue }
+            let values = try? url.resourceValues(forKeys: resourceKeys)
+            if !showHiddenFiles,
+                values?.isHidden == true || url.lastPathComponent.hasPrefix(".")
+            {
+                continue
+            }
 
             let entryURL = url.standardizedFileURL
             guard entryURL.path.hasPrefix(rootPathWithSlash) else { continue }
@@ -348,7 +365,6 @@ private enum WorkspaceFileTreeLoader {
 
             totalCount += 1
             if entries.count < WorkspaceFileTreeSnapshot.displayedEntryLimit {
-                let values = try? url.resourceValues(forKeys: resourceKeys)
                 entries.append(
                     WorkspaceFileTreeEntry(
                         path: relativePath,

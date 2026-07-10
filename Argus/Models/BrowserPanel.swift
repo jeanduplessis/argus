@@ -67,6 +67,7 @@ final class BrowserPanel: NSObject, Panel, ObservableObject {
     private var hasReceivedInitialFocus = false
     private var findQuery = ""
     private var findGeneration = 0
+    private let searchProvider: BrowserPanelConfiguration.SearchProvider
 
     var displayTitle: String {
         let trimmedTitle = pageTitle.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -77,54 +78,70 @@ final class BrowserPanel: NSObject, Panel, ObservableObject {
 
     var displayIcon: String? { "globe" }
 
-    init(
+    convenience init(
         id: UUID = UUID(),
         currentURL: URL? = nil,
         pageZoom: Double = 1,
         developerToolsEnabled: Bool = false
     ) {
-        let configuration = WKWebViewConfiguration()
-        let webView = BrowserWKWebView(frame: .zero, configuration: configuration)
+        self.init(
+            id: id,
+            currentURL: currentURL,
+            configuration: BrowserPanelConfiguration(
+                homepage: "",
+                searchProvider: .none,
+                pageZoom: pageZoom,
+                developerToolsEnabled: developerToolsEnabled,
+                dataStore: .persistent
+            )
+        )
+    }
+
+    init(
+        id: UUID = UUID(),
+        currentURL: URL? = nil,
+        configuration: BrowserPanelConfiguration
+    ) {
+        let webConfiguration = WKWebViewConfiguration()
+        webConfiguration.websiteDataStore =
+            configuration.dataStore == .persistent
+            ? .default()
+            : .nonPersistent()
+        let webView = BrowserWKWebView(frame: .zero, configuration: webConfiguration)
+        let initialURL = currentURL ?? Self.homepageURL(from: configuration.homepage)
 
         self.id = id
-        self.currentURL = currentURL
-        self.pageZoom = pageZoom
-        self.developerToolsEnabled = developerToolsEnabled
+        self.currentURL = initialURL
+        self.pageZoom = configuration.pageZoom
+        self.developerToolsEnabled = configuration.developerToolsEnabled
+        self.searchProvider = configuration.searchProvider
         self.webView = webView
 
         super.init()
 
         webView.navigationDelegate = self
-        webView.pageZoom = pageZoom
-        webView.isInspectable = developerToolsEnabled
+        webView.pageZoom = configuration.pageZoom
+        webView.isInspectable = configuration.developerToolsEnabled
 
-        if let currentURL {
-            webView.load(URLRequest(url: currentURL))
+        if let initialURL {
+            webView.load(URLRequest(url: initialURL))
         }
     }
 }
 
 extension BrowserPanel {
-    static func resolvedURL(from input: String) -> URL? {
-        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-
-        let lowercased = trimmed.lowercased()
-        let hasExplicitScheme =
-            trimmed.contains("://")
-            || ["about:", "data:", "file:", "mailto:"].contains(where: lowercased.hasPrefix)
-        let candidate = hasExplicitScheme ? trimmed : "https://\(trimmed)"
-
-        if let url = URL(string: candidate) {
-            return url
-        }
-        return candidate.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
-            .flatMap(URL.init(string:))
+    static func resolvedURL(
+        from input: String,
+        searchProvider: BrowserPanelConfiguration.SearchProvider = .none
+    ) -> URL? {
+        BrowserNavigationPolicy.resolvedURL(from: input, searchProvider: searchProvider)
     }
 
     @discardableResult
-    func navigate(to input: String) -> Bool {
-        guard let url = Self.resolvedURL(from: input) else { return false }
+    func navigate(
+        to input: String
+    ) -> Bool {
+        guard let url = Self.resolvedURL(from: input, searchProvider: searchProvider) else { return false }
         navigate(to: url)
         return true
     }
@@ -243,6 +260,10 @@ extension BrowserPanel {
         canGoBack = webView.canGoBack
         canGoForward = webView.canGoForward
         isLoading = webView.isLoading
+    }
+
+    private static func homepageURL(from homepage: String) -> URL? {
+        BrowserNavigationPolicy.directURL(from: homepage)
     }
 
     private func updateFindCounts(

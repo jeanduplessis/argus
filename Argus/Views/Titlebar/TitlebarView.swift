@@ -13,6 +13,7 @@ struct TitlebarView: View {
     @EnvironmentObject private var gitStatusViewModel: GitStatusViewModel
     @EnvironmentObject private var sidebarState: SidebarState
     @EnvironmentObject private var gitSidebarState: GitSidebarState
+    @EnvironmentObject private var appSettings: AppSettings
 
     var body: some View {
         HStack(spacing: 10) {
@@ -32,31 +33,45 @@ struct TitlebarView: View {
                     let gitContext = gitStatusViewModel.titlebarGitContext(for: workspace.id)
 
                     Text(titleContext(for: workspace, project: project))
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(
+                            .system(size: appSettings.presentationMetrics.textSize(forBaseSize: 14), weight: .semibold)
+                        )
                         .foregroundColor(.primary)
                         .lineLimit(1)
                         .truncationMode(.middle)
 
                     Text("/")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(
+                            .system(size: appSettings.presentationMetrics.textSize(forBaseSize: 14), weight: .semibold)
+                        )
                         .foregroundColor(.secondary)
 
                     Text(workspace.displayTitle)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(
+                            .system(size: appSettings.presentationMetrics.textSize(forBaseSize: 14), weight: .semibold)
+                        )
                         .foregroundColor(.primary)
                         .lineLimit(1)
                         .truncationMode(.middle)
 
                     if let gitContext {
                         Text(gitContext.visibleText)
-                            .font(.system(size: 13, weight: .medium, design: .monospaced))
+                            .font(
+                                .system(
+                                    size: appSettings.presentationMetrics.textSize(forBaseSize: 13),
+                                    weight: .medium,
+                                    design: .monospaced
+                                )
+                            )
                             .foregroundColor(.secondary)
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }
                 } else {
                     Text(WorkspaceTitleFormatter.fallbackTitle)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(
+                            .system(size: appSettings.presentationMetrics.textSize(forBaseSize: 14), weight: .semibold)
+                        )
                         .foregroundColor(.primary)
                 }
             }

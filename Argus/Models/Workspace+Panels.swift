@@ -45,8 +45,11 @@ extension Workspace {
     }
 
     @discardableResult
-    func addBrowserPanel(url: URL? = nil) -> BrowserPanel {
-        let panel = BrowserPanel(currentURL: url)
+    func addBrowserPanel(
+        url: URL? = nil,
+        configuration: BrowserPanelConfiguration = .default
+    ) -> BrowserPanel {
+        let panel = BrowserPanel(currentURL: url, configuration: configuration)
         panels[panel.id] = panel
         observeBrowserPanel(panel)
         insertAfterActiveTab(panel.id)

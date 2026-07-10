@@ -2,27 +2,13 @@ import AppKit
 import Foundation
 import SwiftUI
 
-private enum RightSidebarPanel: String, CaseIterable, Identifiable {
-    case files
-    case changes
-
-    var id: String { rawValue }
-
-    var title: String {
+extension AppSettings.RightSidebarView {
+    fileprivate var systemImage: String {
         switch self {
         case .files:
-            return "Files"
+            "doc"
         case .changes:
-            return "Changes"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .files:
-            return "doc"
-        case .changes:
-            return "arrow.triangle.branch"
+            "arrow.triangle.branch"
         }
     }
 }
@@ -30,8 +16,10 @@ private enum RightSidebarPanel: String, CaseIterable, Identifiable {
 struct RightSidebarView: View {
     @EnvironmentObject private var workspaceManager: WorkspaceManager
     @EnvironmentObject private var gitStatusViewModel: GitStatusViewModel
+    @EnvironmentObject private var appSettings: AppSettings
     @StateObject private var filesViewModel = WorkspaceFilesViewModel()
-    @State private var selectedPanel: RightSidebarPanel = .changes
+    @State private var selectedPanel: AppSettings.RightSidebarView = .changes
+    @State private var hasAppliedDefaultPanel = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -43,7 +31,8 @@ struct RightSidebarView: View {
                     WorkspaceFilesView(
                         viewModel: filesViewModel,
                         workspaceId: workspaceManager.selectedWorkspace?.id,
-                        rootPath: workspaceManager.selectedWorkspace?.currentDirectory
+                        rootPath: workspaceManager.selectedWorkspace?.currentDirectory,
+                        showHiddenFiles: appSettings.showHiddenFiles
                     )
                 case .changes:
                     GitSidebarView(showsHeader: false)
@@ -55,11 +44,16 @@ struct RightSidebarView: View {
         .onChange(of: filesRequest, initial: true) { _, request in
             filesViewModel.activate(request: request)
         }
+        .onAppear {
+            guard !hasAppliedDefaultPanel else { return }
+            selectedPanel = appSettings.defaultRightSidebarView
+            hasAppliedDefaultPanel = true
+        }
     }
 
     private var header: some View {
         HStack(spacing: 0) {
-            ForEach(RightSidebarPanel.allCases) { panel in
+            ForEach(AppSettings.RightSidebarView.allCases) { panel in
                 tabButton(panel)
             }
 
@@ -103,7 +97,7 @@ struct RightSidebarView: View {
         }
     }
 
-    private func tabButton(_ panel: RightSidebarPanel) -> some View {
+    private func tabButton(_ panel: AppSettings.RightSidebarView) -> some View {
         let isSelected = selectedPanel == panel
 
         return Button {
@@ -114,11 +108,13 @@ struct RightSidebarView: View {
                     .font(.system(size: 15, weight: .semibold))
                     .frame(width: 18)
                 Text(panel.title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: appSettings.presentationMetrics.textSize(forBaseSize: 14), weight: .semibold))
 
                 if panel == .changes, let count = changesCount, count > 0 {
                     Text("\(count)")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(
+                            .system(size: appSettings.presentationMetrics.textSize(forBaseSize: 12), weight: .semibold)
+                        )
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background {
@@ -163,7 +159,8 @@ struct RightSidebarView: View {
         guard let workspace = workspaceManager.selectedWorkspace else { return nil }
         return WorkspaceFileTreeRequest(
             workspaceId: workspace.id,
-            rootPath: workspace.currentDirectory
+            rootPath: workspace.currentDirectory,
+            showHiddenFiles: appSettings.showHiddenFiles
         )
     }
 

@@ -223,6 +223,7 @@ struct PanelContentView: View {
     let panel: any Panel
     var isActive: Bool = true
     var isVisible: Bool = true
+    @EnvironmentObject private var appSettings: AppSettings
 
     var body: some View {
         switch panel.panelType {
@@ -248,13 +249,24 @@ struct PanelContentView: View {
             }
         case .file:
             if let filePanel = panel as? FilePanel {
-                FilePanelContentView(panel: filePanel)
-                    .id(filePanel.id)
+                FilePanelContentView(
+                    panel: filePanel,
+                    wrapSourceLines: appSettings.wrapSourceLines,
+                    openMarkdownInPreview: appSettings.openMarkdownInPreview,
+                    openSVGInPreview: appSettings.openSVGInPreview,
+                    documentTextSize: appSettings.documentTextSize
+                )
+                .id(filePanel.id)
             }
         case .gitPreview:
             if let previewPanel = panel as? GitPreviewPanel {
-                GitPreviewPanelContentView(panel: previewPanel)
-                    .id(previewPanel.id)
+                GitPreviewPanelContentView(
+                    panel: previewPanel,
+                    initialDiffStyle: appSettings.defaultDiffStyle.argusDiffStyle,
+                    initialOverflow: appSettings.defaultDiffOverflow.argusDiffOverflow,
+                    documentTextSize: appSettings.documentTextSize
+                )
+                .id(previewPanel.id)
             }
         }
     }

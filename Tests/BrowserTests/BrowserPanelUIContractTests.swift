@@ -21,7 +21,7 @@ struct BrowserPanelUIContractTests {
 
         try SourceContract("Argus/Models/Workspace.swift").containsAll(
             [
-                "func addBrowserPanel(url: URL? = nil)",
+                "func addBrowserPanel(",
                 "insertAfterActiveTab(panel.id)",
                 "panelOrder.insert(panelId, at: activeIndex + 1)",
                 "selectPanel(panel.id)"
@@ -53,7 +53,7 @@ struct BrowserPanelUIContractTests {
 
         try SourceContract("Argus/Views/Content/TabBarView.swift").containsAll(
             [
-                "Menu {", "Button(\"New Browser Tab\")", "workspace.addBrowserPanel()",
+                "Menu {", "Button(\"New Browser Tab\")", "workspaceManager.addBrowserTab()",
                 "if panel.isLoading", "ProgressView()", "else if let icon = panel.displayIcon"
             ], "tab add menu and loading-indicator precedence")
         try SourceContract("Argus/App/ArgusApp.swift").containsAll(

@@ -15,6 +15,36 @@ struct BrowserPanelTests {
     }
 
     @Test
+    func searchProviderOnlyClassifiesQueriesWhenEnabled() {
+        #expect(
+            BrowserPanel.resolvedURL(from: "example.com/docs", searchProvider: .none)?.absoluteString
+                == "https://example.com/docs"
+        )
+        #expect(
+            BrowserPanel.resolvedURL(from: "swift concurrency", searchProvider: .none)
+                == BrowserNavigationPolicy.directURL(from: "swift concurrency")
+        )
+        #expect(
+            BrowserPanel.resolvedURL(from: "swift concurrency", searchProvider: .google)?.absoluteString
+                == "https://www.google.com/search?q=swift%20concurrency"
+        )
+    }
+
+    @Test
+    func homepageAlwaysUsesDirectURLResolution() {
+        let panel = BrowserPanel(
+            configuration: .init(
+                homepage: "example.com/docs",
+                searchProvider: .google,
+                pageZoom: 1,
+                developerToolsEnabled: false,
+                dataStore: .persistent
+            ))
+
+        #expect(panel.currentURL?.absoluteString == "https://example.com/docs")
+    }
+
+    @Test
     func browserSettingsMapToPublicWebKitProperties() {
         let id = UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!
         let panel = BrowserPanel(

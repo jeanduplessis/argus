@@ -8,6 +8,7 @@ import UniformTypeIdentifiers
 struct ProjectSection: View {
     @ObservedObject var project: Project
     @EnvironmentObject var workspaceManager: WorkspaceManager
+    @EnvironmentObject private var appSettings: AppSettings
 
     /// Workspaces belonging to this project, in project workspace order.
     private var childWorkspaces: [Workspace] {
@@ -131,6 +132,7 @@ private struct SidebarWorkspaceDropDelegate: DropDelegate {
 private struct ProjectHeaderRow: View {
     @ObservedObject var project: Project
     @EnvironmentObject var workspaceManager: WorkspaceManager
+    @EnvironmentObject private var appSettings: AppSettings
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovered = false
     @State private var isAddHovered = false
@@ -175,7 +177,12 @@ private struct ProjectHeaderRow: View {
                     }
 
                     Text(project.displayName)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(
+                            .system(
+                                size: appSettings.presentationMetrics.textSize(forBaseSize: 11),
+                                weight: .semibold
+                            )
+                        )
                         .foregroundColor(.secondary)
                         .textCase(project.isCatchAll ? .uppercase : nil)
                         .lineLimit(1)
@@ -228,7 +235,7 @@ private struct ProjectHeaderRow: View {
             .accessibilityLabel("Add Workspace to \(project.displayName)")
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 2)
+        .padding(.vertical, appSettings.presentationMetrics.projectHeaderVerticalPadding)
         .background(
             RoundedRectangle(cornerRadius: 4)
                 .fill(isHovered || focusedControl != nil ? Color.secondary.opacity(0.1) : Color.clear)

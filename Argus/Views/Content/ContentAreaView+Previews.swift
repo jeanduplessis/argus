@@ -48,7 +48,7 @@ struct FilePanelPreparedContent {
     }
 }
 
-enum FileDisplayMode: CaseIterable {
+enum FileDisplayMode: CaseIterable, Equatable {
     case source
     case preview
 
@@ -100,6 +100,7 @@ struct FileImagePreview: View {
 
 struct MarkdownRenderedView: View {
     let blocks: [MarkdownRenderedBlock]
+    let documentTextSize: Double
 
     var body: some View {
         ScrollView(.vertical) {
@@ -126,7 +127,7 @@ struct MarkdownRenderedView: View {
                 .padding(.bottom, level <= 2 ? 10 : 6)
         case .paragraph(let content):
             Text(content)
-                .font(.system(size: 14))
+                .font(.system(size: documentTextSize + 2))
                 .lineSpacing(3)
                 .padding(.bottom, 12)
         case .listItem(let marker, let depth, let content):
@@ -151,11 +152,11 @@ struct MarkdownRenderedView: View {
     ) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(marker)
-                .font(.system(size: 14, design: .monospaced))
+                .font(.system(size: documentTextSize + 2, design: .monospaced))
                 .foregroundColor(.secondary)
                 .frame(width: 24, alignment: .trailing)
             Text(content)
-                .font(.system(size: 14))
+                .font(.system(size: documentTextSize + 2))
                 .lineSpacing(3)
         }
         .padding(.leading, CGFloat(depth) * 20)
@@ -169,7 +170,7 @@ struct MarkdownRenderedView: View {
                 .foregroundColor(.secondary)
                 .padding(.top, 3)
             Text(content)
-                .font(.system(size: 14))
+                .font(.system(size: documentTextSize + 2))
                 .foregroundColor(.secondary)
                 .lineSpacing(3)
         }
@@ -180,12 +181,12 @@ struct MarkdownRenderedView: View {
         VStack(alignment: .leading, spacing: 6) {
             if let language, !language.isEmpty {
                 Text(language)
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .font(.system(size: documentTextSize - 2, weight: .medium, design: .monospaced))
                     .foregroundColor(.secondary)
             }
             ScrollView(.horizontal) {
                 Text(content)
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(.system(size: documentTextSize, design: .monospaced))
                     .fixedSize(horizontal: true, vertical: true)
             }
         }
@@ -202,7 +203,12 @@ struct MarkdownRenderedView: View {
                     GridRow {
                         ForEach(Array(row.cells.enumerated()), id: \.offset) { _, cell in
                             Text(cell)
-                                .font(.system(size: 13, weight: row.isHeader ? .semibold : .regular))
+                                .font(
+                                    .system(
+                                        size: documentTextSize + 1,
+                                        weight: row.isHeader ? .semibold : .regular
+                                    )
+                                )
                                 .padding(8)
                                 .frame(minWidth: 100, maxWidth: 260, alignment: .leading)
                                 .background(row.isHeader ? Color.primary.opacity(0.055) : Color.clear)
@@ -220,15 +226,15 @@ struct MarkdownRenderedView: View {
     private func headingFont(level: Int) -> Font {
         switch level {
         case 1:
-            return .system(size: 26, weight: .bold)
+            return .system(size: documentTextSize + 14, weight: .bold)
         case 2:
-            return .system(size: 22, weight: .bold)
+            return .system(size: documentTextSize + 10, weight: .bold)
         case 3:
-            return .system(size: 18, weight: .semibold)
+            return .system(size: documentTextSize + 6, weight: .semibold)
         case 4:
-            return .system(size: 16, weight: .semibold)
+            return .system(size: documentTextSize + 4, weight: .semibold)
         default:
-            return .system(size: 14, weight: .semibold)
+            return .system(size: documentTextSize + 2, weight: .semibold)
         }
     }
 }

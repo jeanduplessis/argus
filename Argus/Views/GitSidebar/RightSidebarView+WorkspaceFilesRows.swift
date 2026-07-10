@@ -5,7 +5,9 @@ struct WorkspaceFilesView: View {
     @ObservedObject var viewModel: WorkspaceFilesViewModel
     let workspaceId: UUID?
     let rootPath: String?
+    let showHiddenFiles: Bool
     @EnvironmentObject private var workspaceManager: WorkspaceManager
+    @EnvironmentObject var appSettings: AppSettings
     @State private var autoRefreshController = WorkspaceFilesAutoRefreshController()
     @State private var expandedDirectoryIds: Set<String> = []
     @State private var selectedItemId: String?
@@ -97,7 +99,7 @@ extension WorkspaceFilesView {
             .buttonStyle(.plain)
             .padding(.leading, workspaceTreeRowLeadingPadding(depth: depth))
             .padding(.trailing, 12)
-            .padding(.vertical, 3)
+            .padding(.vertical, appSettings.presentationMetrics.treeRowVerticalPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
@@ -144,7 +146,7 @@ extension WorkspaceFilesView {
             }
             .frame(width: 14)
             Text(directory.name)
-                .font(.system(size: 11))
+                .font(.system(size: appSettings.presentationMetrics.textSize(forBaseSize: 11)))
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 0)
@@ -169,7 +171,7 @@ extension WorkspaceFilesView {
             .buttonStyle(.plain)
             .padding(.leading, workspaceTreeRowLeadingPadding(depth: depth) + 19)
             .padding(.trailing, 12)
-            .padding(.vertical, 3)
+            .padding(.vertical, appSettings.presentationMetrics.treeRowVerticalPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
@@ -204,7 +206,7 @@ extension WorkspaceFilesView {
                 .foregroundColor(isSelected ? .accentColor : .secondary)
                 .frame(width: 14)
             Text(file.name)
-                .font(.system(size: 11))
+                .font(.system(size: appSettings.presentationMetrics.textSize(forBaseSize: 11)))
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 0)

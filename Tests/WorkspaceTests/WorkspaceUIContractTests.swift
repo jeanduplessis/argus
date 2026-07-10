@@ -359,7 +359,7 @@ struct WorkspaceTabAndChromeUIContractTests {
             ], "Browser Panel participates in shared Panel state")
         try SourceContract("Argus/Models/Workspace.swift").containsAll(
             [
-                "func addBrowserPanel(url: URL? = nil)",
+                "func addBrowserPanel(",
                 "insertAfterActiveTab(panel.id)",
                 "panelOrder.insert(panelId, at: activeIndex + 1)",
                 "selectPanel(panel.id)",

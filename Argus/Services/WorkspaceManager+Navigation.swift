@@ -71,7 +71,7 @@ extension WorkspaceManager {
 
     @discardableResult
     func addBrowserTab(url: URL? = nil) -> BrowserPanel? {
-        selectedWorkspace?.addBrowserPanel(url: url)
+        selectedWorkspace?.addBrowserPanel(url: url, configuration: browserPanelConfiguration)
     }
 
     func requestFindInActiveBrowser() {
@@ -148,5 +148,15 @@ extension WorkspaceManager {
         workspaces.sort { lhs, rhs in
             (indexById[lhs.id] ?? Int.max) < (indexById[rhs.id] ?? Int.max)
         }
+    }
+
+    private var browserPanelConfiguration: BrowserPanelConfiguration {
+        BrowserPanelConfiguration(
+            homepage: settings.homepage,
+            searchProvider: settings.searchProvider,
+            pageZoom: settings.defaultZoom,
+            developerToolsEnabled: settings.webInspectorEnabled,
+            dataStore: settings.browserDataStore
+        )
     }
 }

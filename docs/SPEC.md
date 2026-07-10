@@ -55,7 +55,7 @@ tool.
 1. The application MUST present a single main window.
 
 2. The main window MUST use a three-column layout: a left sidebar, a
-   central content area, and a right git sidebar.
+   central content area, and a Right Sidebar.
 
 3. The main window MUST use a custom transparent titlebar with
    full-size content view mode, allowing content to extend into the
@@ -65,7 +65,7 @@ tool.
    range of 80 pixels to 33% of the window width, with a default
    width of 200 pixels.
 
-5. The right git sidebar MUST be toggleable and user-resizable within
+5. The Right Sidebar MUST be toggleable and user-resizable within
    a range of 180 to 600 pixels, with a default width of 250 pixels.
 
 6. Draggable dividers MUST separate the three columns, with a hit
@@ -76,8 +76,53 @@ tool.
 
 8. The left sidebar visibility and width MUST persist across sessions.
 
-9. The right git sidebar visibility and width MUST persist across
+9. The Right Sidebar visibility and width MUST persist across
    sessions.
+
+### Settings
+
+1. The Argus Application MUST provide a native macOS Settings surface for
+   global application preferences. These preferences are durable separately
+   from the Session Snapshot and MUST NOT be treated as workspace or Panel
+   state.
+
+2. General settings MUST include a restore-previous-session preference, the
+   default Right-sidebar View, and the default Workspace Root for a new
+   Standalone Workspace. The default Right-sidebar View is Changes. An
+   explicit directory supplied when creating a Standalone Workspace takes
+   precedence over the configured default; the configured default takes
+   precedence over the user's home directory.
+
+3. Session restore MUST occur only when the restore-previous-session
+   preference is enabled. Automated tests and an explicit
+   `ARGUS_DISABLE_SESSION_RESTORE=1` environment override MUST disable
+   restore regardless of that preference. File and URL launch arguments
+   MUST also prevent session restore.
+
+4. Appearance settings MAY change interface text size, document text size,
+   and interface density between compact and comfortable. They MUST preserve
+   required minimum hit targets and the fixed opaque black application shell.
+
+5. Terminal settings MUST include an audible-bell preference. Ghostty
+   configuration remains the authority for terminal font, theme, and
+   keybindings.
+
+6. Files and Changes settings MUST control hidden Workspace Item visibility in
+   the Files View. The `.git` directory MUST remain excluded.
+   File Tab settings MAY supply only initial source-line wrapping, Markdown
+   display mode, and SVG display mode.
+
+7. Git Preview settings MAY supply only the initial diff layout (split or
+   unified) and overflow behavior (scroll or wrap).
+
+8. Browser settings MUST provide defaults for new Browser Panels and browser
+   top-level tabs: homepage, optional search provider, page zoom,
+   inspectability, and persistent or nonpersistent website data storage.
+   An explicit or restored Browser Panel value takes precedence over the
+   global default.
+
+9. Global defaults MUST apply when their target is created. They MUST NOT
+   retroactively reset existing Panel-local controls or restored Panel state.
 
 ### Workspaces
 

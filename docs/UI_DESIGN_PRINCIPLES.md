@@ -42,6 +42,7 @@ Choose a surface based on the user's task, not implementation convenience.
 | Center workspace tab | Content the user reads, operates on, or returns to | Terminal, browser, file, diff, blame |
 | Left sidebar | Project and workspace navigation | Projects, workspaces, active workspace |
 | Right sidebar | Contextual navigation, status, and compact actions | Files, Changes, git operations |
+| Native Settings | Global application configuration | General, Appearance, Terminal, Files & Changes, Browser |
 | Sheet | Short, bounded workflow requiring completion or cancellation | Create, rename, adopt |
 | Alert | Confirmation or blocking failure requiring a decision | Delete, discard, remove worktree |
 | Context menu | Secondary operations on a resource | Open, copy, rename, delete |
@@ -51,6 +52,21 @@ additional independent `NSWindow`, `NSPanel`, or utility window. Attached
 sheets, alerts, menus, and popovers remain valid for the transient workflows in
 the table above. An additional content window is allowed only if the application
 spec explicitly introduces a multi-window workflow.
+
+Native Settings is application configuration, not inspectable content. It MAY
+use the standard macOS Settings surface and MUST NOT be presented as a Workspace
+tab.
+
+## Settings controls
+
+Settings MUST use native `Form`, `Picker`, `Toggle`, and `Stepper` patterns
+where those controls express the setting. Settings controls MUST retain native
+keyboard and accessibility behavior rather than recreating form controls as
+custom chrome.
+
+Appearance and density settings MUST preserve the fixed opaque black application
+shell. They MUST NOT reduce required hit targets, divider drag targets, or other
+accessibility geometry below this contract's minimums.
 
 ## Keep content in workspace tabs
 

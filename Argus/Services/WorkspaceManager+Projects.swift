@@ -162,7 +162,7 @@ extension WorkspaceManager {
     private func restoreSelectionAfterRemovingWorkspaces(_ removedIds: Set<UUID>) {
         guard let selectedWorkspaceId, removedIds.contains(selectedWorkspaceId) else { return }
         if workspaces.isEmpty {
-            let workspace = Workspace()
+            let workspace = freshStandaloneWorkspace()
             workspaces.append(workspace)
             catchAllProject.addWorkspace(workspace.id)
             self.selectedWorkspaceId = workspace.id

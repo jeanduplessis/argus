@@ -12,6 +12,7 @@ struct TabBarView: View {
     @ObservedObject var workspace: Workspace
     @EnvironmentObject var workspaceManager: WorkspaceManager
     @EnvironmentObject var agentStatusStore: AgentStatusStore
+    @EnvironmentObject private var appSettings: AppSettings
 
     @State private var renamePanelId: UUID?
     @State private var renameText = ""
@@ -68,6 +69,7 @@ struct TabBarView: View {
                                     }
                                 }
                             )
+                            .environmentObject(appSettings)
                             .onDrag {
                                 PanelTabDragState.draggedPanelId = panelId
                                 return NSItemProvider(object: panelId.uuidString as NSString)
@@ -94,7 +96,7 @@ struct TabBarView: View {
                         workspace.addTerminalPanel()
                     }
                     Button("New Browser Tab") {
-                        workspace.addBrowserPanel()
+                        workspaceManager.addBrowserTab()
                     }
                 } label: {
                     Image(systemName: "plus")
@@ -185,6 +187,7 @@ struct TabItemView: View {
     let onMoveLeft: () -> Void
     let onMoveRight: () -> Void
     let onClose: () -> Void
+    @EnvironmentObject private var appSettings: AppSettings
 
     @State private var isHovered = false
     @State private var isCloseHovered = false
@@ -216,7 +219,7 @@ struct TabItemView: View {
                     }
 
                     Text(title)
-                        .font(.system(size: 12))
+                        .font(.system(size: appSettings.presentationMetrics.textSize(forBaseSize: 12)))
                         .foregroundColor(isActive ? .primary : .secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)

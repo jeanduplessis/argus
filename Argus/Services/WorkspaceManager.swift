@@ -40,6 +40,8 @@ final class WorkspaceManager: ObservableObject {
     /// Location of the minimal Phase 2 session snapshot.
     private let sessionSnapshotURL: URL
 
+    let settings: AppSettings
+
     // MARK: - Computed Properties
 
     /// The currently selected workspace, or `nil` if none is selected.
@@ -93,10 +95,15 @@ final class WorkspaceManager: ObservableObject {
 
     // MARK: - Initialization
 
-    init(sessionSnapshotURL: URL = WorkspaceManager.defaultSessionSnapshotURL) {
+    init(
+        settings: AppSettings,
+        sessionSnapshotURL: URL = WorkspaceManager.defaultSessionSnapshotURL,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) {
+        self.settings = settings
         self.sessionSnapshotURL = sessionSnapshotURL
 
-        if !Self.isRunningUnderAutomatedTests,
+        if !Self.shouldSkipSessionRestore(settings: settings, environment: environment),
             restoreSessionIfAvailable(from: sessionSnapshotURL)
         {
             // Restored from disk.
@@ -142,8 +149,11 @@ final class WorkspaceManager: ObservableObject {
     // MARK: - Session Persistence
 
     /// Returns true when app session restore must be skipped for tests.
-    private static var isRunningUnderAutomatedTests: Bool {
-        let environment = ProcessInfo.processInfo.environment
+    private static func shouldSkipSessionRestore(
+        settings: AppSettings,
+        environment: [String: String]
+    ) -> Bool {
+        guard settings.restorePreviousSession else { return true }
         return environment["XCTestConfigurationFilePath"] != nil
             || environment["ARGUS_DISABLE_SESSION_RESTORE"] == "1"
             || environment["ARGUS_UNDER_TEST"] == "1"
@@ -155,7 +165,7 @@ final class WorkspaceManager: ObservableObject {
         self.catchAllProject = catchAll
         self.projects = [catchAll]
 
-        let workspace = Workspace()
+        let workspace = freshStandaloneWorkspace()
         workspaces = [workspace]
         catchAll.addWorkspace(workspace.id)
         selectedWorkspaceId = workspace.id
@@ -250,7 +260,7 @@ final class WorkspaceManager: ObservableObject {
     func addWorkspace(title: String? = nil, workingDirectory: String? = nil) -> Workspace? {
         guard workspaces.count < Self.maxWorkspaces else { return nil }
 
-        let workspace = Workspace(
+        let workspace = freshStandaloneWorkspace(
             title: title ?? "Terminal",
             workingDirectory: workingDirectory
         )
@@ -325,7 +335,7 @@ final class WorkspaceManager: ObservableObject {
         if selectedWorkspaceId == workspaceId {
             if workspaces.isEmpty {
                 // Spec: always have at least one workspace.
-                let newWorkspace = Workspace()
+                let newWorkspace = freshStandaloneWorkspace()
                 workspaces.append(newWorkspace)
                 catchAllProject.addWorkspace(newWorkspace.id)
                 selectedWorkspaceId = newWorkspace.id
@@ -339,5 +349,15 @@ final class WorkspaceManager: ObservableObject {
 
     func notifyWorkspaceContextChanged() {
         NotificationCenter.default.post(name: .workspaceContextDidChange, object: nil)
+    }
+
+    func freshStandaloneWorkspace(
+        title: String = "Terminal",
+        workingDirectory: String? = nil
+    ) -> Workspace {
+        Workspace(
+            title: title,
+            workingDirectory: workingDirectory ?? settings.defaultStandaloneWorkspaceDirectory
+        )
     }
 }

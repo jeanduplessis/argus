@@ -14,6 +14,7 @@ struct GitPreviewPanelTests {
         resetsANSIColorAfterSGRReset()
         selectsRendererForPreviewContent()
         try usesGhosttyPaletteForPreviewRendering()
+        try preservesElevenPointANSITextAtDefaultDocumentSize()
         try argusTerminalThemeUsesBlackBackground()
     }
 
@@ -117,6 +118,16 @@ struct GitPreviewPanelTests {
             ], "Ghostty configuration owns preview palette updates")
     }
 
+    private func preservesElevenPointANSITextAtDefaultDocumentSize() throws {
+        let rendered = GitPreviewANSITextRenderer.attributedString(for: "blame", fontSize: 11)
+        let font = try #require(rendered.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
+        assertEqual(font.pointSize, 11, "ANSI previews preserve their original default font size")
+        try SourceContract("Argus/Views/GitSidebar/GitPreviewPanel.swift").containsAll(
+            ["fontSize: ansiTextSize", "max(documentTextSize - 1, 10)"],
+            "ANSI preview size derives from document size while preserving default 11 pt"
+        )
+    }
+
     @MainActor
     private func argusTerminalThemeUsesBlackBackground() throws {
         let themeURL = try #require(
@@ -200,7 +211,7 @@ struct GitStatusPreviewUIContractTests {
         try SourceContract("Argus/Views/Content/ContentAreaView.swift").containsAll(
             [
                 "case .gitPreview:",
-                "GitPreviewPanelContentView(panel: previewPanel)"
+                "GitPreviewPanelContentView("
             ], "preview tab content")
         try SourceContract("Argus/Services/GitPreviewService.swift").containsAll(
             [

@@ -63,7 +63,7 @@ extension WorkspaceFilesViewModel {
             }
         }
 
-        let result = await provider.loadTree(rootPath: request.rootPath)
+        let result = await provider.loadTree(request: request)
         guard !Task.isCancelled,
             requestGeneration == generation,
             activeRequest == request
@@ -136,7 +136,7 @@ extension WorkspaceFilesViewModel {
 
         for directoryPath in directoryPaths {
             let result = await provider.loadChildren(
-                rootPath: request.rootPath,
+                request: request,
                 directoryPath: directoryPath
             )
             guard isCurrent(request: request, generation: generation) else { return nil }
@@ -177,7 +177,7 @@ extension WorkspaceFilesViewModel {
         defer { finishDirectoryLoad(directoryPath: directoryPath, generation: generation) }
 
         let result = await provider.loadChildren(
-            rootPath: request.rootPath,
+            request: request,
             directoryPath: directoryPath
         )
         guard !Task.isCancelled,

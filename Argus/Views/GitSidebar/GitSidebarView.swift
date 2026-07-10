@@ -270,6 +270,7 @@ struct GitSidebarView: View {
     let showsHeader: Bool
     @EnvironmentObject var workspaceManager: WorkspaceManager
     @EnvironmentObject var viewModel: GitStatusViewModel
+    @EnvironmentObject var appSettings: AppSettings
     @State var autoRefreshController = GitStatusAutoRefreshController()
     @State var stagedExpanded = true
     @State var unstagedExpanded = true

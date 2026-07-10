@@ -63,10 +63,12 @@ enum WorkspaceFileIcon {
 struct WorkspaceFileTreeRequest: Hashable, Sendable {
     let workspaceId: UUID
     let rootPath: String
+    let showHiddenFiles: Bool
 
-    init(workspaceId: UUID, rootPath: String) {
+    init(workspaceId: UUID, rootPath: String, showHiddenFiles: Bool = true) {
         self.workspaceId = workspaceId
         self.rootPath = URL(fileURLWithPath: rootPath).standardizedFileURL.path
+        self.showHiddenFiles = showHiddenFiles
     }
 }
 

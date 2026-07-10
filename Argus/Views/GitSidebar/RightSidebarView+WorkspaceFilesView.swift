@@ -24,7 +24,11 @@ extension WorkspaceFilesView {
 
     var request: WorkspaceFileTreeRequest? {
         guard let workspaceId, let rootPath else { return nil }
-        return WorkspaceFileTreeRequest(workspaceId: workspaceId, rootPath: rootPath)
+        return WorkspaceFileTreeRequest(
+            workspaceId: workspaceId,
+            rootPath: rootPath,
+            showHiddenFiles: showHiddenFiles
+        )
     }
 
     private var loadingMessage: some View {
@@ -75,7 +79,13 @@ extension WorkspaceFilesView {
                 .foregroundColor(.secondary)
                 .fixedSize()
         }
-        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+        .font(
+            .system(
+                size: appSettings.presentationMetrics.textSize(forBaseSize: 12),
+                weight: .semibold,
+                design: .monospaced
+            )
+        )
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, minHeight: 30, maxHeight: 30, alignment: .leading)
         .help(snapshot.rootPath)

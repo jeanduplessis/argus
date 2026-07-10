@@ -19,9 +19,22 @@ struct GitPreviewPanelContentView: View {
     @ObservedObject var panel: GitPreviewPanel
     @ObservedObject private var ghosttyApp = GhosttyApp.shared
 
-    @State private var diffStyle = ArgusDiffStyle.split
-    @State private var overflow = ArgusDiffOverflow.scroll
+    @State private var diffStyle: ArgusDiffStyle
+    @State private var overflow: ArgusDiffOverflow
     @State private var rendererError: String?
+    let documentTextSize: Double
+
+    init(
+        panel: GitPreviewPanel,
+        initialDiffStyle: ArgusDiffStyle = .split,
+        initialOverflow: ArgusDiffOverflow = .scroll,
+        documentTextSize: Double = 12
+    ) {
+        self.panel = panel
+        _diffStyle = State(initialValue: initialDiffStyle)
+        _overflow = State(initialValue: initialOverflow)
+        self.documentTextSize = documentTextSize
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -67,7 +80,8 @@ struct GitPreviewPanelContentView: View {
         if let rendererError {
             GitPreviewANSITextView(
                 output: rendererError,
-                foregroundColor: ghosttyApp.chromePalette.foreground
+                foregroundColor: ghosttyApp.chromePalette.foreground,
+                fontSize: ansiTextSize
             )
         } else {
             switch panel.preview.content {
@@ -79,7 +93,8 @@ struct GitPreviewPanelContentView: View {
                         options: ArgusDiffOptions(
                             theme: ghosttyApp.chromePalette.isDark ? .dark : .light,
                             style: diffStyle,
-                            overflow: overflow
+                            overflow: overflow,
+                            fontSize: documentTextSize
                         )
                     ),
                     onError: { rendererError = $0 }
@@ -88,26 +103,32 @@ struct GitPreviewPanelContentView: View {
             case .ansiText(let output):
                 GitPreviewANSITextView(
                     output: output,
-                    foregroundColor: ghosttyApp.chromePalette.foreground
+                    foregroundColor: ghosttyApp.chromePalette.foreground,
+                    fontSize: ansiTextSize
                 )
             }
         }
+    }
+
+    private var ansiTextSize: Double {
+        max(documentTextSize - 1, 10)
     }
 }
 
 struct GitPreviewANSITextRenderer {
     static func attributedString(
         for output: String,
-        foregroundColor: NSColor = ChromeColors.foregroundNSColor
+        foregroundColor: NSColor = ChromeColors.foregroundNSColor,
+        fontSize: CGFloat = 12
     ) -> NSAttributedString {
         let text = output.isEmpty ? "No output" : output
         let result = NSMutableAttributedString()
         var index = text.startIndex
-        var attributes = defaultAttributes(foregroundColor: foregroundColor)
+        var attributes = defaultAttributes(foregroundColor: foregroundColor, fontSize: fontSize)
 
         while index < text.endIndex {
             if let sequence = sgrSequence(in: text, at: index) {
-                apply(sequence.codes, to: &attributes, foregroundColor: foregroundColor)
+                apply(sequence.codes, to: &attributes, foregroundColor: foregroundColor, fontSize: fontSize)
                 index = sequence.endIndex
                 continue
             }
@@ -154,16 +175,17 @@ struct GitPreviewANSITextRenderer {
     private static func apply(
         _ codes: [Int],
         to attributes: inout [NSAttributedString.Key: Any],
-        foregroundColor: NSColor
+        foregroundColor: NSColor,
+        fontSize: CGFloat
     ) {
         for code in codes {
             switch code {
             case 0:
-                attributes = defaultAttributes(foregroundColor: foregroundColor)
+                attributes = defaultAttributes(foregroundColor: foregroundColor, fontSize: fontSize)
             case 1:
-                attributes[.font] = NSFont.monospacedSystemFont(ofSize: 11, weight: .bold)
+                attributes[.font] = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .bold)
             case 22:
-                attributes[.font] = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+                attributes[.font] = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
             case 30...37, 90...97:
                 attributes[.foregroundColor] = color(for: code, foregroundColor: foregroundColor)
             case 39:
@@ -174,9 +196,12 @@ struct GitPreviewANSITextRenderer {
         }
     }
 
-    private static func defaultAttributes(foregroundColor: NSColor) -> [NSAttributedString.Key: Any] {
+    private static func defaultAttributes(
+        foregroundColor: NSColor,
+        fontSize: CGFloat
+    ) -> [NSAttributedString.Key: Any] {
         [
-            .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular),
+            .font: NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular),
             .foregroundColor: foregroundColor
         ]
     }
@@ -200,6 +225,7 @@ struct GitPreviewANSITextRenderer {
 private struct GitPreviewANSITextView: NSViewRepresentable {
     let output: String
     var foregroundColor: NSColor = ChromeColors.foregroundNSColor
+    var fontSize: CGFloat = 12
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -234,7 +260,8 @@ private struct GitPreviewANSITextView: NSViewRepresentable {
         textView.textStorage?.setAttributedString(
             GitPreviewANSITextRenderer.attributedString(
                 for: output,
-                foregroundColor: foregroundColor
+                foregroundColor: foregroundColor,
+                fontSize: fontSize
             ))
     }
 }

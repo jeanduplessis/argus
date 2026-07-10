@@ -22,6 +22,19 @@ struct ArgusDiffOptions: Codable, Sendable, Equatable {
     let theme: ArgusDiffTheme
     let style: ArgusDiffStyle
     let overflow: ArgusDiffOverflow
+    let fontSize: Double
+
+    init(
+        theme: ArgusDiffTheme,
+        style: ArgusDiffStyle,
+        overflow: ArgusDiffOverflow,
+        fontSize: Double = 12
+    ) {
+        self.theme = theme
+        self.style = style
+        self.overflow = overflow
+        self.fontSize = fontSize
+    }
 }
 
 enum ArgusDiffTheme: String, Codable, Sendable {

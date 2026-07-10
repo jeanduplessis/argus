@@ -122,6 +122,12 @@ struct GhosttyConfig {
 
     // MARK: - Parsing
 
+    /// Standard Ghostty configuration file used for user edits from Argus settings.
+    static var standardConfigurationURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: "Library/Application Support/com.mitchellh.ghostty/config")
+    }
+
     /// Standard Ghostty config file paths.
     private static var configPaths: [String] {
         var paths: [String] = []

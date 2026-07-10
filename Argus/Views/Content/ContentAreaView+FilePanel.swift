@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 // ContentAreaView+FilePanel.swift
 // Argus
 
@@ -16,6 +17,27 @@ enum FilePanelContentState: Equatable, Sendable {
     case loaded(FilePanelLoadedContent)
     case binary
     case failed(String)
+}
+
+struct FilePanelInitialPresentation: Equatable {
+    let displayMode: FileDisplayMode
+    let lineWrapEnabled: Bool
+
+    static func resolve(
+        fileURL: URL,
+        wrapSourceLines: Bool,
+        openMarkdownInPreview: Bool,
+        openSVGInPreview: Bool
+    ) -> Self {
+        let fileExtension = fileURL.pathExtension.lowercased()
+        let opensInPreview =
+            (fileExtension == "svg" && openSVGInPreview)
+            || (["md", "markdown"].contains(fileExtension) && openMarkdownInPreview)
+        return Self(
+            displayMode: opensInPreview ? .preview : .source,
+            lineWrapEnabled: wrapSourceLines
+        )
+    }
 }
 
 enum FilePanelContentLoader {
@@ -75,8 +97,28 @@ enum FileSourceText {
 struct FilePanelContentView: View {
     @ObservedObject var panel: FilePanel
     @State private var preparedContent = FilePanelPreparedContent.loading
-    @State private var displayMode: FileDisplayMode = .source
-    @State private var lineWrapEnabled = true
+    @State private var displayMode: FileDisplayMode
+    @State private var lineWrapEnabled: Bool
+    let documentTextSize: Double
+
+    init(
+        panel: FilePanel,
+        wrapSourceLines: Bool = true,
+        openMarkdownInPreview: Bool = false,
+        openSVGInPreview: Bool = false,
+        documentTextSize: Double = 12
+    ) {
+        self.panel = panel
+        let initialPresentation = FilePanelInitialPresentation.resolve(
+            fileURL: panel.fileURL,
+            wrapSourceLines: wrapSourceLines,
+            openMarkdownInPreview: openMarkdownInPreview,
+            openSVGInPreview: openSVGInPreview
+        )
+        _displayMode = State(initialValue: initialPresentation.displayMode)
+        _lineWrapEnabled = State(initialValue: initialPresentation.lineWrapEnabled)
+        self.documentTextSize = documentTextSize
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -130,7 +172,7 @@ extension FilePanelContentView {
             switch loadedContent {
             case .text:
                 if isMarkdownFile, displayMode == .preview {
-                    MarkdownRenderedView(blocks: preparedContent.markdownBlocks)
+                    MarkdownRenderedView(blocks: preparedContent.markdownBlocks, documentTextSize: documentTextSize)
                 } else {
                     sourceContent(preparedContent.sourceLines)
                 }
@@ -337,7 +379,7 @@ extension FilePanelContentView {
             .padding(.leading, 10)
             .padding(.trailing, 14)
         }
-        .font(.system(size: 12, design: .monospaced))
+        .font(.system(size: documentTextSize, design: .monospaced))
         .padding(.vertical, 1)
     }
 

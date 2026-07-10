@@ -6,6 +6,16 @@
 import AppKit
 import Foundation
 
+struct AudibleBellPolicy {
+    static let defaultsKey = "Argus.settings.terminal.audibleBell"
+
+    let defaults: UserDefaults
+
+    func shouldPlay() -> Bool {
+        defaults.object(forKey: Self.defaultsKey) == nil || defaults.bool(forKey: Self.defaultsKey)
+    }
+}
+
 extension Notification.Name {
     static let argusCloseSurface = Notification.Name("argusCloseSurface")
     static let argusSetSurfaceTitle = Notification.Name("argusSetSurfaceTitle")
@@ -129,7 +139,9 @@ private func handleSurfaceAction(
 private func handleApplicationAction(_ action: ghostty_action_s) -> Bool {
     switch action.tag {
     case GHOSTTY_ACTION_RING_BELL:
-        NSSound.beep()
+        if AudibleBellPolicy(defaults: .standard).shouldPlay() {
+            NSSound.beep()
+        }
         return true
     case GHOSTTY_ACTION_RELOAD_CONFIG:
         DispatchQueue.main.async {

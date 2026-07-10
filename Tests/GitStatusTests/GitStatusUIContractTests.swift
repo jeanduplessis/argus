@@ -116,6 +116,7 @@ struct GitStatusUIContractTests {
     }
 
     @Test
+    // swiftlint:disable:next function_body_length
     func workspaceFileProviderLoadsRootEntriesBeforeChildren() async throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("argus-files-panel-\(UUID().uuidString)", isDirectory: true)
@@ -128,6 +129,13 @@ struct GitStatusUIContractTests {
             to: root.appendingPathComponent("README.md"),
             atomically: true,
             encoding: .utf8)
+        try "hidden\n".write(
+            to: root.appendingPathComponent(".hidden"),
+            atomically: true,
+            encoding: .utf8)
+        try FileManager.default.createDirectory(
+            at: root.appendingPathComponent(".git", isDirectory: true),
+            withIntermediateDirectories: true)
         try "app\n".write(
             to: sources.appendingPathComponent("App.swift"),
             atomically: true,
@@ -138,7 +146,12 @@ struct GitStatusUIContractTests {
             encoding: .utf8)
 
         let provider = FileManagerWorkspaceFileTreeProvider()
-        let rootState = await provider.loadTree(rootPath: root.path)
+        let rootState = await provider.loadTree(
+            request: WorkspaceFileTreeRequest(
+                workspaceId: UUID(),
+                rootPath: root.path,
+                showHiddenFiles: false
+            ))
         guard case .loaded(let rootSnapshot) = rootState else {
             Issue.record("expected root file tree, got \(rootState)")
             return
@@ -148,7 +161,11 @@ struct GitStatusUIContractTests {
         #expect(rootSnapshot.nodes.first(where: { $0.name == "Sources" })?.children.isEmpty == true)
 
         let sourceState = await provider.loadChildren(
-            rootPath: rootSnapshot.rootPath,
+            request: WorkspaceFileTreeRequest(
+                workspaceId: UUID(),
+                rootPath: rootSnapshot.rootPath,
+                showHiddenFiles: false
+            ),
             directoryPath: "Sources")
         guard case .loaded(let sourceSnapshot) = sourceState else {
             Issue.record("expected source child file tree, got \(sourceState)")
@@ -160,7 +177,7 @@ struct GitStatusUIContractTests {
     }
 
     @Test
-    func workspaceFileRequestsIncludeWorkspaceIdentityAndNormalizedRoot() {
+    func workspaceFileRequestsIncludeWorkspaceIdentityHiddenVisibilityAndNormalizedRoot() {
         let firstWorkspaceId = UUID()
         let secondWorkspaceId = UUID()
         let first = WorkspaceFileTreeRequest(
@@ -172,10 +189,44 @@ struct GitStatusUIContractTests {
         let differentWorkspace = WorkspaceFileTreeRequest(
             workspaceId: secondWorkspaceId,
             rootPath: "/tmp/workspace")
+        let differentHiddenFileVisibility = WorkspaceFileTreeRequest(
+            workspaceId: firstWorkspaceId,
+            rootPath: "/tmp/workspace",
+            showHiddenFiles: false)
 
         #expect(first == sameWorkspaceAndRoot)
         #expect(first != differentWorkspace)
+        #expect(first != differentHiddenFileVisibility)
         #expect(first.rootPath == "/tmp/workspace")
+    }
+
+    @Test
+    func workspaceFileProviderFiltersHiddenEntriesButAlwaysExcludesGitDirectory() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("argus-hidden-files-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try "visible\n".write(to: root.appendingPathComponent("visible.txt"), atomically: true, encoding: .utf8)
+        try "hidden\n".write(to: root.appendingPathComponent(".hidden.txt"), atomically: true, encoding: .utf8)
+        try FileManager.default.createDirectory(
+            at: root.appendingPathComponent(".git", isDirectory: true),
+            withIntermediateDirectories: true)
+
+        let provider = FileManagerWorkspaceFileTreeProvider()
+        let visibleOnly = await provider.loadTree(
+            request: WorkspaceFileTreeRequest(workspaceId: UUID(), rootPath: root.path, showHiddenFiles: false))
+        let includingHidden = await provider.loadTree(
+            request: WorkspaceFileTreeRequest(workspaceId: UUID(), rootPath: root.path, showHiddenFiles: true))
+
+        guard case .loaded(let visibleSnapshot) = visibleOnly,
+            case .loaded(let hiddenSnapshot) = includingHidden
+        else {
+            Issue.record("expected loaded workspace file trees")
+            return
+        }
+        #expect(visibleSnapshot.nodes.map(\.name) == ["visible.txt"])
+        #expect(hiddenSnapshot.nodes.map(\.name) == [".hidden.txt", "visible.txt"])
+        #expect(!hiddenSnapshot.nodes.contains(where: { $0.name == ".git" }))
     }
 }
 
@@ -187,8 +238,6 @@ struct WorkspaceFilesUIContractTests {
         rightView.containsAll(
             [
                 "struct RightSidebarView: View",
-                "case files", "case changes",
-                "return \"Files\"", "return \"Changes\"",
                 "WorkspaceFilesView(",
                 "workspaceId: workspaceManager.selectedWorkspace?.id",
                 "rootPath: workspaceManager.selectedWorkspace?.currentDirectory",
@@ -199,6 +248,11 @@ struct WorkspaceFilesUIContractTests {
                 "Refresh files", "Refresh changes"
             ], "right sidebar panel tabs")
         rightView.excludes("Text(\"Git Status\")", "git status panel is renamed to changes")
+
+        try SourceContract("Argus/Settings/AppSettings.swift").containsAll(
+            ["enum RightSidebarView", "case files", "case changes", "\"Files\"", "\"Changes\""],
+            "right sidebar view choices"
+        )
 
         let changesView = try SourceContract("Argus/Views/GitSidebar/GitSidebarView.swift")
         changesView.contains("Text(\"Changes\")", "git status header is renamed to changes")
@@ -265,11 +319,12 @@ struct WorkspaceFilesUIContractTests {
         try SourceContract("Argus/Views/GitSidebar/RightSidebarView.swift").containsAll(
             [
                 "FileManagerWorkspaceFileTreeProvider",
-                "loadChildren(rootPath: String, directoryPath: String)",
+                "loadChildren(",
                 "WorkspaceFileTreeSnapshot.displayedEntryLimit",
                 "contentsOfDirectory",
                 ".skipsPackageDescendants",
                 "url.lastPathComponent == \".git\"",
+                "showHiddenFiles",
                 ".id(request)",
                 "snapshot.request == request",
                 "expandedDirectoryIds",
@@ -357,15 +412,15 @@ struct WorkspaceFilesUIContractTests {
         try SourceContract("Argus/Views/Content/ContentAreaView.swift").containsAll(
             [
                 "case .file:",
-                "FilePanelContentView(panel: filePanel)",
+                "FilePanelContentView(",
                 "Data(contentsOf: url)",
                 "data.contains(0)",
                 "FileSyntaxHighlighter.highlightedText",
                 "GeometryReader { proxy in",
-                "@State private var lineWrapEnabled = true",
+                "_lineWrapEnabled = State(initialValue: initialPresentation.lineWrapEnabled)",
                 "FilePanelPreparedContent",
                 "sourceContent(preparedContent.sourceLines)",
-                "MarkdownRenderedView(blocks: preparedContent.markdownBlocks)",
+                "MarkdownRenderedView(blocks: preparedContent.markdownBlocks, documentTextSize: documentTextSize)",
                 "Text(String(number))",
                 "ScrollView([.horizontal, .vertical])",
                 ".fixedSize(horizontal: false, vertical: true)",
@@ -375,4 +430,4 @@ struct WorkspaceFilesUIContractTests {
             ], "file tab content rendering")
     }
 
-}
+}  // swiftlint:disable:this file_length

@@ -21,6 +21,7 @@ struct ArgusDiffRenderingTests {
         #expect(options["theme"] as? String == "dark")
         #expect(options["style"] as? String == "split")
         #expect(options["overflow"] as? String == "scroll")
+        #expect(options["fontSize"] as? Double == 12)
     }
 
     @Test
@@ -40,8 +41,9 @@ struct ArgusDiffRenderingTests {
         #expect(scripts.isEmpty)
 
         coordinator.bridgeDidBecomeReady()
-        #expect(scripts.count == 1)
-        #expect(scripts[0].contains("window.argusDiff.render"))
+        #expect(scripts.count == 2)
+        #expect(scripts.contains(where: { $0.contains("window.argusDiff.render") }))
+        #expect(scripts.contains(where: { $0.contains("--argus-font-size") }))
     }
 
     @MainActor
@@ -56,13 +58,14 @@ struct ArgusDiffRenderingTests {
         let updated = ArgusDiffInput(
             oldFile: sampleInput().oldFile,
             newFile: sampleInput().newFile,
-            options: ArgusDiffOptions(theme: .light, style: .unified, overflow: .wrap))
+            options: ArgusDiffOptions(theme: .light, style: .unified, overflow: .wrap, fontSize: 14))
         coordinator.update(input: updated)
 
-        #expect(scripts.count == 3)
+        #expect(scripts.count == 4)
         #expect(scripts.contains(where: { $0.contains("setTheme") }))
         #expect(scripts.contains(where: { $0.contains("setStyle") }))
         #expect(scripts.contains(where: { $0.contains("setOverflow") }))
+        #expect(scripts.contains(where: { $0.contains("--argus-font-size") }))
         #expect(!scripts.contains(where: { $0.contains("argusDiff.render") }))
     }
 
@@ -147,7 +150,7 @@ struct FileTabUIContractTests {
             ])
         try SourceContract("Argus/Views/Content/ContentAreaView.swift").containsAll(
             [
-                "@State private var lineWrapEnabled = true",
+                "FilePanelInitialPresentation.resolve(",
                 "private var lineWrapButton: some View",
                 "Text(\"Wrap\")",
                 ".accessibilityLabel(\"Line wrap\")",
@@ -193,7 +196,7 @@ struct FileTabUIContractTests {
                 "return \"doc.plaintext\"", "isSVG ? \"photo\" : \"doc.richtext\"",
                 "Show Markdown source", "Show rendered Markdown",
                 "if isMarkdownFile, displayMode == .preview",
-                "MarkdownRenderedView(blocks: preparedContent.markdownBlocks)",
+                "MarkdownRenderedView(blocks: preparedContent.markdownBlocks, documentTextSize: documentTextSize)",
                 ".cursor(.pointingHand)",
                 ".accessibilityValue(isSelected ? \"Selected\" : \"\")"
             ], "Markdown File Tab display controls")
@@ -234,7 +237,7 @@ struct FileTabUIContractTests {
                 "sourceLines = FileSourceText.lines(in: text, fileName: fileName)",
                 "markdownBlocks = MarkdownRenderer.blocks(",
                 "sourceContent(preparedContent.sourceLines)",
-                "MarkdownRenderedView(blocks: preparedContent.markdownBlocks)"
+                "MarkdownRenderedView(blocks: preparedContent.markdownBlocks, documentTextSize: documentTextSize)"
             ], "File Tab derived rendering cache")
 
         let previews = try SourceContract("Argus/Views/Content/ContentAreaView+Previews.swift")

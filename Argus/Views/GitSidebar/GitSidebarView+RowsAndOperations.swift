@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import SwiftUI
 
 extension GitSidebarView {
@@ -256,6 +257,7 @@ private struct GitChangeFileRow: View {
     let canPerformActions: Bool
     let accessibilityValue: String
     let perform: (GitFileRowAction) -> Void
+    @EnvironmentObject private var appSettings: AppSettings
 
     @State private var isHovered = false
     @State private var hoveredAction: GitFileRowAction?
@@ -265,16 +267,22 @@ private struct GitChangeFileRow: View {
         HStack(spacing: 7) {
             statusIndicator
             Text(name)
-                .font(.system(size: 11))
+                .font(.system(size: appSettings.presentationMetrics.textSize(forBaseSize: 11)))
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 6)
             trailingContent
         }
-        .font(.system(size: 10, weight: .medium, design: .monospaced))
+        .font(
+            .system(
+                size: appSettings.presentationMetrics.textSize(forBaseSize: 10),
+                weight: .medium,
+                design: .monospaced
+            )
+        )
         .padding(.leading, treeRowLeadingPadding)
         .padding(.trailing, 12)
-        .padding(.vertical, 3)
+        .padding(.vertical, appSettings.presentationMetrics.treeRowVerticalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 4, style: .continuous)

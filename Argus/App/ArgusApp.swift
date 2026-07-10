@@ -3,11 +3,16 @@ import SwiftUI
 
 @main
 struct ArgusApp: App {
-    @StateObject private var workspaceManager = WorkspaceManager()
+    @StateObject private var workspaceManager: WorkspaceManager
     @StateObject private var agentStatusStore = AgentStatusStore()
+    @StateObject private var appSettings: AppSettings
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
+        let settings = AppSettings()
+        _appSettings = StateObject(wrappedValue: settings)
+        _workspaceManager = StateObject(wrappedValue: WorkspaceManager(settings: settings))
+
         // Initialize GhosttyApp singleton — this triggers ghostty_init and
         // configures the terminal environment (TERM, PATH, GHOSTTY_RESOURCES_DIR).
         _ = GhosttyApp.shared
@@ -18,6 +23,7 @@ struct ArgusApp: App {
             MainWindowView()
                 .environmentObject(workspaceManager)
                 .environmentObject(agentStatusStore)
+                .environmentObject(appSettings)
                 .onAppear {
                     appDelegate.workspaceManager = workspaceManager
                     appDelegate.updateWindowTitle()
@@ -25,6 +31,10 @@ struct ArgusApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1200, height: 800)
+        Settings {
+            SettingsView()
+                .environmentObject(appSettings)
+        }
         .commands {
             // File menu — replace default "New" with workspace/tab commands
             CommandGroup(replacing: .newItem) {

@@ -51,6 +51,9 @@ final class ArgusDiffWebViewCoordinator: NSObject, WKScriptMessageHandler {
         if previousInput.options.overflow != input.options.overflow {
             evaluate("window.argusDiff.setOverflow(\(javaScriptString(input.options.overflow.rawValue)));")
         }
+        if previousInput.options.fontSize != input.options.fontSize {
+            setFontSize(input.options.fontSize)
+        }
     }
 
     func bridgeDidBecomeReady() {
@@ -98,6 +101,7 @@ final class ArgusDiffWebViewCoordinator: NSObject, WKScriptMessageHandler {
         do {
             let data = try JSONEncoder().encode(input)
             evaluate("window.argusDiff.render('\(data.base64EncodedString())');")
+            setFontSize(input.options.fontSize)
         } catch {
             onError?(error.localizedDescription)
         }
@@ -105,6 +109,10 @@ final class ArgusDiffWebViewCoordinator: NSObject, WKScriptMessageHandler {
 
     private func evaluate(_ script: String) {
         evaluateJavaScript?(script)
+    }
+
+    private func setFontSize(_ fontSize: Double) {
+        evaluate("document.documentElement.style.setProperty('--argus-font-size', '\(fontSize)px');")
     }
 
     private func javaScriptString(_ value: String) -> String {

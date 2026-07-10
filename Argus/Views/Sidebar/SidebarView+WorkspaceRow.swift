@@ -7,6 +7,7 @@ import SwiftUI
 struct SidebarWorkspaceRow: View {
     @ObservedObject var workspace: Workspace
     @EnvironmentObject var agentStatusStore: AgentStatusStore
+    @EnvironmentObject private var appSettings: AppSettings
     let globalIndex: Int
     let isSelected: Bool
     let onSelect: () -> Void
@@ -18,7 +19,13 @@ struct SidebarWorkspaceRow: View {
             HStack(spacing: 8) {
                 // 1-based global index (for Cmd+N shortcut reference)
                 Text("\(globalIndex)")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .font(
+                        .system(
+                            size: appSettings.presentationMetrics.textSize(forBaseSize: 10),
+                            weight: .medium,
+                            design: .monospaced
+                        )
+                    )
                     .foregroundColor(.secondary)
                     .frame(width: 16)
 
@@ -39,14 +46,14 @@ struct SidebarWorkspaceRow: View {
                 // Title and branch
                 VStack(alignment: .leading, spacing: 1) {
                     Text(workspace.displayTitle)
-                        .font(.system(size: 13))
+                        .font(.system(size: appSettings.presentationMetrics.textSize(forBaseSize: 13)))
                         .foregroundColor(isSelected ? .white : .primary)
                         .lineLimit(1)
                         .truncationMode(.tail)
 
                     if let branch = workspace.branchName {
                         Text(branch)
-                            .font(.system(size: 10))
+                            .font(.system(size: appSettings.presentationMetrics.textSize(forBaseSize: 10)))
                             .foregroundColor(isSelected ? .white.opacity(0.7) : .secondary)
                             .lineLimit(1)
                             .truncationMode(.middle)
@@ -58,7 +65,7 @@ struct SidebarWorkspaceRow: View {
                 // Panel count badge (shown when > 1 tab)
                 if workspace.panelCount > 1 {
                     Text("\(workspace.panelCount)")
-                        .font(.system(size: 10))
+                        .font(.system(size: appSettings.presentationMetrics.textSize(forBaseSize: 10)))
                         .foregroundColor(.secondary)
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
@@ -67,7 +74,7 @@ struct SidebarWorkspaceRow: View {
                 }
             }
             .padding(.horizontal, 8)
-            .padding(.vertical, 5)
+            .padding(.vertical, appSettings.presentationMetrics.workspaceRowVerticalPadding)
             .background(
                 RoundedRectangle(cornerRadius: 6)
                     .fill(backgroundColor)
