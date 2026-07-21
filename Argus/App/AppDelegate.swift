@@ -40,7 +40,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Configure any existing windows
-        for window in NSApp.windows {
+        for window in NSApp.windows where !(window is NSPanel) {
             configureWindow(window)
         }
 
@@ -52,7 +52,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             queue: .main
         ) { [weak self] notification in
             guard let self,
-                let window = notification.object as? NSWindow
+                let window = notification.object as? NSWindow,
+                !(window is NSPanel)
             else { return }
             self.configureWindow(window)
         }
