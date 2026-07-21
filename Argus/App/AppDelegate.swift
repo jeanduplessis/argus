@@ -86,6 +86,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard !configuredWindows.contains(id) else { return }
         configuredWindows.insert(id)
 
+        // Only the main terminal shell window gets the black, chrome-less
+        // styling below — auxiliary windows (Settings, panels, alerts) must
+        // keep their normal system appearance. `Window("Argus", id: "main")`
+        // in ArgusApp gives that window this identifier.
+        guard window.identifier?.rawValue == "main" else { return }
+
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.styleMask.insert(.fullSizeContentView)

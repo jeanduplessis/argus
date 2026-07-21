@@ -251,7 +251,7 @@ final class GhosttyApp: ObservableObject {
         }
         self.config = newConfig
 
-        for window in NSApp.windows {
+        for window in NSApp.windows where window.identifier?.rawValue == "main" {
             window.backgroundColor = ChromeColors.shellBackgroundNSColor
             window.contentView?.needsDisplay = true
         }
