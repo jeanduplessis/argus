@@ -30,7 +30,11 @@ struct SidebarDivider: View {
                     .contentShape(Rectangle())
                     .cursor(.resizeLeftRight)
                     .gesture(
-                        DragGesture(minimumDistance: 2)
+                        // .global: translation must track raw mouse movement, not the
+                        // divider's own on-screen position — that position moves every
+                        // time `position` changes, which would otherwise feed back into
+                        // the drag and make it overshoot/oscillate.
+                        DragGesture(minimumDistance: 2, coordinateSpace: .global)
                             .onChanged { value in
                                 if dragStartWidth == nil {
                                     dragStartWidth = position
@@ -47,6 +51,9 @@ struct SidebarDivider: View {
                             }
                     )
             )
+            // Neighboring siblings in the HStack paint after this divider and would
+            // otherwise cover half of the invisible hit zone above; keep it on top.
+            .zIndex(1)
     }
 }
 
@@ -73,7 +80,11 @@ struct GitSidebarDivider: View {
                     .contentShape(Rectangle())
                     .cursor(.resizeLeftRight)
                     .gesture(
-                        DragGesture(minimumDistance: 2)
+                        // .global: translation must track raw mouse movement, not the
+                        // divider's own on-screen position — that position moves every
+                        // time `position` changes, which would otherwise feed back into
+                        // the drag and make it overshoot/oscillate.
+                        DragGesture(minimumDistance: 2, coordinateSpace: .global)
                             .onChanged { value in
                                 if dragStartWidth == nil {
                                     dragStartWidth = position
@@ -92,6 +103,9 @@ struct GitSidebarDivider: View {
                             }
                     )
             )
+            // Neighboring siblings in the HStack paint after this divider and would
+            // otherwise cover half of the invisible hit zone above; keep it on top.
+            .zIndex(1)
     }
 }
 
