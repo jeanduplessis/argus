@@ -191,7 +191,10 @@ private struct PanelSplitDivider: View {
     }
 
     private var dragGesture: some Gesture {
-        DragGesture(minimumDistance: 0)
+        // .global: translation must track raw mouse movement, not the divider's own
+        // on-screen position — that position moves every time the ratio changes,
+        // which would otherwise feed back into the drag and make it oscillate.
+        DragGesture(minimumDistance: 0, coordinateSpace: .global)
             .onChanged { value in
                 guard availableLength > 0 else { return }
                 if dragStartRatio == nil {
