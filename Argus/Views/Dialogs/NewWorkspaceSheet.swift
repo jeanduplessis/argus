@@ -89,10 +89,17 @@ struct NewWorkspaceSheet: View {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
+                .disabled(isCreating)
 
                 Spacer()
 
-                Button("Create") {
+                if isCreating {
+                    ProgressView()
+                        .controlSize(.small)
+                        .padding(.trailing, 4)
+                }
+
+                Button(isCreating ? "Creating…" : "Create") {
                     createWorkspace()
                 }
                 .keyboardShortcut(.defaultAction)
