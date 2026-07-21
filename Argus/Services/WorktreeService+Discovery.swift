@@ -204,7 +204,8 @@ extension WorktreeService {
                 "-C", repositoryPath, "fetch", remote,
                 "+refs/heads/\(localName):refs/remotes/\(remote)/\(localName)"
             ],
-            workingDirectory: repositoryPath
+            workingDirectory: repositoryPath,
+            timeout: 15
         )
     }
 
@@ -225,7 +226,8 @@ extension WorktreeService {
         else { throw WorktreeError.worktreeCreationFailed("Branch not found: \(remoteBranch)") }
         _ = try await runGit(
             args: ["-C", repositoryPath, "fetch", remoteName, "refs/heads/\(remoteLocalName)"],
-            workingDirectory: repositoryPath
+            workingDirectory: repositoryPath,
+            timeout: 15
         )
         _ = try await runGit(
             args: ["-C", repositoryPath, "branch", localName, "FETCH_HEAD"],

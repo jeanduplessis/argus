@@ -51,10 +51,12 @@ extension WorktreeService {
         worktreePath: String,
         force: Bool = false
     ) async throws {
-        var arguments = ["-C", repositoryPath, "worktree", "remove", worktreePath]
+        var arguments = ["-C", repositoryPath, "worktree", "remove"]
         if force {
-            arguments.insert("--force", at: 4)
+            // Git requires --force twice to remove a locked worktree.
+            arguments += ["--force", "--force"]
         }
+        arguments.append(worktreePath)
         do {
             _ = try await runGit(args: arguments, workingDirectory: repositoryPath)
         } catch {

@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 // MARK: - Error Type
@@ -10,6 +11,7 @@ enum WorktreeError: LocalizedError {
     case worktreeRemovalFailed(String)
     case mainBranchDetectionFailed
     case gitCommandFailed(String, Int32)
+    case gitCommandTimedOut(String)
 
     var errorDescription: String? {
         switch self {
@@ -25,6 +27,8 @@ enum WorktreeError: LocalizedError {
             "Could not detect the main branch of the repository"
         case .gitCommandFailed(let command, let exitCode):
             "Git command failed (exit \(exitCode)): \(command)"
+        case .gitCommandTimedOut(let command):
+            "Git command timed out: \(command)"
         }
     }
 }
@@ -60,6 +64,9 @@ final class WorktreeService: Sendable {
 
     // MARK: - Constants
 
+    /// Interactive git operations must eventually return control to the UI.
+    private let gitCommandTimeout: TimeInterval
+
     /// Base directory for all Argus-managed worktrees.
     static let worktreeBaseURL: URL = {
         FileManager.default
@@ -69,6 +76,10 @@ final class WorktreeService: Sendable {
 
     /// Path to the git binary.
     private static let gitPath = "/usr/bin/git"
+
+    init(gitCommandTimeout: TimeInterval = 30) {
+        self.gitCommandTimeout = gitCommandTimeout
+    }
 
     // MARK: - Private Helpers
 
@@ -84,13 +95,34 @@ final class WorktreeService: Sendable {
         workingDirectory: String? = nil,
         timeout: TimeInterval? = nil
     ) async throws -> String {
+        try await runProcess(
+            executableURL: URL(fileURLWithPath: Self.gitPath),
+            args: args,
+            workingDirectory: workingDirectory,
+            environment: ProcessInfo.processInfo.environment.merging([
+                "GIT_TERMINAL_PROMPT": "0",
+                "GIT_ASKPASS": "echo"
+            ]) { _, new in new },
+            timeout: timeout,
+            commandDescription: "git \(args.joined(separator: " "))"
+        )
+    }
+
+    /// Runs a subprocess while draining both output pipes. The timeout covers
+    /// process exit and pipe EOF because git transport helpers can outlive git
+    /// while retaining inherited pipe handles.
+    func runProcess(
+        executableURL: URL,
+        args: [String],
+        workingDirectory: String? = nil,
+        environment: [String: String]? = nil,
+        timeout: TimeInterval? = nil,
+        commandDescription: String
+    ) async throws -> String {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: Self.gitPath)
+        process.executableURL = executableURL
         process.arguments = args
-        process.environment = ProcessInfo.processInfo.environment.merging([
-            "GIT_TERMINAL_PROMPT": "0",
-            "GIT_ASKPASS": "echo"
-        ]) { _, new in new }
+        process.environment = environment
 
         if let workingDirectory {
             process.currentDirectoryURL = URL(fileURLWithPath: workingDirectory)
@@ -102,17 +134,26 @@ final class WorktreeService: Sendable {
         process.standardError = stderr
 
         try process.run()
+        try? stdout.fileHandleForWriting.close()
+        try? stderr.fileHandleForWriting.close()
         let outputReader = WorktreeProcessOutputReader(stdout: stdout, stderr: stderr)
-        if let timeout {
-            let deadline = Date().addingTimeInterval(timeout)
-            while process.isRunning && Date() < deadline {
-                try? await Task.sleep(nanoseconds: 50_000_000)
-            }
-            if process.isRunning {
-                process.terminate()
-            }
+        let deadline = Date().addingTimeInterval(timeout ?? gitCommandTimeout)
+        while (process.isRunning || !outputReader.isFinished) && Date() < deadline {
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        if process.isRunning || !outputReader.isFinished {
+            await stop(process)
+            outputReader.close()
+            throw WorktreeError.gitCommandTimedOut(commandDescription)
         }
         process.waitUntilExit()
+        let outputDeadline = Date().addingTimeInterval(0.25)
+        while !outputReader.isFinished && Date() < outputDeadline {
+            try? await Task.sleep(nanoseconds: 25_000_000)
+        }
+        if !outputReader.isFinished {
+            outputReader.close()
+        }
         let processOutput = await outputReader.readToEnd()
 
         let output =
@@ -125,7 +166,7 @@ final class WorktreeService: Sendable {
                 .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let detail = errorOutput.isEmpty ? output : errorOutput
             throw WorktreeError.gitCommandFailed(
-                "git \(args.joined(separator: " ")): \(detail)",
+                "\(commandDescription): \(detail)",
                 process.terminationStatus
             )
         }
@@ -133,27 +174,31 @@ final class WorktreeService: Sendable {
         return output
     }
 
+    private func stop(_ process: Process) async {
+        if process.isRunning {
+            process.terminate()
+        }
+        let terminationDeadline = Date().addingTimeInterval(0.5)
+        while process.isRunning && Date() < terminationDeadline {
+            try? await Task.sleep(nanoseconds: 25_000_000)
+        }
+        if process.isRunning {
+            Darwin.kill(process.processIdentifier, SIGKILL)
+        }
+        while process.isRunning {
+            try? await Task.sleep(nanoseconds: 25_000_000)
+        }
+        process.waitUntilExit()
+    }
+
     /// Runs a git command and returns whether it succeeded (exit code 0).
     func runGitQuiet(
         args: [String],
         workingDirectory: String? = nil
     ) async -> Bool {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: Self.gitPath)
-        process.arguments = args
-
-        if let workingDirectory {
-            process.currentDirectoryURL = URL(fileURLWithPath: workingDirectory)
-        }
-
-        // Discard all output.
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-
         do {
-            try process.run()
-            process.waitUntilExit()
-            return process.terminationStatus == 0
+            _ = try await runGit(args: args, workingDirectory: workingDirectory)
+            return true
         } catch {
             return false
         }
@@ -223,10 +268,14 @@ final class WorktreeService: Sendable {
 
     private final class WorktreeProcessOutputReader: @unchecked Sendable {
         private let outputGroup = DispatchGroup()
+        private let stdout: Pipe
+        private let stderr: Pipe
         private let stdoutBox = WorktreeProcessDataBox()
         private let stderrBox = WorktreeProcessDataBox()
 
         init(stdout: Pipe, stderr: Pipe) {
+            self.stdout = stdout
+            self.stderr = stderr
             outputGroup.enter()
             DispatchQueue.global(qos: .utility).async { [stdoutBox, outputGroup] in
                 stdoutBox.data = stdout.fileHandleForReading.readDataToEndOfFile()
@@ -237,6 +286,15 @@ final class WorktreeService: Sendable {
                 stderrBox.data = stderr.fileHandleForReading.readDataToEndOfFile()
                 outputGroup.leave()
             }
+        }
+
+        var isFinished: Bool {
+            outputGroup.wait(timeout: .now()) == .success
+        }
+
+        func close() {
+            try? stdout.fileHandleForReading.close()
+            try? stderr.fileHandleForReading.close()
         }
 
         func readToEnd() async -> (stdout: Data, stderr: Data) {

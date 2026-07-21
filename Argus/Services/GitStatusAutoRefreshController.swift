@@ -62,11 +62,21 @@ final class GitStatusAutoRefreshController {
     }
 
     func handleFileEvents(_ paths: [String]) {
-        guard paths.contains(where: shouldRefresh(for:)) else { return }
-        guard isOutsideCooldown else { return }
+        let relevantPaths = paths.filter(shouldRefresh(for:))
+        guard !relevantPaths.isEmpty else { return }
 
+        if !isOutsideCooldown {
+            guard relevantPaths.contains(where: isGitReferenceEvent) else { return }
+            scheduleRefresh(after: max(Self.debounceInterval, remainingCooldownInterval))
+            return
+        }
+
+        scheduleRefresh(after: Self.debounceInterval)
+    }
+
+    private func scheduleRefresh(after delay: TimeInterval) {
         scheduler.cancel()
-        scheduler.schedule(after: Self.debounceInterval) { [weak self] in
+        scheduler.schedule(after: delay) { [weak self] in
             guard let self else { return }
             await self.refresh?()
             self.lastRefreshCompletedAt = self.now()
@@ -78,6 +88,11 @@ final class GitStatusAutoRefreshController {
         return now().timeIntervalSince(lastRefreshCompletedAt) >= Self.cooldownInterval
     }
 
+    private var remainingCooldownInterval: TimeInterval {
+        guard let lastRefreshCompletedAt else { return 0 }
+        return max(0, Self.cooldownInterval - now().timeIntervalSince(lastRefreshCompletedAt))
+    }
+
     private func shouldRefresh(for path: String) -> Bool {
         let components = path.split(separator: "/")
         guard components.contains(".git") else { return true }
@@ -86,7 +101,11 @@ final class GitStatusAutoRefreshController {
         // cause more Git metadata activity. Ref and HEAD-log writes, however,
         // are the only observable signal for metadata-only operations such as
         // committing already-staged files.
-        return path.hasSuffix("/HEAD")
+        return isGitReferenceEvent(path)
+    }
+
+    private func isGitReferenceEvent(_ path: String) -> Bool {
+        path.hasSuffix("/HEAD")
             || path.contains("/refs/heads/")
             || path.contains("/logs/refs/heads/")
     }

@@ -12,6 +12,7 @@ struct GitStatusAutoRefreshTests {
         await switchesWatchedRootWithoutStoppingBeforeFirstStart()
         await schedulesRefreshAfterDebounceForWorktreeEvents()
         await suppressesFilesystemEventsDuringPostRefreshCooldown()
+        await defersBranchChangeRefreshUntilCooldownExpires()
         await refreshesWorkspaceFilesAfterDebouncedEvent()
         try await reloadsExpandedDirectoryAfterExternalFileCreation()
         try watchesLinkedWorktreeGitDirectory()
@@ -133,6 +134,35 @@ struct GitStatusAutoRefreshTests {
                 GitStatusAutoRefreshController.debounceInterval,
                 GitStatusAutoRefreshController.debounceInterval
             ], "events after cooldown schedule again")
+    }
+
+    @MainActor
+    private func defersBranchChangeRefreshUntilCooldownExpires() async {
+        let watcher = RecordingFileSystemEventWatcher()
+        let scheduler = RecordingRefreshScheduler()
+        var currentTime = Date(timeIntervalSince1970: 100)
+        let controller = GitStatusAutoRefreshController(
+            watcher: watcher,
+            scheduler: scheduler,
+            now: { currentTime }
+        )
+        var refreshCount = 0
+        controller.start(rootPath: "/repo") {
+            refreshCount += 1
+        }
+
+        watcher.emit(paths: ["/repo/file.txt"])
+        await scheduler.runScheduled()
+
+        currentTime = Date(timeIntervalSince1970: 100.5)
+        watcher.emit(paths: ["/repo/.git/HEAD"])
+
+        assertEqual(
+            scheduler.scheduledDelays,
+            [GitStatusAutoRefreshController.debounceInterval, 0.5],
+            "branch changes during cooldown schedule a refresh when cooldown expires")
+        await scheduler.runScheduled()
+        assertEqual(refreshCount, 2, "deferred branch change refreshes the local branch status")
     }
 
     @MainActor

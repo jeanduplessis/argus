@@ -6,6 +6,28 @@ import Testing
 @Suite
 struct ExistingBranchPickerTests {
     @Test(.timeLimit(.minutes(1)))
+    func defaultTimeoutIncludesDescendantsHoldingOutputPipesOpen() async throws {
+        let service = WorktreeService(gitCommandTimeout: 0.2)
+        let start = Date()
+
+        do {
+            _ = try await service.runProcess(
+                executableURL: URL(fileURLWithPath: "/bin/sh"),
+                args: ["-c", "sleep 1 &"],
+                commandDescription: "pipe-holding fixture"
+            )
+            Issue.record("pipe-holding subprocess should time out")
+        } catch let error as WorktreeError {
+            guard case .gitCommandTimedOut = error else {
+                Issue.record("unexpected timeout error: \(error)")
+                return
+            }
+        }
+
+        #expect(Date().timeIntervalSince(start) < 2)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
     func largeBranchListDoesNotBlockOnAFullOutputPipe() async throws {
         let temp = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("argus-large-branch-picker-\(UUID().uuidString)", isDirectory: true)
@@ -111,11 +133,18 @@ struct ExistingBranchPickerTests {
         process.executableURL = URL(fileURLWithPath: "/usr/bin/\(executable)")
         process.arguments = args
         process.currentDirectoryURL = URL(fileURLWithPath: cwd)
+        process.environment = ProcessInfo.processInfo.environment.merging([
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "core.fsmonitor",
+            "GIT_CONFIG_VALUE_0": "false"
+        ]) { _, new in new }
         let stdout = Pipe()
         let stderr = Pipe()
         process.standardOutput = stdout
         process.standardError = stderr
         try process.run()
+        try? stdout.fileHandleForWriting.close()
+        try? stderr.fileHandleForWriting.close()
         process.waitUntilExit()
         let output =
             String(data: stdout.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?

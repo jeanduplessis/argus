@@ -51,7 +51,14 @@ struct TerminalView: NSViewRepresentable {
     static func dismantleNSView(_ nsView: TerminalNSView, coordinator: Coordinator) {
         coordinator.activeSurfaceId = nil
         coordinator.isVisible = nil
-        nsView.surface?.setOcclusion(true)
+
+        // SwiftUI dismantles and reattaches the retained view when a Pane is
+        // moved into a new split layout. Only occlude it if it remains
+        // detached after that layout transition has completed.
+        DispatchQueue.main.async { [weak nsView] in
+            guard let nsView, nsView.window == nil else { return }
+            nsView.surface?.setOcclusion(true)
+        }
     }
 
     func sizeThatFits(

@@ -177,8 +177,12 @@ struct ProjectAndWorktreeUIContractTests {
                 "shouldConfirmWorktreeDeletionBeforeClosing(_ workspaceId: UUID) -> Bool",
                 "workspace.worktreePath != nil",
                 "!project.isCatchAll",
-                "func removeWorkspace(_ workspaceId: UUID, deletingWorktree: Bool) async -> Bool",
+                "onProgress: (@MainActor @Sendable (WorkspaceDeletionStage) -> Void)? = nil",
                 "try await worktreeService.removeWorktree",
+                "onProgress?(.removingWorktree)",
+                "onProgress?(.closingWorkspace)",
+                "await Task.yield()",
+                "lastWorkspaceDeletionError = error",
                 "shouldConfirmWorktreeDeletionBeforeClosing(workspace.id)"
             ], "worktree close behavior")
         try SourceContract("Argus/Views/Sidebar/SidebarView.swift").containsAll(
@@ -195,7 +199,14 @@ struct ProjectAndWorktreeUIContractTests {
             [
                 ".alert(\"Close Workspace?\", isPresented: $showCloseWorkspaceConfirmation)",
                 "Button(\"Close Only\")",
-                "Button(\"Delete Worktree and Close\", role: .destructive)"
+                "Button(\"Delete Worktree and Close\", role: .destructive)",
+                "WorkspaceDeletionProgressView(stage: workspaceDeletionStage)",
+                "Git is unregistering the worktree and deleting its files.",
+                "Closing terminal panels and updating workspace state.",
+                "workspaceDeletionStage = .removingWorktree",
+                "workspaceDeletionStage = nil",
+                "if !removed",
+                ".alert(\"Could Not Delete Worktree\", isPresented: $showWorkspaceDeletionError)"
             ], "worktree close choices")
     }
 }

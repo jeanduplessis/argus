@@ -173,6 +173,10 @@ tool.
 12. The system MUST support splitting the focused terminal pane
     vertically with Cmd+D and horizontally with Cmd+Shift+D.
 
+13. The system MUST support selecting the previous and next top-level tabs in
+    the Selected Workspace with Cmd+[ and Cmd+], respectively. Selection MUST
+    wrap from the first tab to the last and from the last tab to the first.
+
 ### Projects
 
 1. The system MUST allow users to create a project from any directory

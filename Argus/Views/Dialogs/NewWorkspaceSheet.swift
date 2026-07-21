@@ -221,10 +221,14 @@ struct NewWorkspaceSheet: View {
     }
 
     private func createWorkspace() {
+        if branchMode == .existing && selectedExistingBranch == nil {
+            return
+        }
         isCreating = true
         errorMessage = nil
 
         Task {
+            defer { isCreating = false }
             let branchName: String
             let createNew: Bool
 
@@ -233,7 +237,9 @@ struct NewWorkspaceSheet: View {
                 branchName = newBranchName.trimmingCharacters(in: .whitespaces)
                 createNew = true
             case .existing:
-                guard let selected = selectedExistingBranch else { return }
+                guard let selected = selectedExistingBranch else {
+                    return
+                }
                 branchName = selected
                 createNew = false
             }
@@ -251,9 +257,10 @@ struct NewWorkspaceSheet: View {
                 case .branchAlreadyExists(let branchName):
                     errorMessage = "Branch '\(branchName)' already exists"
                 default:
-                    errorMessage = "Failed to create workspace"
+                    errorMessage =
+                        workspaceManager.lastWorkspaceCreationError?.localizedDescription
+                        ?? "Failed to create workspace"
                 }
-                isCreating = false
             }
         }
     }

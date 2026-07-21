@@ -204,9 +204,6 @@ final class GitStatusViewModel: ObservableObject {
         let requestId = requestGeneration
         activeRequestIds.insert(requestId)
         isRefreshing = true
-        if snapshotOwner != owner || !isLoadedState {
-            state = .loading
-        }
         return requestId
     }
 
@@ -227,11 +224,6 @@ final class GitStatusViewModel: ObservableObject {
     ) {
         guard requestId == requestGeneration, snapshotOwner == owner else { return }
         state = result
-    }
-
-    private var isLoadedState: Bool {
-        if case .loaded = state { return true }
-        return false
     }
 
     func legacyOwner(context: GitStatusRootContext) -> GitStatusSnapshotOwner {

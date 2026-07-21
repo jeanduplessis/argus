@@ -115,8 +115,7 @@ struct WorkspaceUIContractTests {
             [
                 "nsView.synchronizeSurfaceGeometry(to: targetSize)",
                 "nsView.surface?.refresh()",
-                "surface.setOcclusion(!isVisible)",
-                "nsView.surface?.setOcclusion(true)"
+                "surface.setOcclusion(!isVisible)"
             ], "terminal visibility must reconcile geometry, redraw, and occlusion")
         try SourceContract("Argus/Ghostty/TerminalSurface.swift").contains(
             "ghostty_surface_set_occlusion(surface, !occluded)",
@@ -212,6 +211,15 @@ struct WorkspaceUIContractTests {
                 "NotificationCenter.default.post(",
                 "name: .terminalSurfaceDidBecomeFirstResponder"
             ], "terminal focus must notify the workspace manager")
+
+        let terminalView = try SourceContract("Argus/Ghostty/TerminalView.swift")
+        let dismantleBody = try terminalView.section(
+            after: "static func dismantleNSView",
+            before: "func sizeThatFits"
+        )
+        #expect(dismantleBody.contains("DispatchQueue.main.async"))
+        #expect(dismantleBody.contains("nsView.window == nil"))
+        #expect(dismantleBody.contains("nsView.surface?.setOcclusion(true)"))
     }
 }
 

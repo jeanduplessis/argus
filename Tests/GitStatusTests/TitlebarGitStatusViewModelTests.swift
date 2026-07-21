@@ -8,6 +8,7 @@ struct TitlebarGitStatusViewModelTests {
     @Test
     func coveredBehaviors() async {
         await titlebarMetadataIsScopedToRefreshedWorkspace()
+        await automaticRefreshKeepsNotRepositoryContentVisible()
     }
 
     @MainActor
@@ -41,9 +42,47 @@ struct TitlebarGitStatusViewModelTests {
             "different active workspace does not reuse stale titlebar git metadata")
     }
 
+    @MainActor
+    private func automaticRefreshKeepsNotRepositoryContentVisible() async {
+        let notRepository = GitStatusLoadState.notRepository(rootPath: "/Users/test")
+        let observation = GitStatusRefreshObservation()
+        let service = ObservingStatusService(result: notRepository) {
+            observation.requestCount += 1
+            guard observation.requestCount == 2 else { return }
+            observation.stateDuringRefresh = observation.viewModel?.state
+            observation.wasRefreshing = observation.viewModel?.isRefreshing ?? false
+        }
+        let viewModel = GitStatusViewModel(service: service)
+        observation.viewModel = viewModel
+        let context = GitStatusRootContext(
+            kind: .standalone,
+            currentDirectory: "/Users/test",
+            worktreePath: nil,
+            projectRepositoryPath: nil
+        )
+
+        await viewModel.refresh(context: context)
+        await viewModel.refresh(context: context)
+
+        assertEqual(
+            observation.stateDuringRefresh,
+            notRepository,
+            "automatic refresh keeps current not-repository content visible")
+        assertEqual(observation.wasRefreshing, true, "automatic refresh still exposes progress")
+        assertEqual(viewModel.state, notRepository, "refresh republishes not-repository status")
+    }
+
     private func assertEqual<T: Equatable>(_ actual: T, _ expected: T, _ message: String) {
         #expect(actual == expected, Comment(rawValue: message))
     }
+}
+
+@MainActor
+private final class GitStatusRefreshObservation {
+    weak var viewModel: GitStatusViewModel?
+    var requestCount = 0
+    var stateDuringRefresh: GitStatusLoadState?
+    var wasRefreshing = false
 }
 
 private final class TitlebarFakeStatusService: GitStatusProviding, @unchecked Sendable {

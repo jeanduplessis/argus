@@ -55,6 +55,53 @@ struct ExistingBranchWorktreeTests {
             "remote-only worktree is on a local tracking branch, not detached")
     }
 
+    @Test
+    func forcedRemovalDeletesDirtyWorktreeAndRegistration() async throws {
+        let temp = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("argus-remove-worktree-\(UUID().uuidString)", isDirectory: true)
+        let repo = temp.appendingPathComponent("repo", isDirectory: true)
+        try FileManager.default.createDirectory(at: repo, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: temp) }
+
+        try run("git", ["init", "-b", "main", "."], cwd: repo.path)
+        try run("git", ["config", "user.email", "test@example.com"], cwd: repo.path)
+        try run("git", ["config", "user.name", "Test User"], cwd: repo.path)
+        try "initial".write(
+            to: repo.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
+        try run("git", ["add", "README.md"], cwd: repo.path)
+        try run("git", ["commit", "-m", "initial"], cwd: repo.path)
+
+        let service = WorktreeService()
+        let worktreePath = try await service.createWorktree(
+            projectId: UUID(),
+            repositoryPath: repo.path,
+            branchName: "delete-me"
+        )
+        try "dirty".write(
+            to: URL(fileURLWithPath: worktreePath).appendingPathComponent("dirty.txt"),
+            atomically: true,
+            encoding: .utf8
+        )
+        try run("git", ["worktree", "lock", worktreePath], cwd: repo.path)
+
+        try await service.removeWorktree(
+            repositoryPath: repo.path,
+            worktreePath: worktreePath,
+            force: true
+        )
+
+        assertFalse(
+            FileManager.default.fileExists(atPath: worktreePath),
+            "forced removal deletes dirty, locked worktree directory"
+        )
+        let registeredWorktrees = try capture(
+            "git", ["worktree", "list", "--porcelain"], cwd: repo.path)
+        assertFalse(
+            registeredWorktrees.contains(worktreePath),
+            "forced removal deletes git worktree registration"
+        )
+    }
+
     private func run(_ executable: String, _ args: [String], cwd: String) throws {
         _ = try capture(executable, args, cwd: cwd)
     }

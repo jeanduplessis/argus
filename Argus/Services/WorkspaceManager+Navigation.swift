@@ -78,6 +78,14 @@ extension WorkspaceManager {
         (selectedWorkspace?.activePanel as? BrowserPanel)?.requestFind()
     }
 
+    func selectPreviousTab() {
+        selectedWorkspace?.selectPreviousTab()
+    }
+
+    func selectNextTab() {
+        selectedWorkspace?.selectNextTab()
+    }
+
     @discardableResult
     func splitActiveTerminal(direction: PanelSplitDirection) -> TerminalPanel? {
         selectedWorkspace?.splitActiveTerminal(direction: direction)

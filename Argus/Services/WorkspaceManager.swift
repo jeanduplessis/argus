@@ -2,6 +2,11 @@ import Combine
 import Foundation
 import SwiftUI
 
+enum WorkspaceDeletionStage: Int, CaseIterable, Sendable {
+    case removingWorktree
+    case closingWorkspace
+}
+
 /// Central state manager for all workspaces in the application.
 ///
 /// WorkspaceManager owns the ordered list of workspaces, tracks the current
@@ -36,6 +41,9 @@ final class WorkspaceManager: ObservableObject {
 
     /// Last workspace creation error for user-visible sheet feedback.
     var lastWorkspaceCreationError: WorktreeError?
+
+    /// Last worktree deletion error for user-visible close feedback.
+    private(set) var lastWorkspaceDeletionError: WorktreeError?
 
     /// Location of the minimal Phase 2 session snapshot.
     private let sessionSnapshotURL: URL
@@ -279,32 +287,6 @@ final class WorkspaceManager: ObservableObject {
         removeWorkspaceFromState(workspaceId)
     }
 
-    /// Removes a workspace, optionally deleting its associated git worktree first.
-    @discardableResult
-    func removeWorkspace(_ workspaceId: UUID, deletingWorktree: Bool) async -> Bool {
-        guard let workspace = workspaces.first(where: { $0.id == workspaceId }) else { return false }
-
-        if deletingWorktree,
-            let worktreePath = workspace.worktreePath,
-            let project = project(for: workspaceId),
-            !project.isCatchAll
-        {
-            do {
-                try await worktreeService.removeWorktree(
-                    repositoryPath: project.repositoryPath,
-                    worktreePath: worktreePath,
-                    force: true
-                )
-            } catch {
-                print("Failed to remove worktree before closing workspace: \(error.localizedDescription)")
-                return false
-            }
-        }
-
-        removeWorkspaceFromState(workspaceId)
-        return true
-    }
-
     func shouldConfirmWorktreeDeletionBeforeClosing(_ workspaceId: UUID) -> Bool {
         guard let workspace = workspaces.first(where: { $0.id == workspaceId }),
             workspace.worktreePath != nil,
@@ -359,5 +341,47 @@ final class WorkspaceManager: ObservableObject {
             title: title,
             workingDirectory: workingDirectory ?? settings.defaultStandaloneWorkspaceDirectory
         )
+    }
+}
+
+extension WorkspaceManager {
+    /// Removes a workspace, optionally deleting its associated git worktree first.
+    @discardableResult
+    func removeWorkspace(
+        _ workspaceId: UUID,
+        deletingWorktree: Bool,
+        onProgress: (@MainActor @Sendable (WorkspaceDeletionStage) -> Void)? = nil
+    ) async -> Bool {
+        lastWorkspaceDeletionError = nil
+        guard let workspace = workspaces.first(where: { $0.id == workspaceId }) else { return false }
+
+        if deletingWorktree,
+            let worktreePath = workspace.worktreePath,
+            let project = project(for: workspaceId),
+            !project.isCatchAll
+        {
+            do {
+                onProgress?(.removingWorktree)
+                try await worktreeService.removeWorktree(
+                    repositoryPath: project.repositoryPath,
+                    worktreePath: worktreePath,
+                    force: true
+                )
+            } catch let error as WorktreeError {
+                lastWorkspaceDeletionError = error
+                print("Failed to remove worktree before closing workspace: \(error.localizedDescription)")
+                return false
+            } catch {
+                let deletionError = WorktreeError.worktreeRemovalFailed(error.localizedDescription)
+                lastWorkspaceDeletionError = deletionError
+                print("Failed to remove worktree before closing workspace: \(deletionError.localizedDescription)")
+                return false
+            }
+        }
+
+        onProgress?(.closingWorkspace)
+        await Task.yield()
+        removeWorkspaceFromState(workspaceId)
+        return true
     }
 }

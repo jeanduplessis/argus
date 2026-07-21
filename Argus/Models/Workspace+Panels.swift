@@ -203,6 +203,23 @@ extension Workspace {
         panels[focusPanelId]?.focus()
     }
 
+    func selectPreviousTab() {
+        guard let activeTabId,
+            let activeIndex = panelOrder.firstIndex(of: activeTabId),
+            !panelOrder.isEmpty
+        else { return }
+        let previousIndex = (activeIndex - 1 + panelOrder.count) % panelOrder.count
+        selectPanel(panelOrder[previousIndex])
+    }
+
+    func selectNextTab() {
+        guard let activeTabId,
+            let activeIndex = panelOrder.firstIndex(of: activeTabId),
+            !panelOrder.isEmpty
+        else { return }
+        selectPanel(panelOrder[(activeIndex + 1) % panelOrder.count])
+    }
+
     func reorderPanel(from source: Int, to destination: Int) {
         guard source >= 0, source < panelOrder.count,
             destination >= 0, destination <= panelOrder.count,

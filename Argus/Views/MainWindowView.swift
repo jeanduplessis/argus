@@ -11,6 +11,83 @@ private struct NewWorkspaceSheetRequest: Identifiable {
     let projectId: UUID
 }
 
+private extension WorkspaceDeletionStage {
+    var title: String {
+        switch self {
+        case .removingWorktree:
+            "Removing Git worktree"
+        case .closingWorkspace:
+            "Closing workspace"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .removingWorktree:
+            "Git is unregistering the worktree and deleting its files. Large worktrees can take longer."
+        case .closingWorkspace:
+            "Closing terminal panels and updating workspace state."
+        }
+    }
+}
+
+private struct WorkspaceDeletionProgressView: View {
+    let stage: WorkspaceDeletionStage
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                ProgressView()
+                    .controlSize(.small)
+                Text(stage.title)
+                    .font(.headline)
+            }
+
+            Text(stage.detail)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(WorkspaceDeletionStage.allCases, id: \.self) { item in
+                    HStack(spacing: 8) {
+                        Image(systemName: stageIcon(for: item))
+                            .frame(width: 16)
+                            .foregroundStyle(
+                                item.rawValue <= stage.rawValue ? Color.accentColor : Color.secondary
+                            )
+                        Text(item.title)
+                            .font(.system(size: 12))
+                            .foregroundStyle(
+                                item.rawValue <= stage.rawValue ? Color.primary : Color.secondary
+                            )
+                    }
+                }
+            }
+        }
+        .frame(width: 360, alignment: .leading)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 18)
+        .background(ChromeColors.shellBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Deleting worktree. \(stage.title). \(stage.detail)")
+        .accessibilityAddTraits(.isModal)
+    }
+
+    private func stageIcon(for item: WorkspaceDeletionStage) -> String {
+        if item.rawValue < stage.rawValue {
+            return "checkmark.circle.fill"
+        }
+        if item == stage {
+            return "circle.inset.filled"
+        }
+        return "circle"
+    }
+}
+
 struct MainWindowView: View {
     @EnvironmentObject var workspaceManager: WorkspaceManager
     @ObservedObject private var ghosttyApp = GhosttyApp.shared
@@ -34,6 +111,9 @@ struct MainWindowView: View {
     @State private var closeWorkspaceId: UUID?
     @State private var closeWorkspaceTitle = ""
     @State private var closeWorkspaceWorktreePath = ""
+    @State private var workspaceDeletionStage: WorkspaceDeletionStage?
+    @State private var showWorkspaceDeletionError = false
+    @State private var workspaceDeletionErrorMessage = ""
     @State private var windowWidth: CGFloat = 600
 
     var body: some View {
@@ -94,6 +174,16 @@ struct MainWindowView: View {
         }
         .frame(minWidth: 600, maxWidth: .infinity, minHeight: 400, maxHeight: .infinity)
         .background(ChromeColors.shellBackground)
+        .overlay {
+            if let workspaceDeletionStage {
+                ZStack {
+                    Color.black.opacity(0.45)
+                        .ignoresSafeArea()
+
+                    WorkspaceDeletionProgressView(stage: workspaceDeletionStage)
+                }
+            }
+        }
         .environmentObject(sidebarState)
         .environmentObject(gitSidebarState)
         .environmentObject(gitStatusViewModel)
@@ -151,8 +241,22 @@ struct MainWindowView: View {
             }
             Button("Delete Worktree and Close", role: .destructive) {
                 if let id = closeWorkspaceId {
+                    workspaceDeletionStage = .removingWorktree
                     Task {
-                        _ = await workspaceManager.removeWorkspace(id, deletingWorktree: true)
+                        let removed = await workspaceManager.removeWorkspace(
+                            id,
+                            deletingWorktree: true,
+                            onProgress: { stage in
+                                workspaceDeletionStage = stage
+                            }
+                        )
+                        workspaceDeletionStage = nil
+                        if !removed {
+                            workspaceDeletionErrorMessage =
+                                workspaceManager.lastWorkspaceDeletionError?.localizedDescription
+                                ?? "The worktree could not be deleted. The workspace was not closed."
+                            showWorkspaceDeletionError = true
+                        }
                     }
                 }
             }
@@ -161,6 +265,11 @@ struct MainWindowView: View {
                 "Do you also want to delete the git worktree for "
                     + "\(closeWorkspaceTitle) at \(closeWorkspaceWorktreePath)?"
             )
+        }
+        .alert("Could Not Delete Worktree", isPresented: $showWorkspaceDeletionError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(workspaceDeletionErrorMessage)
         }
         // Notification receivers for sheet/alert triggers
         .onReceive(NotificationCenter.default.publisher(for: .showNewProjectSheet)) { _ in

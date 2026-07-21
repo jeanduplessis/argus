@@ -105,6 +105,18 @@ struct ArgusApp: App {
 
                 Divider()
 
+                Button("Select Previous Tab") {
+                    workspaceManager.selectPreviousTab()
+                }
+                .keyboardShortcut("[", modifiers: [.command])
+
+                Button("Select Next Tab") {
+                    workspaceManager.selectNextTab()
+                }
+                .keyboardShortcut("]", modifiers: [.command])
+
+                Divider()
+
                 // Workspace selection: Cmd+1 through Cmd+9
                 ForEach(1...9, id: \.self) { number in
                     Button("Workspace \(number)") {
