@@ -175,12 +175,17 @@ private func handlePwd(
 ) -> Bool {
     guard let surfaceId else { return false }
     let pwd = string(from: pwdAction.pwd)
-    DispatchQueue.main.async {
+    let publishPwd = {
         NotificationCenter.default.post(
             name: .argusSetSurfacePwd,
             object: nil,
             userInfo: ["surfaceId": surfaceId, "pwd": pwd]
         )
+    }
+    if Thread.isMainThread {
+        publishPwd()
+    } else {
+        DispatchQueue.main.async(execute: publishPwd)
     }
     return true
 }

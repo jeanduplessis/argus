@@ -472,13 +472,17 @@ tool.
     no longer exist.
 
 9. Browser panels MUST persist and restore the current URL, page zoom
-    level, and developer tools visibility.
+   level, and developer tools visibility.
 
-10. The session format MUST use a single schema version. The system
+10. Terminal panels MUST persist their last observed Terminal Working
+    Directory and use it as the shell's initial directory when restoring a
+    previous session.
+
+11. The session format MUST use a single schema version. The system
     MUST NOT implement schema migration; if the snapshot version does
     not match, the system MUST discard it and start fresh.
 
-11. The system MUST enforce resource limits during persistence: a
+12. The system MUST enforce resource limits during persistence: a
     maximum of 128 workspaces. The persistence schema SHOULD model
     a window array for forward-compatibility with multi-window
     support, but v1 MUST contain exactly one window entry. The

@@ -3,11 +3,12 @@ import Testing
 
 @testable import Argus
 
-@Suite
+@Suite @MainActor
 struct TerminalDirectorySnapshotTests {
     @Test
     func coveredBehaviors() throws {
         try terminalMetadataRoundTrips()
+        liveTerminalDirectoryIsRestored()
         try legacySnapshotUsesWorkspaceDirectory()
         reconciliationPreservesTerminalMetadata()
     }
@@ -78,6 +79,32 @@ struct TerminalDirectorySnapshotTests {
             legacy.restoredTerminalCustomTitles,
             [nil, nil],
             "legacy snapshots restore ordinal terminal titles"
+        )
+    }
+
+    private func liveTerminalDirectoryIsRestored() {
+        let workspace = Workspace(title: "Terminal", workingDirectory: "/repo")
+        let terminal = workspace.activePanel as! TerminalPanel
+
+        NotificationCenter.default.post(
+            name: .argusSetSurfacePwd,
+            object: nil,
+            userInfo: ["surfaceId": terminal.id, "pwd": "/repo/packages/app"]
+        )
+
+        let snapshot = workspace.snapshot()
+        let restoredWorkspace = Workspace(snapshot: snapshot)
+        let restoredTerminal = restoredWorkspace.activePanel as! TerminalPanel
+
+        assertEqual(
+            snapshot.terminalDirectories,
+            ["/repo/packages/app"],
+            "snapshot captures the latest Terminal Working Directory"
+        )
+        assertEqual(
+            restoredTerminal.directory,
+            "/repo/packages/app",
+            "restored terminal starts in its persisted working directory"
         )
     }
 
