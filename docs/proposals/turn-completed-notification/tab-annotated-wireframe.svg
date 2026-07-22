@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1380" height="760" viewBox="0 0 1380 760" role="img" aria-labelledby="title description">
+  <title id="title">Top-level Tab turn-completion attention wireframe</title>
+  <desc id="description">Annotated Argus Tab Bar wireframe showing an inactive terminal Top-level Tab with a completion bell while another tab remains active.</desc>
+  <defs>
+    <style>
+      .page { fill: #f7f7f5; }
+      .content { fill: #ffffff; stroke: #232323; stroke-width: 2; }
+      .bar { fill: #f0f0ee; stroke: #6e6e68; stroke-width: 1.5; }
+      .tab { fill: #fafaf8; stroke: #aaa9a2; stroke-width: 1; }
+      .active { fill: #deded9; stroke: #8e8e88; stroke-width: 1; }
+      .attention-tab { fill: #fff9ec; stroke: #c48a25; stroke-width: 1.5; }
+      .terminal { fill: #242426; stroke: #59595e; stroke-width: 1.5; }
+      .ink { fill: #252525; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .mono { fill: #d7d7d9; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .title { font-size: 28px; font-weight: 700; }
+      .subtitle { fill: #666660; font-size: 15px; }
+      .ui { font-size: 14px; font-weight: 600; }
+      .ui-small { font-size: 12px; }
+      .legend-heading { font-size: 17px; font-weight: 700; }
+      .legend-term { font-size: 14px; font-weight: 700; }
+      .legend-note { fill: #666660; font-size: 12px; }
+      .bell { fill: none; stroke: #b56b00; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+      .annotation { fill: none; stroke: #c63b32; stroke-width: 1.5; stroke-dasharray: 5 4; }
+      .leader { fill: none; stroke: #c63b32; stroke-width: 1.4; }
+      .marker { fill: #c63b32; stroke: #ffffff; stroke-width: 2; }
+      .marker-text { fill: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+    </style>
+    <g id="terminal-icon">
+      <rect x="1" y="1" width="15" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <path d="M4 5 L7 7.5 L4 10 M9 10 H13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <g id="bell-icon">
+      <path class="bell" d="M4 12.5 H12 M5 12.5 V8 C5 5.4 6.2 4 8 4 C9.8 4 11 5.4 11 8 V12.5 M6.7 14.2 C7 15 7.4 15.4 8 15.4 C8.6 15.4 9 15 9.3 14.2 M7 3 C7 2.4 7.4 2 8 2 C8.6 2 9 2.4 9 3"/>
+    </g>
+  </defs>
+
+  <rect class="page" width="1380" height="760"/>
+  <text class="ink title" x="54" y="50">Top-level Tab attention</text>
+  <text class="ink subtitle" x="54" y="76">Inactive completed turn is identified without changing the Active Tab</text>
+
+  <rect class="content" x="54" y="110" width="760" height="560" rx="8"/>
+  <rect class="bar" x="54" y="110" width="760" height="58" rx="8"/>
+  <line x1="54" y1="168" x2="814" y2="168" stroke="#8e8e88"/>
+
+  <rect class="active" x="70" y="122" width="152" height="34" rx="5"/>
+  <g transform="translate(82 130)" style="color:#333"><use href="#terminal-icon"/></g>
+  <text class="ink ui" x="107" y="144">Terminal 1</text>
+  <path d="M203 134 L211 142 M211 134 L203 142" stroke="#444" stroke-width="1.4" stroke-linecap="round"/>
+
+  <rect class="attention-tab" x="228" y="122" width="152" height="34" rx="5"/>
+  <g transform="translate(240 130)"><use href="#bell-icon"/></g>
+  <text class="ink ui" x="265" y="144">Terminal 2</text>
+  <path d="M361 134 L369 142 M369 134 L361 142" stroke="#555" stroke-width="1.4" stroke-linecap="round"/>
+
+  <rect class="tab" x="386" y="122" width="152" height="34" rx="5"/>
+  <g transform="translate(398 130)" style="color:#666"><use href="#terminal-icon"/></g>
+  <text class="ink ui" x="423" y="144" fill="#666660">Terminal 3</text>
+  <path d="M519 134 L527 142 M527 134 L519 142" stroke="#777" stroke-width="1.4" stroke-linecap="round"/>
+
+  <rect class="tab" x="768" y="122" width="30" height="34" rx="5"/>
+  <path d="M783 130 V148 M774 139 H792" fill="none" stroke="#444" stroke-width="1.5" stroke-linecap="round"/>
+
+  <rect class="terminal" x="68" y="184" width="732" height="472" rx="3"/>
+  <text class="mono ui-small" x="90" y="218">Terminal 1 remains visible and focused.</text>
+  <text class="mono ui-small" x="90" y="248">The completion in Terminal 2 did not select it or raise Argus.</text>
+  <text class="mono ui-small" x="90" y="292">argus % _</text>
+
+  <rect class="annotation" x="222" y="116" width="164" height="46" rx="7"/>
+  <rect class="annotation" x="234" y="124" width="28" height="30" rx="5"/>
+  <path class="leader" d="M250 116 C360 82 860 160 910 160"/>
+  <path class="leader" d="M380 140 C560 242 780 270 910 270"/>
+  <path class="leader" d="M150 160 C390 390 740 380 910 380"/>
+  <path class="leader" d="M304 162 C480 550 770 494 910 494"/>
+
+  <g><circle class="marker" cx="228" cy="122" r="12"/><text class="marker-text" x="228" y="122">1</text></g>
+  <g><circle class="marker" cx="250" cy="124" r="12"/><text class="marker-text" x="250" y="124">2</text></g>
+  <g><circle class="marker" cx="150" cy="156" r="12"/><text class="marker-text" x="150" y="156">3</text></g>
+  <g><circle class="marker" cx="304" cy="162" r="12"/><text class="marker-text" x="304" y="162">4</text></g>
+
+  <text class="ink legend-heading" x="910" y="130">Annotations</text>
+  <line x1="910" y1="146" x2="1326" y2="146" stroke="#8e8e88"/>
+
+  <g transform="translate(910 184)">
+    <circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">1</text>
+    <text class="ink legend-term" x="36" y="10">Inactive tab needs attention</text>
+    <text class="ink legend-note" x="36" y="30">Completion does not switch the Active Tab or steal terminal focus.</text>
+  </g>
+  <g transform="translate(910 294)">
+    <circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">2</text>
+    <text class="ink legend-term" x="36" y="10">Bell replaces the tab icon</text>
+    <text class="ink legend-note" x="36" y="30">Precedence: loading, completion bell, Agent Status, default icon.</text>
+  </g>
+  <g transform="translate(910 404)">
+    <circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">3</text>
+    <text class="ink legend-term" x="36" y="10">Current Active Tab is unchanged</text>
+    <text class="ink legend-note" x="36" y="30">The existing selected treatment and visible content stay in place.</text>
+  </g>
+  <g transform="translate(910 514)">
+    <circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">4</text>
+    <text class="ink legend-term" x="36" y="10">Select to acknowledge</text>
+    <text class="ink legend-note" x="36" y="30">Selecting Terminal 2 in the key main window clears this tab's attention.</text>
+  </g>
+
+  <rect x="910" y="624" width="416" height="72" rx="7" fill="#eeeeeb" stroke="#aaa9a2"/>
+  <text class="ink legend-note" x="934" y="650">If Terminal 2 contains split panes, selecting the Top-level Tab is enough.</text>
+  <text class="ink legend-note" x="934" y="672">The user does not have to focus the pane where Kilo completed.</text>
+</svg>

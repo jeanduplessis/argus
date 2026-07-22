@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1450" height="900" viewBox="0 0 1450 900" role="img" aria-labelledby="title description">
+  <title id="title">Agent Settings turn-completion notification wireframe</title>
+  <desc id="description">Annotated macOS Settings wireframe showing the Agent completion sound toggle and explicit Kilo integration status, configuration path, and Disable control.</desc>
+  <defs>
+    <style>
+      .page { fill: #f7f7f5; }
+      .window { fill: #ffffff; stroke: #232323; stroke-width: 2; }
+      .toolbar { fill: #f0f0ee; stroke: #6e6e68; stroke-width: 1.5; }
+      .tab { fill: transparent; }
+      .active-tab { fill: #deded9; stroke: #8e8e88; stroke-width: 1; }
+      .form { fill: #fafaf8; stroke: #aaa9a2; stroke-width: 1; }
+      .section { fill: #ffffff; stroke: #c4c4be; stroke-width: 1; }
+      .button { fill: #eeeeeb; stroke: #8e8e88; stroke-width: 1; }
+      .destructive { fill: #fff4f2; stroke: #b8322a; stroke-width: 1; }
+      .toggle-track { fill: #4b8c4a; stroke: #337032; stroke-width: 1; }
+      .toggle-knob { fill: #ffffff; stroke: #d0d0cc; stroke-width: 1; }
+      .ink { fill: #252525; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .mono { fill: #44443f; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .title { font-size: 28px; font-weight: 700; }
+      .subtitle { fill: #666660; font-size: 15px; }
+      .ui { font-size: 14px; font-weight: 600; }
+      .ui-small { font-size: 12px; }
+      .ui-tiny { font-size: 11px; }
+      .legend-heading { font-size: 17px; font-weight: 700; }
+      .legend-term { font-size: 14px; font-weight: 700; }
+      .legend-note { fill: #666660; font-size: 12px; }
+      .success { fill: #34783b; }
+      .annotation { fill: none; stroke: #c63b32; stroke-width: 1.5; stroke-dasharray: 5 4; }
+      .leader { fill: none; stroke: #c63b32; stroke-width: 1.4; }
+      .marker { fill: #c63b32; stroke: #ffffff; stroke-width: 2; }
+      .marker-text { fill: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+    </style>
+  </defs>
+
+  <rect class="page" width="1450" height="900"/>
+  <text class="ink title" x="54" y="50">Agent Settings</text>
+  <text class="ink subtitle" x="54" y="76">Sound preference and explicit Kilo integration management</text>
+
+  <rect class="window" x="54" y="110" width="760" height="690" rx="10"/>
+  <rect class="toolbar" x="54" y="110" width="760" height="106" rx="10"/>
+  <circle cx="78" cy="132" r="6" fill="#d6d6d0" stroke="#888"/>
+  <circle cx="98" cy="132" r="6" fill="#d6d6d0" stroke="#888"/>
+  <circle cx="118" cy="132" r="6" fill="#d6d6d0" stroke="#888"/>
+
+  <g transform="translate(78 164)"><rect class="tab" width="80" height="38" rx="6"/><text class="ink ui-small" x="40" y="24" text-anchor="middle">General</text></g>
+  <g transform="translate(160 164)"><rect class="tab" width="96" height="38" rx="6"/><text class="ink ui-small" x="48" y="24" text-anchor="middle">Appearance</text></g>
+  <g transform="translate(258 164)"><rect class="tab" width="82" height="38" rx="6"/><text class="ink ui-small" x="41" y="24" text-anchor="middle">Terminal</text></g>
+  <g transform="translate(342 164)"><rect class="tab" width="126" height="38" rx="6"/><text class="ink ui-small" x="63" y="24" text-anchor="middle">Files &amp; Changes</text></g>
+  <g transform="translate(470 164)"><rect class="tab" width="82" height="38" rx="6"/><text class="ink ui-small" x="41" y="24" text-anchor="middle">Browser</text></g>
+  <g transform="translate(554 164)"><rect class="active-tab" width="82" height="38" rx="6"/><text class="ink ui" x="41" y="24" text-anchor="middle">Agent</text></g>
+
+  <rect class="form" x="78" y="244" width="712" height="526" rx="8"/>
+
+  <text class="ink ui" x="102" y="282">Notifications</text>
+  <rect class="section" x="102" y="298" width="664" height="112" rx="7"/>
+  <text class="ink ui" x="124" y="334">Agent completion sound</text>
+  <text class="ink ui-small" x="124" y="360" fill="#666660">Play a sound when a completed turn needs attention.</text>
+  <rect class="toggle-track" x="698" y="320" width="44" height="24" rx="12"/>
+  <circle class="toggle-knob" cx="730" cy="332" r="10"/>
+  <text class="ink ui-tiny" x="124" y="388" fill="#666660">Independent of Terminal &gt; Audible bell. Enabled by default.</text>
+
+  <text class="ink ui" x="102" y="452">Kilo integration</text>
+  <rect class="section" x="102" y="468" width="664" height="252" rx="7"/>
+  <circle cx="128" cy="506" r="6" fill="#4b8c4a" stroke="#337032"/>
+  <text class="ink ui success" x="146" y="511">Enabled</text>
+  <text class="ink ui-small" x="124" y="544" fill="#666660">Argus listens for successful root-turn completion through a Kilo TUI plugin.</text>
+
+  <text class="ink ui-small" x="124" y="584">Configuration</text>
+  <text class="mono ui-small" x="236" y="584">~/.config/kilo/tui.jsonc</text>
+  <text class="ink ui-small" x="124" y="616">Plugin</text>
+  <text class="mono ui-small" x="236" y="616">~/.config/kilo/plugins/argus-turn-completed.js</text>
+
+  <rect class="destructive" x="124" y="648" width="170" height="34" rx="6"/>
+  <text class="ink ui-small" x="209" y="670" text-anchor="middle" fill="#9c2923">Disable integration</text>
+  <text class="ink ui-tiny" x="318" y="669" fill="#666660">Restart running Kilo sessions after changing integration state.</text>
+
+  <rect class="annotation" x="548" y="158" width="94" height="50" rx="8"/>
+  <rect class="annotation" x="96" y="292" width="676" height="124" rx="8"/>
+  <rect class="annotation" x="96" y="462" width="676" height="264" rx="8"/>
+  <rect class="annotation" x="116" y="640" width="186" height="50" rx="8"/>
+
+  <path class="leader" d="M642 182 C760 154 830 160 876 160"/>
+  <path class="leader" d="M772 354 C830 354 842 308 876 308"/>
+  <path class="leader" d="M772 540 C828 540 842 466 876 466"/>
+  <path class="leader" d="M302 666 C580 806 780 626 876 626"/>
+
+  <g><circle class="marker" cx="642" cy="164" r="12"/><text class="marker-text" x="642" y="164">1</text></g>
+  <g><circle class="marker" cx="772" cy="354" r="12"/><text class="marker-text" x="772" y="354">2</text></g>
+  <g><circle class="marker" cx="772" cy="540" r="12"/><text class="marker-text" x="772" y="540">3</text></g>
+  <g><circle class="marker" cx="302" cy="666" r="12"/><text class="marker-text" x="302" y="666">4</text></g>
+
+  <text class="ink legend-heading" x="876" y="130">Annotations</text>
+  <line x1="876" y1="146" x2="1392" y2="146" stroke="#8e8e88"/>
+
+  <g transform="translate(876 184)">
+    <circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">1</text>
+    <text class="ink legend-term" x="36" y="10">New Agent Settings tab</text>
+    <text class="ink legend-note" x="36" y="30">Global coding-agent preferences remain separate from Terminal settings.</text>
+  </g>
+  <g transform="translate(876 332)">
+    <circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">2</text>
+    <text class="ink legend-term" x="36" y="10">Completion sound toggle</text>
+    <text class="ink legend-note" x="36" y="30">Enabled by default; visual attention remains active when sound is off.</text>
+  </g>
+  <g transform="translate(876 490)">
+    <circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">3</text>
+    <text class="ink legend-term" x="36" y="10">Kilo integration status</text>
+    <text class="ink legend-note" x="36" y="30">Shows enabled/disabled/error state and the exact managed config and plugin paths.</text>
+  </g>
+  <g transform="translate(876 650)">
+    <circle class="marker" cx="13" cy="13" r="12"/><text class="marker-text" x="13" y="13">4</text>
+    <text class="ink legend-term" x="36" y="10">Explicit integration action</text>
+    <text class="ink legend-note" x="36" y="30">Enable or Disable is user initiated. Argus changes only artifacts it owns.</text>
+  </g>
+
+  <rect x="876" y="782" width="516" height="70" rx="7" fill="#eeeeeb" stroke="#aaa9a2"/>
+  <text class="ink legend-note" x="900" y="808">Setup errors appear in this section with their underlying detail. Failed edits leave</text>
+  <text class="ink legend-note" x="900" y="830">the original Kilo configuration unchanged and are never reported as enabled.</text>
+</svg>
