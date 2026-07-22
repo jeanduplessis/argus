@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -60,6 +61,11 @@ struct ProjectSection: View {
                             }
                             .disabled(project.workspaceIds.last == workspace.id)
                             Divider()
+                            Button("Copy Path") {
+                                copyPath(workspace.worktreePath)
+                            }
+                            .disabled(workspace.worktreePath == nil)
+                            Divider()
                             Button("Close Workspace") {
                                 if workspaceManager.shouldConfirmWorktreeDeletionBeforeClosing(workspace.id) {
                                     NotificationCenter.default.post(
@@ -98,6 +104,13 @@ struct ProjectSection: View {
             moving: project.workspaceIds[index + 1],
             before: workspaceId
         )
+    }
+
+    private func copyPath(_ path: String?) {
+        guard let path else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(path, forType: .string)
     }
 }
 
