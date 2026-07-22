@@ -19,6 +19,7 @@ struct AppSettingsTests {  // swiftlint:disable:this type_body_length
             #expect(
                 settings.defaultStandaloneWorkspaceDirectory == FileManager.default.homeDirectoryForCurrentUser.path
             )
+            #expect(settings.newBranchPrefix.isEmpty)
             #expect(settings.interfaceTextSize == 11)
             #expect(settings.documentTextSize == 12)
             #expect(settings.interfaceDensity == .compact)
@@ -53,6 +54,7 @@ struct AppSettingsTests {  // swiftlint:disable:this type_body_length
             settings.searchProvider = .duckDuckGo
             settings.browserDataStore = .private
             settings.homepage = " https://argus.local "
+            settings.newBranchPrefix = " eshurakov/ "
 
             let restored = AppSettings(defaults: defaults)
             #expect(!restored.restorePreviousSession)
@@ -64,6 +66,7 @@ struct AppSettingsTests {  // swiftlint:disable:this type_body_length
             #expect(restored.searchProvider == .duckDuckGo)
             #expect(restored.browserDataStore == .private)
             #expect(restored.homepage == "https://argus.local")
+            #expect(restored.newBranchPrefix == "eshurakov")
         }
     }
 

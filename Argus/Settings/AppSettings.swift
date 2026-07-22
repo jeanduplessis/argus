@@ -49,6 +49,7 @@ final class AppSettings: ObservableObject {
         static let restorePreviousSession = "Argus.settings.general.restorePreviousSession"
         static let defaultRightSidebarView = "Argus.settings.general.defaultRightSidebarView"
         static let defaultStandaloneWorkspaceDirectory = "Argus.settings.general.defaultStandaloneWorkspaceDirectory"
+        static let newBranchPrefix = "Argus.settings.general.newBranchPrefix"
         static let interfaceTextSize = "Argus.settings.appearance.interfaceTextSize"
         static let documentTextSize = "Argus.settings.appearance.documentTextSize"
         static let interfaceDensity = "Argus.settings.appearance.interfaceDensity"
@@ -81,6 +82,16 @@ final class AppSettings: ObservableObject {
                 defaultStandaloneWorkspaceDirectory = normalized
             } else {
                 persist(normalized, for: Keys.defaultStandaloneWorkspaceDirectory)
+            }
+        }
+    }
+    @Published var newBranchPrefix: String {
+        didSet {
+            let normalized = Self.normalizedBranchPrefix(newBranchPrefix)
+            if normalized != newBranchPrefix {
+                newBranchPrefix = normalized
+            } else {
+                persist(normalized, for: Keys.newBranchPrefix)
             }
         }
     }
@@ -157,6 +168,7 @@ final class AppSettings: ObservableObject {
         defaultStandaloneWorkspaceDirectory = Self.normalizedDirectoryPath(
             defaults.string(forKey: Keys.defaultStandaloneWorkspaceDirectory) ?? Self.homeDirectoryPath
         )
+        newBranchPrefix = Self.normalizedBranchPrefix(defaults.string(forKey: Keys.newBranchPrefix) ?? "")
         interfaceTextSize = Self.clamp(defaults.double(forKey: Keys.interfaceTextSize), to: 10...14, fallback: 11)
         documentTextSize = Self.clamp(defaults.double(forKey: Keys.documentTextSize), to: 10...24, fallback: 12)
         interfaceDensity = Self.enumValue(defaults, key: Keys.interfaceDensity, fallback: .compact)
@@ -191,6 +203,7 @@ final class AppSettings: ObservableObject {
         persist(restorePreviousSession, for: Keys.restorePreviousSession)
         persist(defaultRightSidebarView.rawValue, for: Keys.defaultRightSidebarView)
         persist(defaultStandaloneWorkspaceDirectory, for: Keys.defaultStandaloneWorkspaceDirectory)
+        persist(newBranchPrefix, for: Keys.newBranchPrefix)
         persist(interfaceTextSize, for: Keys.interfaceTextSize)
         persist(documentTextSize, for: Keys.documentTextSize)
         persist(interfaceDensity.rawValue, for: Keys.interfaceDensity)
@@ -233,6 +246,10 @@ final class AppSettings: ObservableObject {
 
     private static func normalizedHomepage(_ homepage: String) -> String {
         homepage.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func normalizedBranchPrefix(_ prefix: String) -> String {
+        prefix.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "/")))
     }
 }
 

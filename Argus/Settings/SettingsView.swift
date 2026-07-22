@@ -42,6 +42,12 @@ struct SettingsView: View {
                     Button("Reset to Home") { settings.resetStandaloneWorkspaceDirectoryToHome() }
                 }
             }
+
+            Section("New Workspaces") {
+                TextField("Branch prefix", text: $settings.newBranchPrefix, prompt: Text("e.g. eshurakov"))
+                Text("Prepended to auto-generated branch names for new workspaces.")
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
         .padding()
