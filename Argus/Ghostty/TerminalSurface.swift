@@ -192,9 +192,6 @@ final class TerminalSurface: ObservableObject, Identifiable {
         // Surface context: tab (no splits in Argus)
         config.context = GHOSTTY_SURFACE_CONTEXT_TAB
 
-        // I/O mode: exec (Ghostty spawns the shell)
-        config.io_mode = GHOSTTY_SURFACE_IO_EXEC
-
         // Create the surface
         surface = ghostty_surface_new(GhosttyApp.shared.app, &config)
 

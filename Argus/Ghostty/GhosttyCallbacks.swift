@@ -50,15 +50,16 @@ func ghosttyReadClipboardCallback(
     _ userdata: UnsafeMutableRawPointer?,
     _ clipboard: ghostty_clipboard_e,
     _ state: UnsafeMutableRawPointer?
-) {
-    guard let userdata, let state else { return }
+) -> Bool {
+    guard let userdata, let state else { return false }
     let terminalSurface = Unmanaged<TerminalSurface>.fromOpaque(userdata).takeUnretainedValue()
-    guard let ghosttySurface = terminalSurface.surface else { return }
+    guard let ghosttySurface = terminalSurface.surface else { return false }
 
     let contents = NSPasteboard.general.string(forType: .string) ?? ""
     contents.withCString { pointer in
         ghostty_surface_complete_clipboard_request(ghosttySurface, pointer, state, false)
     }
+    return true
 }
 
 func ghosttyConfirmReadClipboardCallback(
