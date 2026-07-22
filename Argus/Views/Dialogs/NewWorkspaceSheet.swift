@@ -14,6 +14,7 @@ struct NewWorkspaceSheet: View {
     /// The project to add the workspace to (set by the caller).
     let projectId: UUID
 
+    @State private var workspaceName: String = ""
     @State private var branchMode: BranchMode = .new
     @State private var newBranchName: String = ""
     @State private var selectedExistingBranch: String?
@@ -27,6 +28,8 @@ struct NewWorkspaceSheet: View {
         case new = "New Branch"
         case existing = "Existing Branch"
     }
+
+    private static let sectionLabelFont = Font.system(size: 11, weight: .semibold)
 
     var body: some View {
         VStack(spacing: 0) {
@@ -43,23 +46,41 @@ struct NewWorkspaceSheet: View {
             .padding(.top, 20)
             .padding(.bottom, 16)
 
-            // Branch mode picker
-            Picker("", selection: $branchMode) {
-                ForEach(BranchMode.allCases, id: \.self) { mode in
-                    Text(mode.rawValue).tag(mode)
-                }
+            // Optional workspace name
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Workspace Name")
+                    .font(Self.sectionLabelFont)
+                    .foregroundColor(.secondary)
+                TextField("Name (optional)", text: $workspaceName)
+                    .textFieldStyle(.roundedBorder)
             }
-            .pickerStyle(.segmented)
             .padding(.horizontal, 24)
             .padding(.bottom, 16)
-            .onChange(of: branchMode) { mode in
-                if mode == .existing && availableBranches.isEmpty && !isLoadingBranches {
-                    loadBranches()
-                }
-            }
 
-            // Branch input
+            // Branch section
             VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Branch")
+                        .font(Self.sectionLabelFont)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Button {
+                        toggleBranchMode()
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text(
+                                branchMode == .new
+                                    ? "Use an existing branch" : "Create a new branch instead"
+                            )
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 9, weight: .semibold))
+                        }
+                        .font(.system(size: 11, weight: .semibold))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(.accentColor)
+                }
+
                 switch branchMode {
                 case .new:
                     newBranchInput
@@ -68,7 +89,6 @@ struct NewWorkspaceSheet: View {
                 }
             }
             .padding(.horizontal, 24)
-            .frame(minHeight: 80, alignment: .top)
 
             // Error message
             if let errorMessage {
@@ -79,7 +99,7 @@ struct NewWorkspaceSheet: View {
                     .padding(.top, 8)
             }
 
-            Spacer()
+            Spacer(minLength: 16)
 
             Divider()
 
@@ -108,8 +128,12 @@ struct NewWorkspaceSheet: View {
             .padding(.horizontal, 24)
             .padding(.vertical, 14)
         }
-        .frame(width: 400, height: 280)
+        .frame(width: 400)
+        .fixedSize(horizontal: false, vertical: true)
         .onAppear {
+            if newBranchName.isEmpty {
+                regenerateBranchName()
+            }
             if branchMode == .existing {
                 loadBranches()
             }
@@ -120,8 +144,29 @@ struct NewWorkspaceSheet: View {
 
     @ViewBuilder
     private var newBranchInput: some View {
-        TextField("Branch name", text: $newBranchName)
-            .textFieldStyle(.roundedBorder)
+        HStack(spacing: 4) {
+            TextField("Branch name", text: $newBranchName)
+                .textFieldStyle(.plain)
+            Button {
+                regenerateBranchName()
+            } label: {
+                Image(systemName: "shuffle")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Generate a new random branch name")
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color(nsColor: .textBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
+        )
 
         if !newBranchName.isEmpty && newBranchName.contains(" ") {
             Text("Branch names cannot contain spaces")
@@ -205,6 +250,36 @@ struct NewWorkspaceSheet: View {
 
     // MARK: - Actions
 
+    /// Shows a random suggestion immediately, then silently swaps it for a
+    /// collision-free alternative in the background if needed — as long as
+    /// the user hasn't already started typing their own name.
+    private func regenerateBranchName() {
+        let prefix = workspaceManager.settings.newBranchPrefix
+        let candidate = RandomBranchNameGenerator.generate(prefix: prefix)
+        newBranchName = candidate
+
+        guard let project = workspaceManager.projects.first(where: { $0.id == projectId }) else { return }
+        Task {
+            guard
+                let verified = try? await workspaceManager.worktreeService.suggestAvailableBranchName(
+                    preferring: candidate,
+                    prefix: prefix,
+                    repositoryPath: project.repositoryPath
+                ),
+                verified != candidate,
+                newBranchName == candidate
+            else { return }
+            newBranchName = verified
+        }
+    }
+
+    private func toggleBranchMode() {
+        branchMode = branchMode == .new ? .existing : .new
+        if branchMode == .existing && availableBranches.isEmpty && !isLoadingBranches {
+            loadBranches()
+        }
+    }
+
     private func loadBranches() {
         guard let project = workspaceManager.projects.first(where: { $0.id == projectId }) else { return }
         isLoadingBranches = true
@@ -251,10 +326,12 @@ struct NewWorkspaceSheet: View {
                 createNew = false
             }
 
+            let trimmedName = workspaceName.trimmingCharacters(in: .whitespacesAndNewlines)
             let result = await workspaceManager.addWorkspaceToProject(
                 projectId,
                 branchName: branchName,
-                createNewBranch: createNew
+                createNewBranch: createNew,
+                customTitle: trimmedName.isEmpty ? nil : trimmedName
             )
 
             if result != nil {

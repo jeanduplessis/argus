@@ -116,7 +116,8 @@ extension WorkspaceManager {
     func addWorkspaceToProject(
         _ projectId: UUID,
         branchName: String,
-        createNewBranch: Bool = true
+        createNewBranch: Bool = true,
+        customTitle: String? = nil
     ) async -> Workspace? {
         lastWorkspaceCreationError = nil
         guard workspaces.count < Self.maxWorkspaces,
@@ -145,6 +146,9 @@ extension WorkspaceManager {
                 workspaceType: .worktree,
                 worktreePath: worktreePath
             )
+            if let customTitle {
+                workspace.setCustomTitle(customTitle)
+            }
             workspaces.append(workspace)
             project.addWorkspace(workspace.id)
             selectedWorkspaceId = workspace.id

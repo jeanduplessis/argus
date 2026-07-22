@@ -150,6 +150,59 @@ struct ProjectAndWorktreeUIContractTests {
     }
 
     @Test
+    func newWorkspaceSheetSuggestsARandomBranchNameAndOptionalDisplayName() throws {
+        let sheet = try SourceContract("Argus/Views/Dialogs/NewWorkspaceSheet.swift")
+        sheet.containsAll(
+            [
+                "@State private var workspaceName: String = \"\"",
+                "TextField(\"Name (optional)\", text: $workspaceName)",
+                "regenerateBranchName()",
+                "let candidate = RandomBranchNameGenerator.generate(prefix: prefix)",
+                "newBranchName = candidate",
+                "workspaceManager.worktreeService.suggestAvailableBranchName(",
+                "preferring: candidate",
+                "verified != candidate",
+                "newBranchName == candidate",
+                "Image(systemName: \"shuffle\")",
+                "customTitle: trimmedName.isEmpty ? nil : trimmedName"
+            ], "random branch name suggestion and optional display name")
+
+        let generator = try SourceContract("Argus/Models/RandomBranchNameGenerator.swift")
+        generator.containsAll(
+            [
+                "static func generate(prefix: String = \"\") -> String",
+                "adjectives.randomElement()",
+                "nouns.randomElement()"
+            ], "random two-word name generation")
+
+        let service = try SourceContract("Argus/Services/WorktreeService+Operations.swift")
+        service.containsAll(
+            [
+                "func suggestAvailableBranchName(",
+                "preferring candidate: String",
+                "if !existingBranches.contains(candidate) {",
+                "return try await uniqueBranchName(candidate, repositoryPath: repositoryPath)"
+            ], "random branch name suggestions avoid existing branches")
+
+        let manager = try SourceContract("Argus/Services/WorkspaceManager+Projects.swift")
+        manager.containsAll(
+            [
+                "customTitle: String? = nil",
+                "workspace.setCustomTitle(customTitle)"
+            ], "optional custom title is applied to the created workspace")
+
+        let settings = try SourceContract("Argus/Settings/AppSettings.swift")
+        settings.contains(
+            "@Published var newBranchPrefix: String {",
+            "branch prefix is a persisted setting"
+        )
+        try SourceContract("Argus/Settings/SettingsView.swift").containsAll(
+            [
+                "TextField(\"Branch prefix\", text: $settings.newBranchPrefix"
+            ], "branch prefix setting is editable")
+    }
+
+    @Test
     func orphanAdoptionUsesTheExistingWorktree() throws {
         let manager = try SourceContract("Argus/Services/WorkspaceManager.swift")
         manager.containsAll(

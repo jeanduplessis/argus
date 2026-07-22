@@ -97,6 +97,27 @@ extension WorktreeService {
         throw WorktreeError.branchAlreadyExists(baseName)
     }
 
+    /// Returns `candidate` if it doesn't collide with an existing local or
+    /// remote branch, otherwise generates fresh random candidates (falling
+    /// back to a numeric suffix) until one is available.
+    func suggestAvailableBranchName(
+        preferring candidate: String,
+        prefix: String,
+        repositoryPath: String
+    ) async throws -> String {
+        let existingBranches = try await canonicalBranchNameSet(repositoryPath: repositoryPath)
+        if !existingBranches.contains(candidate) {
+            return candidate
+        }
+        for _ in 0..<25 {
+            let alternative = RandomBranchNameGenerator.generate(prefix: prefix)
+            if !existingBranches.contains(alternative) {
+                return alternative
+            }
+        }
+        return try await uniqueBranchName(candidate, repositoryPath: repositoryPath)
+    }
+
     func ensureBranchNameAvailable(_ branchName: String, repositoryPath: String) async throws {
         let existingBranches = try await canonicalBranchNameSet(repositoryPath: repositoryPath)
         let baseName = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
