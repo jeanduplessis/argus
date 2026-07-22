@@ -93,20 +93,41 @@ extension WorkspaceManager {
 
     func closeCurrentTab() {
         guard let workspace = selectedWorkspace else { return }
-        let closesLastWorkspaceTab =
+        guard let activePanelId = workspace.activePanelId,
+            let activeTabId = workspace.activeTabId
+        else { return }
+
+        if (workspace.activeTabLayout?.leaves.count ?? 1) > 1 {
+            workspace.closePane(activePanelId)
+            return
+        }
+
+        requestCloseTab(activeTabId, in: workspace.id)
+    }
+
+    func requestCloseTab(_ tabId: UUID, in workspaceId: UUID) {
+        guard let workspace = workspaces.first(where: { $0.id == workspaceId }),
+            workspace.panelOrder.contains(tabId)
+        else { return }
+
+        let closesLastTerminalTab =
             workspace.panelOrder.count == 1
-            && (workspace.activeTabLayout?.leaves.count ?? 1) == 1
-        if closesLastWorkspaceTab,
-            shouldConfirmWorktreeDeletionBeforeClosing(workspace.id)
-        {
+            && workspace.layout(for: tabId).leaves.contains(where: {
+                workspace.panels[$0]?.panelType == .terminal
+            })
+        if closesLastTerminalTab {
             NotificationCenter.default.post(
                 name: .showCloseWorkspaceConfirmation,
                 object: nil,
-                userInfo: ["workspaceId": workspace.id]
+                userInfo: [
+                    "workspaceId": workspace.id,
+                    "requestedByLastTerminalTab": true
+                ]
             )
             return
         }
-        workspace.closeActivePaneOrTab()
+
+        workspace.closeTab(tabId)
         if workspace.panelOrder.isEmpty {
             removeWorkspace(workspace.id)
         }

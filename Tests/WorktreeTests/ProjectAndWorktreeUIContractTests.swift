@@ -183,7 +183,7 @@ struct ProjectAndWorktreeUIContractTests {
                 "onProgress?(.closingWorkspace)",
                 "await Task.yield()",
                 "lastWorkspaceDeletionError = error",
-                "shouldConfirmWorktreeDeletionBeforeClosing(workspace.id)"
+                "requestCloseTab(activeTabId, in: workspace.id)"
             ], "worktree close behavior")
         try SourceContract("Argus/Views/Sidebar/SidebarView.swift").containsAll(
             [
@@ -192,13 +192,13 @@ struct ProjectAndWorktreeUIContractTests {
                 "name: .showCloseWorkspaceConfirmation"
             ], "sidebar close confirmation")
         try SourceContract("Argus/Views/Content/TabBarView.swift").contains(
-            "workspaceManager.shouldConfirmWorktreeDeletionBeforeClosing(workspace.id)",
-            "last-tab close confirmation"
+            "workspaceManager.requestCloseTab(panelId, in: workspace.id)",
+            "tab close routing"
         )
         try SourceContract("Argus/Views/MainWindowView.swift").containsAll(
             [
                 ".alert(\"Close Workspace?\", isPresented: $showCloseWorkspaceConfirmation)",
-                "Button(\"Close Only\")",
+                "closeWorkspaceCanDeleteWorktree ? \"Close Only\" : \"Close Workspace\"",
                 "Button(\"Delete Worktree and Close\", role: .destructive)",
                 "WorkspaceDeletionProgressView(stage: workspaceDeletionStage)",
                 "Git is unregistering the worktree and deleting its files.",

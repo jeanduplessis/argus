@@ -146,8 +146,10 @@ tool.
    the end of the tab order and selected.
 
 5. Each tab MUST provide a close button to remove the panel from the
-   workspace. Terminal tabs MUST provide a context menu with Close and
-   Rename actions.
+   workspace. Closing the last terminal tab MUST ask whether to close the
+   workspace. If the user declines, the terminal tab MUST remain active and
+   unchanged. Terminal tabs MUST provide a context menu with Close and Rename
+   actions.
 
 6. Tabs MUST be reorderable within a workspace via drag and drop.
 

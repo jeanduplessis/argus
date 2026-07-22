@@ -115,6 +115,8 @@ keyboard input.
 - Closing a focused pane in a multi-pane tab MUST close only that pane, collapse
   the remaining layout, and focus a surviving pane.
 - Closing the only pane MUST use the normal top-level tab lifecycle.
+- Closing the last terminal top-level tab MUST confirm Workspace closure. The
+  safe cancel action MUST leave that Terminal Panel active and unchanged.
 - Reordering a top-level tab MUST move its complete split tree.
 - Split dividers MUST provide an enlarged drag target and resize cursor.
 

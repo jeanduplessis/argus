@@ -11,8 +11,25 @@ private struct NewWorkspaceSheetRequest: Identifiable {
     let projectId: UUID
 }
 
-private extension WorkspaceDeletionStage {
-    var title: String {
+private func closeWorkspaceMessage(
+    title: String,
+    worktreePath: String,
+    requestedByLastTerminalTab: Bool,
+    canDeleteWorktree: Bool
+) -> String {
+    guard requestedByLastTerminalTab else {
+        return "Do you also want to delete the git worktree for \(title) at \(worktreePath)?"
+    }
+    var message =
+        "Closing the last terminal tab will close \(title). Do you want to close the workspace?"
+    if canDeleteWorktree {
+        message += " You can also delete its git worktree at \(worktreePath)."
+    }
+    return message
+}
+
+extension WorkspaceDeletionStage {
+    fileprivate var title: String {
         switch self {
         case .removingWorktree:
             "Removing Git worktree"
@@ -21,7 +38,7 @@ private extension WorkspaceDeletionStage {
         }
     }
 
-    var detail: String {
+    fileprivate var detail: String {
         switch self {
         case .removingWorktree:
             "Git is unregistering the worktree and deleting its files. Large worktrees can take longer."
@@ -111,6 +128,9 @@ struct MainWindowView: View {
     @State private var closeWorkspaceId: UUID?
     @State private var closeWorkspaceTitle = ""
     @State private var closeWorkspaceWorktreePath = ""
+    @State private var closeWorkspaceRequestedByLastTerminalTab = false
+    @State private var closeWorkspaceCanDeleteWorktree = false
+    @State private var closeWorkspaceConfirmationMessage = ""
     @State private var workspaceDeletionStage: WorkspaceDeletionStage?
     @State private var showWorkspaceDeletionError = false
     @State private var workspaceDeletionErrorMessage = ""
@@ -233,38 +253,37 @@ struct MainWindowView: View {
         }
         // Alert: Close Workspace with optional worktree deletion
         .alert("Close Workspace?", isPresented: $showCloseWorkspaceConfirmation) {
-            Button("Cancel", role: .cancel) {}
-            Button("Close Only") {
+            Button(closeWorkspaceRequestedByLastTerminalTab ? "Keep Terminal" : "Cancel", role: .cancel) {}
+            Button(closeWorkspaceCanDeleteWorktree ? "Close Only" : "Close Workspace", role: .destructive) {
                 if let id = closeWorkspaceId {
                     workspaceManager.removeWorkspace(id)
                 }
             }
-            Button("Delete Worktree and Close", role: .destructive) {
-                if let id = closeWorkspaceId {
-                    workspaceDeletionStage = .removingWorktree
-                    Task {
-                        let removed = await workspaceManager.removeWorkspace(
-                            id,
-                            deletingWorktree: true,
-                            onProgress: { stage in
-                                workspaceDeletionStage = stage
+            if closeWorkspaceCanDeleteWorktree {
+                Button("Delete Worktree and Close", role: .destructive) {
+                    if let id = closeWorkspaceId {
+                        workspaceDeletionStage = .removingWorktree
+                        Task {
+                            let removed = await workspaceManager.removeWorkspace(
+                                id,
+                                deletingWorktree: true,
+                                onProgress: { stage in
+                                    workspaceDeletionStage = stage
+                                }
+                            )
+                            workspaceDeletionStage = nil
+                            if !removed {
+                                workspaceDeletionErrorMessage =
+                                    workspaceManager.lastWorkspaceDeletionError?.localizedDescription
+                                    ?? "The worktree could not be deleted. The workspace was not closed."
+                                showWorkspaceDeletionError = true
                             }
-                        )
-                        workspaceDeletionStage = nil
-                        if !removed {
-                            workspaceDeletionErrorMessage =
-                                workspaceManager.lastWorkspaceDeletionError?.localizedDescription
-                                ?? "The worktree could not be deleted. The workspace was not closed."
-                            showWorkspaceDeletionError = true
                         }
                     }
                 }
             }
         } message: {
-            Text(
-                "Do you also want to delete the git worktree for "
-                    + "\(closeWorkspaceTitle) at \(closeWorkspaceWorktreePath)?"
-            )
+            Text(closeWorkspaceConfirmationMessage)
         }
         .alert("Could Not Delete Worktree", isPresented: $showWorkspaceDeletionError) {
             Button("OK", role: .cancel) {}
@@ -305,6 +324,16 @@ struct MainWindowView: View {
                 closeWorkspaceId = workspaceId
                 closeWorkspaceTitle = workspace.displayTitle
                 closeWorkspaceWorktreePath = workspace.worktreePath ?? ""
+                closeWorkspaceRequestedByLastTerminalTab =
+                    notification.userInfo?["requestedByLastTerminalTab"] as? Bool ?? false
+                closeWorkspaceCanDeleteWorktree =
+                    workspaceManager.shouldConfirmWorktreeDeletionBeforeClosing(workspaceId)
+                closeWorkspaceConfirmationMessage = closeWorkspaceMessage(
+                    title: closeWorkspaceTitle,
+                    worktreePath: closeWorkspaceWorktreePath,
+                    requestedByLastTerminalTab: closeWorkspaceRequestedByLastTerminalTab,
+                    canDeleteWorktree: closeWorkspaceCanDeleteWorktree
+                )
                 showCloseWorkspaceConfirmation = true
             }
         }

@@ -52,21 +52,7 @@ struct TabBarView: View {
                                     workspace.reorderPanel(from: index, to: index + 1)
                                 },
                                 onClose: {
-                                    if workspace.panelOrder.count == 1,
-                                        workspaceManager.shouldConfirmWorktreeDeletionBeforeClosing(workspace.id)
-                                    {
-                                        NotificationCenter.default.post(
-                                            name: .showCloseWorkspaceConfirmation,
-                                            object: nil,
-                                            userInfo: ["workspaceId": workspace.id]
-                                        )
-                                        return
-                                    }
-
-                                    workspace.closeTab(panelId)
-                                    if workspace.panelOrder.isEmpty {
-                                        workspaceManager.removeWorkspace(workspace.id)
-                                    }
+                                    workspaceManager.requestCloseTab(panelId, in: workspace.id)
                                 }
                             )
                             .environmentObject(appSettings)

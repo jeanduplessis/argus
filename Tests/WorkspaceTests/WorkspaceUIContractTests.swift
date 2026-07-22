@@ -246,7 +246,7 @@ struct WorkspaceTabAndChromeUIContractTests {
                 "Button(\"Close\", role: .destructive, action: onClose)",
                 "Button(\"Rename\", action: onRename)",
                 "workspace.renameTerminalPanel(renamePanelId, title: renameText)",
-                "workspace.closeTab(panelId)",
+                "workspaceManager.requestCloseTab(panelId, in: workspace.id)",
                 "Button(action: onSelect)",
                 ".help(\"Select \\(title)\")",
                 ".accessibilityLabel(title)",
