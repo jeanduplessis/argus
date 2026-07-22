@@ -16,6 +16,12 @@ Do not duplicate the full context contract inside `AGENTS.md`.
 Before creating or materially changing UI, read `docs/UI_DESIGN_PRINCIPLES.md`.
 Follow its UI behavior contract. The application spec remains authoritative for product behavior.
 
+## Changelog
+
+Before pushing code to origin, add an entry to `CHANGELOG.md` for the changes being pushed.
+Use the date as the heading in `YYYY-MM-DD` format, without a version number. Describe each
+change in simple English and link to the commit or commits for that change.
+
 ## What This Is
 
 Argus is a **personal macOS terminal workspace manager** built on libghostty. Single user, single machine, not distributed. Simplicity and correctness are the priorities — do not over-engineer.
