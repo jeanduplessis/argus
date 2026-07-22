@@ -12,6 +12,10 @@ settings:
     SWIFT_VERSION: "6.0"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     ENABLE_USER_SCRIPT_SANDBOXING: "NO"
+    # GhosttyKit.xcframework is arm64-only (see scripts/build-ghosttykit.sh) —
+    # Argus must match or the x86_64 slice fails to link.
+    ARCHS: "arm64"
+    ONLY_ACTIVE_ARCH: YES
 
 targets:
   Argus:
@@ -41,11 +45,11 @@ targets:
         INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.developer-tools"
         SWIFT_OBJC_BRIDGING_HEADER: Argus/Resources/Argus-Bridging-Header.h
         HEADER_SEARCH_PATHS:
-          - "$(PROJECT_DIR)/Frameworks/GhosttyKit.xcframework/macos-arm64_x86_64/Headers"
+          - "$(PROJECT_DIR)/Frameworks/GhosttyKit.xcframework/macos-arm64/Headers"
         FRAMEWORK_SEARCH_PATHS:
           - "$(PROJECT_DIR)/Frameworks"
         LIBRARY_SEARCH_PATHS:
-          - "$(PROJECT_DIR)/Frameworks/GhosttyKit.xcframework/macos-arm64_x86_64"
+          - "$(PROJECT_DIR)/Frameworks/GhosttyKit.xcframework/macos-arm64"
         OTHER_LDFLAGS:
           - "-lghostty"
           - "-framework Metal"
@@ -77,6 +81,6 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.argus.tests
         GENERATE_INFOPLIST_FILE: YES
         HEADER_SEARCH_PATHS:
-          - "$(PROJECT_DIR)/Frameworks/GhosttyKit.xcframework/macos-arm64_x86_64/Headers"
+          - "$(PROJECT_DIR)/Frameworks/GhosttyKit.xcframework/macos-arm64/Headers"
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Argus.app/Contents/MacOS/Argus"
         BUNDLE_LOADER: "$(TEST_HOST)"
