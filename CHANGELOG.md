@@ -2,6 +2,10 @@
 
 This file records changes pushed for local Argus releases. New entries use a `YYYY-MM-DD` heading and link to their commit or commits.
 
+## 2026-07-23
+
+- Repository documentation now describes the current v1 application, separates stable behavior, proposals, operations, and architecture decisions, and records the structured diff renderer as an ADR. GhosttyKit setup now validates build inputs, coordinates shared cache access, publishes complete artifacts safely, and handles chained SDK and Metal toolchain recovery. ([51e5b09](https://github.com/jeanduplessis/argus/commit/51e5b09))
+
 ## 2026-07-22
 
 - Closing the last terminal tab now asks whether to close the workspace. Choosing "Keep Terminal" leaves the terminal tab open and active. ([5491b19](https://github.com/jeanduplessis/argus/commit/5491b19))
