@@ -4,7 +4,7 @@ This file records changes pushed for local Argus releases. New entries use a `YY
 
 ## 2026-07-23
 
-- Repository documentation now describes the current v1 application, separates stable behavior, proposals, operations, and architecture decisions, and records the structured diff renderer as an ADR. GhosttyKit setup now validates build inputs, coordinates shared cache access, publishes complete artifacts safely, and handles chained SDK and Metal toolchain recovery. ([51e5b09](https://github.com/jeanduplessis/argus/commit/51e5b09))
+- Repository documentation now describes the current v1 application, separates stable behavior, proposals, operations, and architecture decisions, and records the structured diff renderer as an ADR. GhosttyKit setup now validates build inputs, coordinates shared cache access, publishes complete artifacts safely, and handles chained SDK and Metal toolchain recovery. ([e4eb23e](https://github.com/jeanduplessis/argus/commit/e4eb23e))
 
 ## 2026-07-22
 
