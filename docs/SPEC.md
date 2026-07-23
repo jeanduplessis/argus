@@ -1,746 +1,238 @@
-# Argus Application
+# Argus application specification
 
 ## Status
 
-Draft — reverse-engineered from implementation plan on 2026-03-25.
+Stable v1 baseline, updated 2026-07-23.
 
-## Conventions
+This document defines behavior implemented by the current Argus application. Future work belongs under `docs/proposals/` until it is implemented and incorporated here.
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
-"SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
-"OPTIONAL" in this document are to be interpreted as described in
-BCP 14 [RFC 2119] [RFC 8174] when, and only when, they appear in all
-capitals, as shown here.
+The words "MUST", "MUST NOT", "SHOULD", "SHOULD NOT", and "MAY" are normative.
 
-## Overview
+## Product scope
 
-Argus is a macOS terminal workspace manager built on the Ghostty
-terminal rendering engine. It organizes work into projects backed by
-git worktrees, provides a real-time git status sidebar with file
-operations, embeds browser panels alongside terminals, tracks AI agent
-status via a socket API with text-to-speech notifications, and persists
-full session state across restarts. The application runs as a single
-native macOS process with an embedded socket server and companion CLI
-tool.
+Argus is a personal macOS terminal workspace manager built on Ghostty. It organizes terminal, browser, file, and Git preview content into Workspaces; groups repository-backed Workspaces into Projects; manages Git worktrees; shows Workspace files and Git changes; and restores durable session state.
 
----
+Argus is a single-user, single-machine application. It has one main Workspace window and a separate native Settings surface. It does not provide a working external control API in v1.
 
-## Rules
+## Application shell
 
-### Terminal Rendering
+1. The main window MUST use a three-column layout: the left sidebar, center Workspace content, and the Right Sidebar.
+2. The main window MUST use a full-size transparent titlebar and an opaque black application shell.
+3. The left sidebar and Right Sidebar MUST be independently toggleable and resizable.
+4. Left-sidebar visibility and width MUST persist in `UserDefaults`. Its default width is 200 points, with an effective range from 80 points to one third of the window width.
+5. Right-sidebar visibility, width, and selected Right-sidebar View MUST persist in `UserDefaults`. Its width range is 180 to 600 points and its default width is 250 points.
+6. Dividers MUST provide a drag target wider than their visible separator.
+7. Inspectable content MUST remain in the main Workspace window. Settings, sheets, alerts, menus, and popovers MAY use their normal macOS surfaces.
 
-1. The system MUST render terminal content using GPU-accelerated
-   compositing via the Ghostty terminal engine.
+## Settings
 
-2. The system MUST read terminal configuration (font, theme,
-   keybindings) from Ghostty-compatible configuration files at the
-   standard Ghostty configuration path.
+1. Argus MUST provide a native macOS Settings surface for global application preferences.
+2. Settings MUST be stored separately from the Session Snapshot.
+3. General settings MUST include:
+   - restore previous session;
+   - default Right-sidebar View;
+   - default directory for a new Standalone Workspace.
+4. An explicitly supplied Standalone Workspace directory MUST take precedence over the configured default. The configured default MUST take precedence over the user's home directory.
+5. Appearance settings MUST include interface text size, document text size, and compact or comfortable interface density.
+6. Terminal settings MUST include the audible-bell preference. Ghostty configuration remains authoritative for terminal font, colors other than Argus's background override, and keybindings.
+7. Files and Changes settings MUST include hidden Workspace Item visibility, initial source wrapping, initial Markdown and SVG display modes, initial diff layout, and initial diff overflow behavior.
+8. Browser settings MUST include homepage, search provider, page zoom, WebKit inspectability, and persistent or private website data storage.
+9. Global defaults MUST apply when their target is created. They MUST NOT reset existing Panel-local state.
+10. `.git` MUST remain excluded from the Files View even when hidden Workspace Items are visible.
 
-3. The system MUST manage exactly one global terminal engine instance
-   for the application lifetime, shared across all terminal panels.
-
-4. Each terminal panel MUST own an independent terminal surface that
-   handles its own input, output, and rendering.
-
-5. The system MUST inject environment variables into every spawned
-   shell session identifying the socket path, the current workspace
-   identifier, and the current surface identifier.
-
-6. The system MUST ensure the shell PATH includes standard package
-   manager directories so that tools such as git extensions are
-   discoverable from within terminal sessions.
-
-### Window and Layout
-
-1. The application MUST present a single main window.
-
-2. The main window MUST use a three-column layout: a left sidebar, a
-   central content area, and a Right Sidebar.
-
-3. The main window MUST use a custom transparent titlebar with
-   full-size content view mode, allowing content to extend into the
-   titlebar area.
-
-4. The left sidebar MUST be toggleable and user-resizable within a
-   range of 80 pixels to 33% of the window width, with a default
-   width of 200 pixels.
-
-5. The Right Sidebar MUST be toggleable and user-resizable within
-   a range of 180 to 600 pixels, with a default width of 250 pixels.
-
-6. Draggable dividers MUST separate the three columns, with a hit
-   zone of at least 6 pixels for comfortable mouse targeting.
-
-7. The central content area MUST fill the remaining horizontal space
-   between the two sidebars.
-
-8. The left sidebar visibility and width MUST persist across sessions.
-
-9. The Right Sidebar visibility and width MUST persist across
-   sessions.
-
-### Settings
-
-1. The Argus Application MUST provide a native macOS Settings surface for
-   global application preferences. These preferences are durable separately
-   from the Session Snapshot and MUST NOT be treated as workspace or Panel
-   state.
-
-2. General settings MUST include a restore-previous-session preference, the
-   default Right-sidebar View, and the default Workspace Root for a new
-   Standalone Workspace. The default Right-sidebar View is Changes. An
-   explicit directory supplied when creating a Standalone Workspace takes
-   precedence over the configured default; the configured default takes
-   precedence over the user's home directory.
-
-3. Session restore MUST occur only when the restore-previous-session
-   preference is enabled. Automated tests and an explicit
-   `ARGUS_DISABLE_SESSION_RESTORE=1` environment override MUST disable
-   restore regardless of that preference. File and URL launch arguments
-   MUST also prevent session restore.
-
-4. Appearance settings MAY change interface text size, document text size,
-   and interface density between compact and comfortable. They MUST preserve
-   required minimum hit targets and the fixed opaque black application shell.
-
-5. Terminal settings MUST include an audible-bell preference. Ghostty
-   configuration remains the authority for terminal font, theme, and
-   keybindings.
-
-6. Files and Changes settings MUST control hidden Workspace Item visibility in
-   the Files View. The `.git` directory MUST remain excluded.
-   File Tab settings MAY supply only initial source-line wrapping, Markdown
-   display mode, and SVG display mode.
-
-7. Git Preview settings MAY supply only the initial diff layout (split or
-   unified) and overflow behavior (scroll or wrap).
-
-8. Browser settings MUST provide defaults for new Browser Panels and browser
-   top-level tabs: homepage, optional search provider, page zoom,
-   inspectability, and persistent or nonpersistent website data storage.
-   An explicit or restored Browser Panel value takes precedence over the
-   global default.
-
-9. Global defaults MUST apply when their target is created. They MUST NOT
-   retroactively reset existing Panel-local controls or restored Panel state.
-
-### Workspaces
-
-1. The system MUST organize terminal and browser panels into
-   workspaces, where each workspace contains an ordered list of
-   tabbed panels.
-
-2. Each workspace MUST display a tab bar showing all top-level tabs.
-   Terminal tabs MUST default to labels based on ordinal position as
-   "Terminal 1", "Terminal 2", and so on, rather than by working
-   directory or process title. A user-assigned terminal title MUST take
-   precedence over the ordinal label.
-
-3. Exactly one top-level tab per workspace MUST be active at a
-   time; selecting a tab MUST switch the active tab. A terminal tab
-   MAY contain multiple split panes, but exactly one pane MUST be
-   focused for keyboard input at a time.
-
-4. The tab bar MUST provide a button to create a new terminal panel
-   within the current workspace. New terminal tabs MUST be appended to
-   the end of the tab order and selected.
-
-5. Each tab MUST provide a close button to remove the panel from the
-   workspace. Closing the last terminal tab MUST ask whether to close the
-   workspace. If the user declines, the terminal tab MUST remain active and
-   unchanged. Terminal tabs MUST provide a context menu with Close and Rename
-   actions.
-
-6. Tabs MUST be reorderable within a workspace via drag and drop.
-
-7. The system MUST allow creating new workspaces, each starting with
-   a single terminal panel.
-
-8. The system MUST allow closing workspaces. When the last workspace
-   is closed, the system MUST create a new empty workspace
-   automatically.
-
-9. The system MUST allow renaming workspaces. The default workspace
-   name SHOULD be derived from the shell's working directory or
-   process title.
-
-10. The system MUST support selecting workspaces 1 through 8 via
-    keyboard shortcuts (Cmd+1 through Cmd+8), using global sidebar
-    order across all projects, and Cmd+9 to select the last workspace.
-
-11. The system MUST support keyboard shortcuts to create a new
-    workspace, create a new tab, and close the current tab or focused
-    split pane.
-
-12. The system MUST support splitting the focused terminal pane
-    vertically with Cmd+D and horizontally with Cmd+Shift+D.
-
-13. The system MUST support selecting the previous and next top-level tabs in
-    the Selected Workspace with Cmd+[ and Cmd+], respectively. Selection MUST
-    wrap from the first tab to the last and from the last tab to the first.
+## Projects and Workspaces
 
 ### Projects
 
-1. The system MUST allow users to create a project from any directory
-   that is a valid git repository.
-
-2. The system MUST reject project creation if the target directory is
-   not a git repository.
-
-3. The system MUST reject project creation if a project already exists
-   for the same repository path.
-
-4. The system MUST automatically detect the main branch of the
-   repository when creating a project, trying symbolic references
-   first, then common branch names ("main", "master"), then the
-   current HEAD.
-
-5. The system MUST assign a display name to each project, defaulting
-   to the repository directory name if no custom name is provided.
-
-6. Each project MUST maintain an ordered list of child workspace
-   references.
-
-7. The system MUST maintain exactly one "catch-all" project that
-   adopts any workspaces not assigned to a named project.
-
-8. The catch-all project MUST NOT be removable by the user.
-
-9. When a named project is removed, the system MUST also remove all
-   of its child workspaces and clean up associated worktrees.
-
-10. Projects MUST support an expand/collapse state in the sidebar that
-    persists across sessions.
-
-11. Projects MAY have a custom color for visual identification in the
-    sidebar.
-
-12. The system MUST allow renaming projects.
-
-13. Each project MUST be assigned an immutable, globally unique
-    identifier (UUID) at creation time. This identifier MUST be used
-    as the stable key for worktree storage paths and cross-references.
-    The project display name is mutable and MUST NOT be used as a
-    storage key.
-
-14. The worktree storage path MUST use the project's stable identifier,
-    not its display name or repository basename:
-    `~/.argus/worktrees/<project-uuid>/<branch-slug>/`.
-
-### Sidebar Hierarchy
-
-1. The left sidebar MUST display items in a two-level hierarchy:
-   projects as collapsible headers and workspaces as children within
-   projects.
-
-2. Standalone workspaces (those not assigned to any project) MUST
-   appear under the catch-all project.
-
-3. Each sidebar workspace item MUST indicate whether it is the main
-   checkout, a worktree, or an external directory when it belongs to
-   a project.
-
-4. The system MUST reconcile project-to-workspace and
-   workspace-to-project cross-references after session restore to
-   ensure bidirectional consistency.
-
-5. Workspaces MUST be reorderable within a project via drag and drop.
-
-6. The sidebar MUST display the git branch name for each workspace
-   that has a git context.
-
-7. The sidebar MUST display the agent status icon for each workspace
-   that has an active agent status entry.
-
-8. The sidebar MUST highlight the currently active workspace with a
-   distinct selection indicator.
-
-9. The sidebar MUST show a hover highlight on workspace rows.
-
-10. Project headers MUST provide a context menu with options to
-    rename the project, add a workspace, and remove the project.
-
-11. Workspace rows MUST provide a context menu with options to
-    rename, close, and reorder the workspace.
-
-### File Tabs
-
-1. Binary image files supported by the native image decoder MUST render an
-   image preview in their File Tab instead of the generic binary-file state.
-
-2. SVG files MUST provide source and image-preview displays in their File Tab.
-
-### Git Worktrees
-
-1. The system MUST create isolated git worktrees when users create
-   new workspaces within a project, placing them at a well-known
-   directory under the application's worktree storage path
-   organized by project slug and branch name.
-
-2. The system MUST slugify workspace or branch names into
-   filesystem-safe, git-compatible branch names (lowercase,
-   hyphen-separated, no special characters).
-
-3. The system MUST generate a unique branch name with a numeric
-   suffix if the desired branch name already exists.
-
-4. The system MUST support creating worktrees from existing remote
-   or local branches.
-
-5. When removing a worktree, the system MUST invoke the git worktree
-   removal operation; force removal MUST be used for programmatic
-   cleanup (such as project deletion).
-
-6. The system MUST detect and enumerate orphaned worktrees on disk
-   that have no corresponding workspace data.
-
-7. The system MUST list available branches for worktree creation,
-   excluding branches already checked out in existing worktrees.
-
-8. On application launch, the system MUST scan for orphaned
-   worktrees on disk that have no corresponding workspace data.
-
-9. When orphaned worktrees are found, the system MUST present a
-   non-blocking dialog listing them, allowing the user to adopt
-   (re-create a workspace), delete, or dismiss (defer) each one.
-
-### Git Status Sidebar
-
-1. The system MUST provide a toggleable git status sidebar panel on
-   the right side of the window.
-
-2. The git sidebar MUST track the worktree root directory (or the
-   project repository root for main-checkout workspaces) of the
-   active workspace. It MUST NOT attempt to follow the terminal
-   session's live working directory; shell integration is deferred.
-
-3. The git sidebar MUST display the current branch name and upstream
-   tracking information (ahead/behind commit counts).
-
-4. The git sidebar MUST organize changed files into three collapsible
-   sections: staged, unstaged, and untracked.
-
-5. Each file entry MUST display an icon and color corresponding to
-   its status (added, modified, deleted, renamed, copied,
-   type-changed, untracked).
-
-6. Each file entry MUST show per-file diff statistics (lines added
-   and removed).
-
-7. The system MUST automatically refresh git status when files change,
-   using recursive filesystem event monitoring (FSEventStream) over
-   the worktree root with a debounce interval of at least
-   300 milliseconds.
-
-8. The system MUST suppress refresh events caused by git's own
-   internal file changes (such as index updates) to prevent feedback
-   loops.
-
-9. The system MUST enforce a cooldown period of at least one second
-   after a refresh completes before allowing another
-   filesystem-event-triggered refresh.
-
-10. The system MUST cap the number of displayed files at 500 to
-    prevent rendering slowdowns in large repositories.
-
-11. The system MUST expand untracked directories to enumerate their
-    individual child files for display.
-
-12. Each section header MUST display the file count for that section.
-
-13. The git sidebar MUST display a loading indicator during refresh
-    operations.
-
-14. The git sidebar MUST provide a manual refresh button.
-
-### Git File Operations
-
-1. The system MUST provide hover-based action buttons for each file
-   in the git sidebar.
-
-2. For staged files, the system MUST offer unstage, diff, blame, and
-   copy-path actions.
-
-3. For unstaged files, the system MUST offer stage, discard, diff,
-   blame, and copy-path actions.
-
-4. For untracked files, the system MUST offer stage, delete, diff,
-   and copy-path actions.
-
-5. Destructive operations (discard changes, delete file) MUST require
-   explicit user confirmation before execution.
-
-6. The system MUST provide section-level bulk actions: stage all,
-   unstage all, discard all, delete all.
-
-7. Bulk destructive operations MUST require user confirmation.
-
-8. The system MUST refresh git status immediately after any file
-   operation completes.
-
-9. The system MUST offer a diff preview that opens as a tab in the
-   central content area and displays colorized diff output.
-
-10. The system MUST offer a blame preview that opens as a tab in the
-    central content area and displays colorized blame output.
-
-11. Preview tabs MUST use the workspace tab lifecycle, including tab
-    selection, reordering, and closing.
-
-12. Reopening the same preview SHOULD refresh and select its existing
-    tab instead of creating a duplicate tab.
-
-13. If the current directory is not a git repository, the sidebar MUST
-    offer to initialize one.
-
-14. When the working tree is clean, the sidebar MUST display a "clean
-    working tree" indicator.
-
-### Browser Panels
-
-1. The system MUST support embedded browser panels that render web
-   pages within a workspace tab alongside terminal panels.
-
-2. Each browser panel MUST include an address bar with a URL input
-   field, back button, forward button, and reload button.
-
-3. The back and forward buttons MUST be visually disabled when there
-   is no navigation history in the respective direction.
-
-4. The address bar MUST display an HTTPS indicator when the current
-   page uses a secure connection.
-
-5. Browser panels MUST support find-in-page functionality, activated
-   via a keyboard shortcut, with a floating search overlay showing
-   match count and next/previous navigation.
-
-6. The find-in-page overlay MUST be dismissible with the Escape key.
-
-7. Background browser panels MUST NOT steal application focus (for
-   example, via JavaScript autofocus).
-
-### Titlebar Display
-
-1. The titlebar MUST display the workspace name.
-
-2. The titlebar MUST display additional context: the project name
-   (if the workspace belongs to a project) or the directory basename
-   (for standalone workspaces).
-
-3. The workspace name SHOULD be omitted from the titlebar when it is
-   identical to the context name.
-
-4. The titlebar MUST display the current git branch name when
-   available.
-
-5. The titlebar MUST display a dirty indicator when the working tree
-   has uncommitted changes.
-
-6. The titlebar MUST display ahead/behind commit counts relative to
-   the upstream branch when upstream tracking exists.
-
-7. The window title (visible in Mission Control and the Dock) MUST be
-   updated to reflect the titlebar content.
-
-### Session Persistence
-
-1. The system MUST persist durable application state to disk,
-   including the window, workspace metadata, projects, sidebar state,
-   and panel types with explicit persistence requirements below.
-
-2. The system MUST autosave at regular intervals of approximately
-   8 seconds during typing-quiet periods.
-
-3. On application termination, the system MUST write the session
-   synchronously to ensure data persists before exit.
-
-4. On launch, the system MUST attempt to restore the previous session
-   unless restore is explicitly disabled via environment variable or
-   the application was launched with file or URL arguments.
-
-5. The system MUST NOT restore session state when running under
-   automated test environments.
-
-6. Project snapshots MUST include the project identifier, name,
-   repository path, main branch, expand/collapse state, workspace
-   identifiers, optional custom color, and catch-all flag.
-
-7. Workspace snapshots MUST include the project identifier, worktree
-   path, and worktree branch name when the workspace belongs to a
-   project.
-
-8. Status entries, agent PIDs, and other ephemeral runtime state MUST
-    NOT be restored across app restarts, as the associated processes
-    no longer exist.
-
-9. Browser panels MUST persist and restore the current URL, page zoom
-   level, and developer tools visibility.
-
-10. Terminal panels MUST persist their last observed Terminal Working
-    Directory and use it as the shell's initial directory when restoring a
-    previous session.
-
-11. The session format MUST use a single schema version. The system
-    MUST NOT implement schema migration; if the snapshot version does
-    not match, the system MUST discard it and start fresh.
-
-12. The system MUST enforce resource limits during persistence: a
-    maximum of 128 workspaces. The persistence schema SHOULD model
-    a window array for forward-compatibility with multi-window
-    support, but v1 MUST contain exactly one window entry. The
-    schema-level cap is 12 windows and 128 workspaces per window.
-
-### IPC and CLI
-
-1. The system MUST provide an embedded Unix domain socket server
-   within the application process, listening at a well-known path
-   under the application's data directory.
-
-2. The socket protocol MUST use newline-delimited JSON (JSON Lines)
-   for both requests and responses.
-
-3. Each request MUST include a method field and MAY include an
-   identifier for request/response correlation.
-
-4. Error responses MUST include a structured error with a code and
-   human-readable message.
-
-5. The system MUST provide a companion CLI tool that communicates
-   with the application via the socket.
-
-6. The CLI MUST auto-discover the socket path, checking the
-   well-known path and falling back to environment variable
-   overrides.
-
-7. Socket and CLI commands MUST NOT steal macOS application focus or
-   raise windows as a side effect.
-
-8. Only commands with explicit focus intent (workspace select, panel
-   focus) MAY mutate in-app focus state.
-
-9. Status and telemetry commands MUST be processed off the main
-   thread; UI mutations MUST be dispatched asynchronously to the main
-   thread only when necessary.
-
-10. High-frequency telemetry commands MUST NOT use synchronous
-    main-thread dispatch.
-
-11. The system MUST deduplicate identical status updates to prevent
-    update storms from rapid-fire telemetry.
-
-12. The CLI MUST provide commands for project creation, listing, and
-    removal.
-
-13. The CLI MUST provide commands for workspace and panel management
-    including creation, listing, selection, closing, and renaming.
-
-### Agent Integration
-
-1. The socket API for agent integration MUST be agent-agnostic: any
-   agent key string MUST be accepted for status, PID, and
-   notification commands without restriction.
-
-2. The system MUST provide a reference plugin for Kilo Code that
-   translates agent lifecycle events into status updates and
-   notifications. This plugin serves as the reference implementation
-   for other agent integrations.
-
-3. The reference plugin MUST only activate when the socket path
-   environment variable is present; it MUST be a no-op when running
-   outside the terminal application.
-
-4. The reference plugin MUST update the sidebar status entry for the
-   current terminal panel when the agent transitions between states:
-   idle, running, needs input, and error.
-
-5. Each status state MUST have a distinct icon and color for visual
-   differentiation.
-
-6. The reference plugin MUST send a notification when the agent
-   completes work, encounters an error, or requests user permission.
-
-7. The reference plugin MUST debounce completion notifications for at
-   least 3 seconds to account for sub-agent idle events that precede
-   continued work.
-
-8. The reference plugin MUST register the agent process ID with the
-   application to enable suppression of redundant operating-system-
-   level notifications.
-
-9. The reference plugin MUST clear its status entry and deregister
-   its process ID when the agent process exits.
-
-10. The reference plugin MAY provide verbose status descriptions when
-    an environment variable is set, showing tool-level detail instead
-    of generic state labels.
-
-### Agent Process Lifecycle
-
-1. The system MUST periodically sweep agent process IDs to detect
-   crashed or terminated agent processes.
-
-2. The sweep interval MUST be approximately 30 seconds.
-
-3. When a stale agent PID is detected, the system MUST clear any
-   associated status entries for that agent.
-
-4. The sweep MUST run on a background queue, not on the main thread.
-
-5. The system MUST track agent PIDs at both the workspace level and
-   the individual panel level.
-
-### Agent Status Display
-
-1. When an agent has an active status entry with an icon, the system
-   MUST display that icon on the corresponding workspace tab,
-   replacing the default tab icon.
-
-2. The system MUST resolve the effective status icon per panel by
-   checking per-panel status entries first, then falling back to
-   workspace-level status entries.
-
-3. Agent status icons MUST be tinted with the color specified in the
-   status entry.
-
-4. Agent status icons MUST take priority over default tab icons but
-   MUST NOT take priority over loading indicators (such as browser
-   page loads).
-
-5. The system MUST synchronize agent status icons to tabs whenever
-   status entries are mutated, stale agent PIDs are swept, or
-   workspace reconciliation occurs.
-
-### Per-Panel Status
-
-1. The system MUST support status entries scoped to individual panels
-   (terminal surfaces) in addition to workspace-level status entries.
-
-2. When multiple agents run in different panels of the same workspace,
-   each panel's status MUST be independently trackable.
-
-3. Per-panel status entries MUST display the panel label for
-   disambiguation when multiple panels have active status.
-
-4. When only one panel has status entries, the system SHOULD omit the
-   panel label for cleaner display.
-
-5. The socket API MUST accept a surface identifier to scope status
-   operations to a specific panel, falling back to the surface-ID
-   environment variable if not provided.
-
-6. Workspace-level status (no surface identifier) MUST continue to
-   work alongside per-panel entries.
-
-### Text-to-Speech Notifications
-
-1. The system MAY announce agent events via text-to-speech when a TTS
-   binary is available at the expected path.
-
-2. The system MUST NOT fall back to system speech synthesis or other
-   TTS mechanisms when the expected binary is not found; TTS is
-   opt-in by installing the binary.
-
-3. TTS announcements MUST be fire-and-forget; failures MUST NOT block
-   event processing.
-
-4. The system MUST announce when an agent needs user approval,
-   including the workspace number and project name.
-
-5. The system MUST announce when an agent completes work or encounters
-   an error.
-
-6. The workspace number in announcements MUST be the 1-based workspace
-   index.
-
-### Build and Deployment
-
-1. A build script MUST exist that compiles the application in release
-   configuration, bundles the CLI tool, and ad-hoc codesigns the
-   result.
-
-2. The build script MUST check for active AI agent processes before
-   replacing the installed application, unless force mode is
-   specified.
-
-3. The build script MUST gracefully quit the running application
-   (triggering session save) before replacement, waiting up to
-   10 seconds before escalating to forced termination.
-
-4. The build script MUST strip application-specific environment
-   variables when relaunching the application to prevent environment
-   inheritance.
-
----
-
-## Error Handling
-
-1. When project creation fails due to an invalid repository path, the
-   system MUST return an error indicating the directory is not a git
-   repository.
-
-2. When project creation fails because a project already exists for
-   that repository, the system MUST return a duplicate-project error.
-
-3. When main branch detection fails, the system MUST return a specific
-   branch-detection-failed error rather than silently defaulting.
-
-4. When session restore encounters an incompatible snapshot version,
-   the system MUST discard the snapshot entirely and start fresh.
-
-5. When session restore encounters a snapshot with no workspaces, the
-   system MUST discard it and start fresh.
-
-6. When the git status service encounters a directory that is not a
-   git repository, it MUST offer repository initialization rather
-   than displaying an error.
-
-7. When the agent integration plugin fails to communicate with the
-   socket, it MUST fail silently without affecting the agent's
-   primary operation.
-
-8. When TTS announcements fail (binary not found or execution error),
-   the system MUST silently continue without alerting the user.
-
-9. When a worktree removal fails, the system MAY retry with force
-   removal for programmatic cleanup scenarios.
-
-10. When filesystem event monitoring triggers during a cooldown period,
-    the system MUST suppress the redundant refresh.
-
-11. When the CLI cannot connect to the socket (application not
-    running), it MUST report a connection error and exit with a
-    non-zero status code.
-
----
-
-## Open Questions
-
-- ~~Should workspace numbering for keyboard shortcuts (1–8, 9 for last)
-  use a global index across all workspaces, or a project-scoped index?~~
-  **Resolved**: v1 uses **global indexing** — Cmd+1 through Cmd+8
-  select workspaces 1–8 in sidebar order across all projects, and
-  Cmd+9 selects the last workspace. This is simpler for a single-window
-  application. Project-scoped indexing may be revisited if multi-window
-  or many-project workflows demand it.
-
-- Should the system support creating a browser panel from the CLI/socket
-  API, or only from the in-app UI? The implementation plan lists
-  browser panels as a feature but the CLI commands focus on workspace
-  and status management.
-
-- What should happen when the user quits the application while agent
-  processes are still running? Should the quit be blocked, warned, or
-  allowed silently? The build script checks for agents before
-  replacement, but normal quit behavior is unspecified.
-
-- ~~Should the git status sidebar track the working directory of the
-  focused terminal panel, or the project root?~~ **Resolved**: In v1,
-  the git status sidebar MUST track the worktree root (or project
-  repository root for main-checkout workspaces), NOT the terminal's
-  live working directory. Shell integration is deferred, so there is
-  no reliable mechanism to track `cd` within the shell. Directory
-  tracking via shell hooks may be added in a future version.
-
-- What is the maximum number of child files enumerated for untracked
-  directories before truncation? The original cmux implementation
-  capped this, but the exact limit for Argus is unspecified.
+1. A Project MUST have an immutable Project ID and a mutable display name.
+2. A Named Project MUST identify one Git repository by its canonical Project Repository Root.
+3. Project creation MUST reject a non-repository directory and a repository already represented by another Named Project.
+4. Project creation MUST detect the main branch from, in order: the remote HEAD, local `main`, local `master`, or the current branch. The creation UI MAY accept an explicit main-branch override when detection fails.
+5. Creating a Named Project MUST also create its Main-checkout Workspace.
+6. A Project MUST keep an ordered list of child Workspace IDs and persist its display name, repository path, main branch, expansion state, and optional color.
+7. Argus MUST maintain one non-removable Catch-all Project named "Workspaces" for Standalone Workspaces.
+8. Removing a Named Project MUST remove its child Workspaces and attempt to remove their Managed Worktrees.
+9. Named Projects MUST appear before the Catch-all Project in the left sidebar.
+
+### Workspaces
+
+1. A Workspace MUST have an immutable Workspace ID, one Workspace Root, an ordered set of Top-level Tabs, and one Active Tab.
+2. A Workspace MAY be a Standalone Workspace, Main-checkout Workspace, or Worktree Workspace.
+3. A Standalone Workspace MAY use an ordinary directory with no Git repository.
+4. New Workspaces MUST start with one Terminal Panel.
+5. Workspaces MUST support rename, close, selection, and reordering within a Project.
+6. Closing the last Workspace MUST create and select a fresh Standalone Workspace.
+7. Cmd+1 through Cmd+8 MUST select Workspaces by global left-sidebar order. Cmd+9 MUST select the last Workspace.
+8. The left sidebar MUST show Project and Workspace hierarchy, selection, Workspace type, branch when available, and Agent Status when present.
+
+## Panels, tabs, and panes
+
+1. V1 supports Terminal, Browser, File, and Git Preview Panels.
+2. A Workspace MUST maintain a Panel registry and use root Panel IDs to order Top-level Tabs.
+3. New Terminal tabs MUST be appended and selected.
+4. New Browser, File, and Git Preview Tabs SHOULD be inserted after the Active Tab and selected.
+5. Terminal tab labels MUST default to `Terminal N`. A user-supplied terminal title MUST override the ordinal label.
+6. Top-level Tabs MUST support selection, drag-and-drop reordering, explicit move actions, and close actions.
+7. Opening the same File Tab or Git Preview Tab in one Workspace SHOULD select and refresh the existing tab instead of creating a duplicate.
+8. Tab reuse MUST be scoped to the initiating Workspace.
+9. Cmd+[ and Cmd+] MUST select the previous and next Top-level Tab with wraparound.
+10. Cmd+W MUST close the Focused Pane when a terminal split has multiple panes; otherwise it MUST close the Active Tab.
+11. Closing the final Terminal tab MUST require Workspace-close confirmation before changing state.
+
+### Terminal splits
+
+1. A terminal Top-level Tab MAY contain a recursive split tree of terminal Panes.
+2. Exactly one Pane in the Active Tab MUST be focused for terminal input.
+3. Cmd+D MUST split the Focused Pane vertically. Cmd+Shift+D MUST split it horizontally.
+4. A new split SHOULD inherit the Focused Pane's Terminal Working Directory and become focused.
+5. Closing a Pane in a multi-pane tab MUST collapse the remaining layout without closing the Top-level Tab.
+6. Reordering or closing a Top-level Tab MUST operate on its complete split tree.
+
+## Terminal runtime
+
+1. Argus MUST use one process-wide Ghostty engine.
+2. Each Terminal Panel MUST own one independent Terminal Surface.
+3. Argus MUST load Ghostty default and recursive configuration before applying its bundled opaque-black terminal background override.
+4. Terminal surfaces MUST retain user Ghostty configuration except for the Argus-owned background and background-opacity values.
+5. Spawned shells MUST receive `ARGUS_SOCKET_PATH`, `ARGUS_WORKSPACE_ID`, and `ARGUS_SURFACE_ID`.
+6. These variables reserve identity and transport locations for integrations. Their presence MUST NOT be interpreted as proof that the v1 Socket Server is implemented.
+7. Argus MUST set terminal-identifying environment values and prepend existing supported Homebrew binary directories to `PATH`.
+8. Terminal title and working-directory callbacks MUST update their Terminal Panel state on the main thread.
+9. Inactive terminal surfaces SHOULD remain mounted during Top-level Tab changes. They MUST be occluded and prevented from stealing focus or accessibility interaction.
+10. Terminal Working Directory MUST remain distinct from Workspace Root and Git Status Root.
+
+## Right Sidebar
+
+1. The Right Sidebar MUST contain the Files and Changes Right-sidebar Views.
+2. Switching Right-sidebar Views MUST NOT change Workspace selection or Active Tab.
+3. Asynchronous results MUST remain associated with the Workspace that initiated them.
+
+## Titlebar
+
+1. The Center Content Area Titlebar MUST identify the Selected Workspace and its Project or Standalone Workspace directory context.
+2. Duplicate Workspace and context names SHOULD be shown once rather than repeated.
+3. Available Git context MUST include the current branch, dirty state, and upstream ahead or behind counts.
+4. The macOS window title MUST track the visible Workspace context for system surfaces such as Mission Control.
+
+### Files View
+
+1. The Files View MUST show a lazy Workspace File Tree rooted at the Selected Workspace's Workspace Root.
+2. Directories MUST load their children when expanded rather than requiring the entire tree to be loaded initially.
+3. Directories MUST sort before files at each level.
+4. Workspace Items MUST use semantic file and folder icons; unknown files MUST use `doc`.
+5. The Files View MUST support selection and Workspace Item Operations for open, copy, rename, and delete where applicable.
+6. Destructive Workspace Item Operations MUST require confirmation.
+7. Refreshing the same Workspace File Tree SHOULD retain the current tree while new data loads and MUST ignore stale asynchronous results.
+8. File enumeration MUST remain bounded and disclose truncation when its display limit is reached.
+9. Opening a file MUST create or reuse a File Tab in the initiating Workspace.
+10. File Tabs MAY render source text, Markdown, native image formats, and SVG source or image preview according to file type and Panel-local controls.
+11. Unsupported, binary, oversized, or failed content MUST show an in-tab state instead of opening another window.
+
+### Changes View
+
+1. The Changes View MUST resolve its Git Status Root from Workspace classification:
+   - Worktree Workspace: worktree path;
+   - Main-checkout Workspace: Project Repository Root;
+   - Standalone Workspace: Workspace Root.
+2. Git status and mutations MUST NOT follow a Terminal Panel's live Terminal Working Directory.
+3. The Changes View MUST show branch and upstream information, ahead and behind counts, aggregate statistics, and Staged, Unstaged, and Untracked sections.
+4. Git File Changes MUST show their status, path, and available addition/deletion statistics.
+5. Changed paths MAY be grouped into a compacted Change Tree.
+6. Displayed changes MUST be capped at 500 while section counts and Section Operations continue to represent the full Git Status Snapshot.
+7. Git status MUST request individual untracked paths rather than treating an untracked directory as one opaque item.
+8. A clean repository MUST show a clean state. A non-repository directory MUST offer Git initialization.
+9. Refreshing the same Git Status Snapshot SHOULD keep current content visible and show progress in reserved chrome.
+10. Changing the snapshot owner MAY replace content with an initial loading state.
+
+### Change actions
+
+1. Staged changes MUST offer unstage, diff, blame, and copy-path actions.
+2. Unstaged changes MUST offer stage, discard, diff, blame, and copy-path actions.
+3. Untracked changes MUST offer stage, delete, diff, and copy-path actions.
+4. Applicable Section Operations MUST include stage all, unstage all, discard all, and delete all.
+5. Discard and delete operations MUST require confirmation.
+6. A completed Git Mutation MUST refresh the Git Status Snapshot.
+7. Diff and blame actions MUST open Git Preview Tabs in the initiating Workspace.
+8. Reopening the same Preview Kind, Git Status Root, and path SHOULD refresh and select its existing Git Preview Tab.
+
+### Automatic Git refresh
+
+1. Argus MUST use recursive FSEvents monitoring for the Git Status Root.
+2. Normal filesystem changes MUST be debounced by approximately 300 milliseconds.
+3. A completed refresh MUST start an approximately one-second cooldown for ordinary working-tree events.
+4. Git metadata changes that would create index feedback loops MUST be suppressed.
+5. Branch and ref changes received during cooldown MUST be deferred so the displayed branch cannot remain stale.
+
+## Git worktrees
+
+1. Git operations MUST use spawned `git` processes. Argus MUST NOT depend on libgit2.
+2. Managed Worktrees MUST be stored under `~/.argus/worktrees/<project-uuid>/<branch-slug>/`.
+3. Storage slugs MUST be lowercase, filesystem-safe, and hyphen-separated. Storage-path collisions MUST receive a numeric suffix.
+4. Creating a new Worktree Workspace MUST reject a branch name that already exists. Storage-path suffixing MUST NOT be described as branch-name generation.
+5. Existing local and remote branches MAY be selected for a Worktree Workspace.
+6. Branch choices MUST exclude branches already checked out in another worktree.
+7. Worktree removal MUST invoke `git worktree remove`; Project cleanup MAY force removal.
+8. Argus MUST scan its managed storage for Orphaned Worktrees not represented by Workspace state.
+9. Orphaned Worktrees MUST support adopt, delete, and dismiss actions.
+10. "Delete Worktree and Close" MUST remove the worktree before deleting Workspace state.
+11. If worktree removal fails, the Workspace MUST remain open and the underlying error MUST be shown.
+12. Worktree deletion progress MUST reflect actual removal and Workspace-close operation boundaries.
+13. V1 does not model Managed Worktree ownership separately from every possible external secondary worktree. Code MUST NOT infer safe deletion solely from the generic Worktree Workspace type.
+
+## Browser Panels
+
+1. Browser Panels MUST render with WebKit inside normal Workspace Top-level Tabs.
+2. Browser chrome MUST include back, forward, reload, address, security, and loading controls.
+3. Navigation controls MUST be disabled when their actions are unavailable.
+4. Scheme-less addresses MUST default to HTTPS.
+5. Configured search providers MAY transform non-URL input into a search URL.
+6. Browser creation MUST apply global defaults unless an explicit Panel value is supplied.
+7. Cmd+F MUST show find-in-page controls with match count and next/previous navigation.
+8. Escape MUST dismiss the find overlay.
+9. Background Browser Panels MUST NOT become first responder or steal application focus.
+10. Browser Panels are runtime-only in the v1 Session Snapshot and are not restored.
+
+## Agent Status
+
+1. V1 MAY display process-local Agent Status Entries supplied through the in-process `AgentStatusStore`.
+2. Agent Keys MUST be unrestricted strings.
+3. Supported states are idle, running, needs input, and error, each with a distinct label, icon, and semantic color.
+4. Agent Status MAY be scoped to a Workspace or Terminal Surface.
+5. Per-panel Agent Status MUST override Workspace-level Agent Status for that Terminal Surface.
+6. A loading indicator MUST take precedence over Agent Status in a Top-level Tab. Agent Status MUST take precedence over the default icon.
+7. Agent Status Entries MUST remain ephemeral and MUST NOT be restored.
+8. V1 does not include a Socket Server, functional Companion CLI commands, Agent Integration plugin, PID tracking, Agent Notifications, or TTS. Those features require an implemented proposal before becoming part of this specification.
+
+## Session persistence
+
+1. Argus MUST store one JSON Session Snapshot at `~/Library/Application Support/Argus/session.json`.
+2. The snapshot MUST use one schema version. An incompatible version MUST be discarded rather than migrated.
+3. Empty snapshots and snapshots containing more than 128 Workspaces MUST be rejected.
+4. Restore MUST reconcile Project and Workspace references, retain one Catch-all Project, remove stale references, and choose a valid Selected Workspace.
+5. Project snapshots MUST include Project identity, repository metadata, ordering, expansion state, and optional color.
+6. Workspace snapshots MUST include Workspace identity and type, Project association, branch and worktree metadata, Workspace Root, display title, the count used to reconstruct Terminal Panels, terminal custom titles, and per-terminal Terminal Working Directories.
+7. Restored Terminal Panels MUST use their last observed Terminal Working Directory as the initial directory.
+8. File Panels, Git Preview Panels, Browser Panels, split layouts, Active Tab, Focused Pane, Git Status Snapshots, and Agent Status Entries are runtime-only in v1.
+9. Argus MUST synchronously save the Session Snapshot during normal application termination.
+10. V1 does not provide periodic autosave. Work that requires a stronger durability boundary MUST add and verify it explicitly.
+11. Restore MUST be skipped when disabled in Settings or by the supported test/restore environment overrides.
+
+## Build and local installation
+
+1. `scripts/build.sh` MUST build the app and, by default, the Companion CLI scaffold, bundle the CLI at `Contents/Resources/bin/argus` relative to the built application, and ad-hoc sign the result.
+2. Debug MUST remain the default configuration; `--release` MUST select Release.
+3. The build script MUST support build, web-asset rebuild, CLI-only build, run, install, clean, and Xcode-project generation commands.
+4. Normal app builds MUST use the committed Pierre diff renderer bundle and MUST NOT require Node.js.
+5. Rebuilding that bundle MUST use the pinned `ArgusWeb` dependencies. The generated bundle MUST be the only tracked artifact changed by the rebuild.
+6. Run and install operations MUST ask a running Argus instance to quit, wait up to approximately five seconds, and then terminate it if needed.
+7. Launching a newly built app MUST strip inherited Argus identity environment variables.
+8. V1 build tooling does not check for active coding-agent processes before replacing the app.
+
+## Known v1 limitations
+
+- The Companion CLI is a versioned scaffold and has no socket-backed commands.
+- `ARGUS_SOCKET_PATH` is injected into terminals, but no Socket Server listens there in v1.
+- Nonterminal Panels, split layout, and current tab/focus state are not restored.
+- Session persistence occurs on normal application termination; there is no periodic autosave.
+- Worktree ownership is not represented independently from Workspace type.
+- The Kilo turn-completed notification is accepted future work and is specified under `docs/proposals/turn-completed-notification/`.

@@ -8,8 +8,13 @@ machine-specific. `Frameworks/GhosttyKit.xcframework` is a symlink
 repo, e.g.:
 
 ```
-Frameworks/GhosttyKit.xcframework -> ~/.cache/argus/ghosttykit/GhosttyKit.xcframework
+Frameworks/GhosttyKit.xcframework -> ~/.cache/argus/ghosttykit/artifacts/<input-hash>/GhosttyKit.xcframework
 ```
+
+The cache records the resolved Ghostty commit, Zig version, architecture, and
+build mode. The script rebuilds when those inputs change, serializes builds
+shared by multiple worktrees, validates output before publication, and links
+each worktree directly to its immutable matching artifact.
 
 If that symlink is missing or broken (fresh clone, new machine, or the cache
 was cleared), `xcodebuild` fails immediately with:
@@ -30,9 +35,9 @@ is doing.
 have it — but the built framework lives in `CACHE_DIR`
 (`~/.cache/argus/ghosttykit/`), *outside* the repo and shared across all
 worktrees. Just run `scripts/build-ghosttykit.sh`: if the cache already holds
-a complete framework it skips the build and only (re)creates the symlink (a
-fraction of a second). Pass `--force` to rebuild instead (e.g. after bumping
-`GHOSTTY_REF`).
+a complete framework built from the same inputs, it skips the build and only
+(re)creates the symlink (a fraction of a second). Pass `--force` to rebuild the
+same inputs.
 
 ### Building GhosttyKit from source
 

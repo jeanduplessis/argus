@@ -16,14 +16,14 @@ worktree, terminal, repository-status, UI, persistence, IPC, and agent behavior.
 | **Files and Changes** | Right-sidebar navigation, workspace file tree, Git status snapshot, change actions, filesystem item actions, and file/preview loading | `Argus/Views/GitSidebar/`, `Argus/Models/GitStatus.swift`, `Argus/Services/GitStatus*`, `Argus/Services/GitPreviewService.swift` | Git Status Root never follows a terminal's live working directory. |
 | **User interface** | Single-window surface placement, tab behavior, interaction affordances, chrome, and accessibility contract | `Argus/Views/`, `docs/UI_DESIGN_PRINCIPLES.md` | Inspectable content belongs in Workspace tabs, not independent windows. |
 | **Session persistence** | Session snapshots, restore validation, Project/Workspace reconciliation, and sidebar preferences | `Argus/Models/SessionSnapshot.swift`, `Argus/Services/WorkspaceManager.swift`, `Argus/Views/Sidebar/SidebarState.swift` | Durable state and ephemeral runtime state must remain distinct. |
-| **IPC and agent integration** | Embedded socket protocol, companion CLI, Agent Status, PID tracking, Agent Notifications, and TTS announcements | `docs/SPEC.md`, `ArgusCLI/` | Target context is specified but mostly unimplemented; no daemon process. |
+| **Agent status and future integrations** | In-process Agent Status display plus proposed external integration boundaries | `Argus/Services/AgentStatusStore.swift`, `ArgusCLI/`, `docs/proposals/` | V1 has no Socket Server or functional Companion CLI commands. |
 
 ## Canonical Terms
 
 | Term | Agent meaning | Use this when | Avoid |
 |---|---|---|---|
-| **Argus Application** | Native macOS app process that owns all authoritative domain state, UI, persistence, and the planned embedded Socket Server. | Referring to the app or its process-wide behavior. | "server process", "daemon", "backend". |
-| **Companion CLI** | The external `argus` executable that sends requests to the running Argus Application over the Unix Domain Socket. | Referring to command parsing, socket discovery, request encoding, or exit status. | Treating `ArgusCLI` as an in-process service or state owner. |
+| **Argus Application** | Native macOS app process that owns all authoritative domain state, UI, and persistence. | Referring to the app or its process-wide behavior. | "server process", "daemon", "backend". |
+| **Companion CLI** | The external `argus` executable reserved for future application control. It is a nonfunctional scaffold in v1. | Referring to the CLI target or proposed transport behavior. | Describing socket-backed commands as implemented. |
 | **Project** | UUID-identified aggregate that stores display metadata and an ordered list of Workspace references. | Referring to both Named Projects and the Catch-all Project. | "repo" when membership or UI grouping is intended. |
 | **Named Project** | Repository-backed Project with an immutable Project ID, repository path, main-branch metadata, and child Workspaces. | When repository ownership or removal behavior matters. | "normal project", "regular project". |
 | **Catch-all Project** | The single synthetic, non-removable Project displayed as "Workspaces" that groups Standalone Workspaces. | Referring to unassigned Workspace organization. | "default project", "misc project", "unassigned project". |
@@ -46,7 +46,7 @@ worktree, terminal, repository-status, UI, persistence, IPC, and agent behavior.
 | **Top-level Tab** | Ordered tab-bar unit represented by a root Panel ID and its tab layout. | Selection, reordering, closing, and tab-bar labels. | "Panel" when discussing tab order; `panelOrder` contains only top-level roots. |
 | **Pane** | Leaf position in one top-level tab's split layout, backed by a Panel. | Split, focused input, and pane-local close behavior. | A separate model type; every pane is backed by a Panel. |
 | **Terminal Panel** | Panel that owns exactly one Terminal Surface and belongs to one Workspace. | Terminal tab or split-pane model behavior. | Terminal Surface when model ownership is intended. |
-| **Browser Panel** | Panel that owns browser navigation and persisted browser state, backs a top-level tab, and has no Terminal Surface. | Browser tab, WebKit, restore, and background-focus behavior. | Terminal Panel, Terminal Surface, or independent browser window. |
+| **Browser Panel** | Runtime-only Panel that owns browser navigation state, backs a top-level tab, and has no Terminal Surface. | Browser tab, WebKit, and background-focus behavior. | Terminal Panel, Terminal Surface, independent browser window, or persisted v1 Panel state. |
 | **Terminal Surface** | Ghostty runtime resource that owns terminal rendering, input, shell process, title, PWD, and focus state. | Ghostty integration and `ARGUS_SURFACE_ID`. | Generic UI "surface" or nonterminal Panel. |
 | **Surface ID** | Runtime UUID of a Terminal Surface, intentionally equal to its Terminal Panel ID. | Terminal-scoped IPC, environment variables, and focus events. | Generic Panel ID; Browser, File, and Git Preview Panels have no Terminal Surface. |
 | **Selected Workspace** | Application-level Workspace selected in the left sidebar. | `WorkspaceManager.selectedWorkspaceId` and global navigation. | "active workspace" when comparing with Active Tab. |
@@ -72,22 +72,22 @@ worktree, terminal, repository-status, UI, persistence, IPC, and agent behavior.
 | **Preview Kind** | Semantic Git preview operation: diff or blame. | Tab identity and action choice. | Preview rendering payload. |
 | **Preview Content** | Loaded rendering payload, currently structured diff or ANSI text. | Renderer selection and fallback messages. | Preview Kind. |
 | **Session Snapshot** | Codable durable state written to Argus application support storage and validated as one schema version. | Save, restore, limits, and reconciliation. | Runtime view state or Agent Status. |
-| **Unix Domain Socket** | Local transport endpoint at `~/.argus/argus.sock` for the Companion CLI and integrations. | IPC transport and discovery. | TCP socket, daemon, or in-process call. |
-| **Socket Server** | App-owned component that accepts Unix Domain Socket connections, frames JSON Lines, validates requests, and routes work to domain owners. | IPC listener, routing, and main-actor handoff. | Separate process, daemon, or authoritative state owner. |
-| **Socket Request** | One newline-delimited JSON object with a required method and optional Request ID. | Wire protocol behavior. | CLI command as an assumed wire schema. |
-| **Request ID** | Optional protocol correlation identifier unrelated to domain entity IDs. | Matching Socket Requests and responses. | Project ID, Workspace ID, Panel ID, or Surface ID. |
-| **Agent Key** | Unrestricted integration-supplied string identifying an agent within status and PID tracking. | Agent-agnostic IPC. | Product-specific enum or hard-coded Kilo-only value. |
+| **Unix Domain Socket** | Proposed local transport endpoint at `~/.argus/argus.sock` for future integrations. No listener is implemented in v1. | Proposal and future transport design. | Describing it as a running v1 service. |
+| **Socket Server** | Proposed app-owned component that would accept and route Unix Domain Socket requests. | Future integration design only. | Separate process, daemon, or implemented v1 component. |
+| **Socket Request** | Proposed newline-delimited JSON request. Its exact contract belongs to an accepted proposal until implemented. | Future wire-protocol design. | Inferring a contract from CLI command names. |
+| **Request ID** | Proposed protocol correlation identifier unrelated to domain entity IDs. | Future Socket Request correlation. | Project ID, Workspace ID, Panel ID, or Surface ID. |
+| **Agent Key** | Unrestricted string identifying an agent in the v1 in-process Agent Status store or a future integration. | Agent Status and proposed agent-agnostic IPC. | Product-specific enum or hard-coded Kilo-only value. |
 | **Agent Integration** | External plugin or client that translates an agent process lifecycle into Socket Requests, Agent Status Entries, PID registration, and Agent Notifications. | Integration-side lifecycle and cleanup behavior. | App-owned Agent Tracker or Kilo-only behavior. |
 | **Agent Status Entry** | Ephemeral agent telemetry scoped to a Workspace or Terminal Surface. | Agent lifecycle display and cleanup. | Git Status Snapshot, Git File Status, or load state. |
 | **Workspace-level Agent Status** | Agent Status Entry without Surface ID that applies across a Workspace. | Workspace-wide telemetry and fallback display. | Per-panel Agent Status. |
 | **Per-panel Agent Status** | Agent Status Entry scoped by Surface ID to one Terminal Panel. | Pane-specific agent telemetry. | Generic Panel-scoped state for File or Git Preview Panels. |
-| **Agent Notification** | Agent event submitted through IPC for completion, error, or permission attention. | Public integration behavior. | Foundation notification, macOS notification, or TTS announcement. |
+| **Agent Notification** | Proposal-only external event requesting attention for an agent outcome. V1 does not implement Agent Notifications. | Future integration behavior. | Foundation notification, macOS notification, or TTS announcement. |
 | **Foundation Notification** | In-process `NotificationCenter` event coordinating app UI and Ghostty state. | Internal event wiring. | Agent Notification or public socket method. |
-| **Workspace Number** | Global one-based Workspace position in left-sidebar order across all Projects. | Keyboard shortcuts and TTS wording. | Project-local index or Workspace ID. |
+| **Workspace Number** | Global one-based Workspace position in left-sidebar order across all Projects. | Keyboard shortcuts and proposed notification wording. | Project-local index or Workspace ID. |
 
 ## Relationships
 
-- The Argus Application owns one `WorkspaceManager`, one global `GhosttyApp`, and one planned embedded Socket Server.
+- The Argus Application owns one `WorkspaceManager` and one global `GhosttyApp`. A Socket Server is proposed but not implemented in v1.
 - A Named Project references an ordered set of Workspaces by Workspace ID.
 - The Catch-all Project groups Standalone Workspaces and is ordered after Named Projects.
 - A Workspace has one Workspace Root, owns all of its Panels, orders top-level Panel roots as Top-level Tabs, and stores one split layout per Top-level Tab.
@@ -129,14 +129,14 @@ worktree, terminal, repository-status, UI, persistence, IPC, and agent behavior.
 - Treat Agent Status Entries and agent PIDs as ephemeral; never restore them from a Session Snapshot.
 - Do not cache Surface IDs across application restarts.
 - Use global sidebar order for Workspace Number; never calculate it per Project.
-- When current code, the implementation plan, and the spec disagree, follow resolved decisions below and flag unresolved decisions before implementation.
+- When current code and the spec disagree, treat it as contract drift and reconcile both before changing behavior.
 
 ## Ambiguities
 
 | Ambiguous term or conflict | Problem | Canonical decision |
 |---|---|---|
 | Project vs repository | A Project is an application aggregate; a repository is its git resource. | Use **Named Project** for aggregate behavior and **Project Repository Root** for checkout path. |
-| Workspace vs worktree | `AGENTS.md` says every Workspace maps to a git worktree, but the spec and model also allow Standalone Workspaces without git context. | A Workspace always has a Workspace Root; only Worktree Workspaces map to secondary git worktrees, and Standalone Workspaces may have no git context. |
+| Workspace vs worktree | A Workspace may be mistaken for its backing checkout. | A Workspace always has a Workspace Root; only Worktree Workspaces map to secondary git worktrees, and Standalone Workspaces may have no git context. |
 | Panel vs tab vs pane vs surface | Current comments and APIs sometimes use these as synonyms. | Use layout and runtime definitions in Canonical Terms; a Panel can back a Top-level Tab or Pane, while only Terminal Panels own Terminal Surfaces. |
 | `currentDirectory` | Name suggests live shell PWD but implementation uses it as stable Workspace filesystem context. | Call it **Workspace Root** in prose; use **Terminal Working Directory** for live PWD. |
 | Right git sidebar | Current UI hosts Files and Changes, while spec and persistence names still assume git-only content. | Use **Right Sidebar** for the column and **Changes View** for Git status; retain legacy code keys only where migration requires them. |
@@ -144,19 +144,19 @@ worktree, terminal, repository-status, UI, persistence, IPC, and agent behavior.
 | Status | Means repository summary, per-file kind, agent telemetry, or load state. | Always use a qualified canonical status term. |
 | Repository root | Can mean checkout root, `.git`, common dir, Workspace Root, or Git Status Root. | Name the exact root; **Project Repository Root** is checkout top-level, not git metadata. |
 | External | `WorkspaceType.external` means Standalone Workspace, while an External Worktree is an existing worktree outside managed storage. | Use **Standalone Workspace** and **External Worktree** as separate concepts. |
-| Preview panel | `GitPreviewPanel` is a Panel model, while the stale plan describes an AppKit `NSPanel`. | User-facing concept is **Git Preview Tab**; no floating preview window. |
+| Preview panel | `GitPreviewPanel` is a Panel model, not an AppKit presentation surface. | User-facing concept is **Git Preview Tab**; no floating preview window. |
 | Selection and focus | "Active" is used for Workspace, tab, Panel, and first responder. | Use Selected Workspace, Active Tab, Focused Pane, and AppKit first responder separately. |
 | Empty Workspace | Spec says replacement is "empty" but every new Workspace starts with one Terminal Panel. | "Empty" means fresh/default Workspace, not zero Panels. |
-| Split panes | Implementation plan says v1 has tabs only; spec and current code require terminal splits. | Spec and current code win: a Top-level Tab may own a split tree of terminal Panes. |
-| Diff/blame presentation | Implementation plan says floating `NSPanel`; spec, current code, and UI contract say center tabs. | Use **Git Preview Tab** in the initiating Workspace. |
-| Panel taxonomy | `AGENTS.md` and implementation plan say Terminal/Browser only; current model includes File and Git Preview, while Browser remains incomplete. | Treat Panel as extensible; current implemented types are Terminal, File, and Git Preview, with Browser specified but incomplete. |
-| Managed path wording | One spec rule says project slug, while Project rules, code, and storage contract require Project UUID. | Project UUID is canonical path partition: `<project-uuid>/<branch-slug>`. |
+| Split panes | A Top-level Tab and its terminal Pane layout are distinct layers. | A Top-level Tab may own a split tree of terminal Panes. |
+| Diff/blame presentation | Git Preview content could be confused with a transient preview surface. | Use **Git Preview Tab** in the initiating Workspace. |
+| Panel taxonomy | Historical docs described Terminal/Browser only. | Treat Panel as extensible; v1 implements Terminal, Browser, File, and Git Preview Panels. |
+| Managed path identity | Managed Worktree paths need a stable Project partition. | Project UUID is the canonical path partition: `<project-uuid>/<branch-slug>`. |
 | Catch-all membership | Fresh Standalone Workspaces may have nil `projectId`; restore reconciliation may assign Catch-all Project ID. | Unresolved data-model inconsistency; use Catch-all Project membership conceptually and do not change reference authority without a dedicated decision. |
 | Worktree ownership | `WorkspaceType.worktree` does not distinguish Managed Worktree from External Worktree, yet deletion behavior depends on ownership. | Unresolved model gap; never infer safe deletion solely from workspace type or non-nil worktree path. |
-| Branch collision | Spec says generate a suffixed branch name; current manager rejects duplicate branches while only path slugs are suffixed. | Unresolved behavior conflict; do not change duplicate-branch behavior without reconciling spec and tests. |
-| Files feature authority | Files View and File Tab behavior includes global preferences whose scope must not be inferred from general Files semantics. | `docs/SPEC.md` defines authority for Files settings. It does not define other Files View or File Tab behavior beyond those settings. |
-| Panel persistence | Persistence requirements differ by panel type, while the current snapshot excludes File/Git Preview tabs and split layout. | Follow the explicit persistence requirements in the application spec instead of assuming every panel has durable state. |
-| Socket wire schema | Spec requires JSON Lines and a method field, but exact methods, params, success envelope, and Request ID type are undefined. | Do not infer wire schema from planned CLI command names; define and test protocol before implementation. |
+| Branch collision | Branch names and Managed Worktree storage slugs have different collision behavior. | V1 rejects duplicate branch names; only storage-path slug collisions receive numeric suffixes. |
+| Files feature authority | Files View and File Tab behavior includes global preferences whose scope must not be inferred from general Files semantics. | `docs/SPEC.md` defines both stable Files behavior and the limited scope of Files defaults. |
+| Panel persistence | Persistence requirements differ by Panel type. | V1 restores Terminal Panels and their Terminal Working Directories; Browser, File, Git Preview, split layout, and tab/focus state are runtime-only. |
+| Socket wire schema | V1 reserves a socket path but implements no wire protocol. | Do not infer a schema from planned CLI command names; define and test it in a proposal before implementation. |
 | Agent notification | Could mean IPC event, Foundation event, macOS notification, TTS, or deferred in-app history. | Use the qualified notification terms in Canonical Terms. |
 
 ## Context Boundaries
@@ -167,13 +167,13 @@ worktree, terminal, repository-status, UI, persistence, IPC, and agent behavior.
 - **Files and Changes** owns Workspace Item Operations and Git Mutations, may read Workspace context, must resolve I/O roots explicitly, and publishes inspectable content through Workspace tab APIs.
 - **User interface** owns presentation and transient interaction state, not repository, worktree, Workspace, or session truth.
 - **Session persistence** owns serialized durable state and reconciliation; it must exclude live process, socket, Git status, and Agent status state.
-- Within **IPC and agent integration**, the Companion CLI owns command parsing and client transport, the Socket Server owns framing and routing, and Agent Integrations own lifecycle translation and cleanup.
-- **Companion CLI** and **Socket Server** do not own domain state; authoritative mutations occur inside the Argus Application after Socket Request validation.
+- Future integration proposals must keep the Companion CLI transport-only, the Socket Server app-owned, and authoritative domain state in the Argus Application.
 - Cross-context references use stable IDs and explicit service APIs; views must not infer identity from labels or paths.
 
 ## Decision References
 
 - `docs/SPEC.md` is authoritative for product behavior and non-negotiable architecture constraints.
 - `docs/UI_DESIGN_PRINCIPLES.md` governs UI placement, interaction affordances, focus preservation, and accessibility.
-- `docs/argus-implementation-plan.md` provides historical rationale only; its tabs-only split model and floating preview panel are superseded by the spec.
-- No terminology or context ADRs exist under `docs/adr/` at this time.
+- `docs/adrs/README.md` defines where accepted architecture decisions are recorded and how they are superseded.
+- `docs/adrs/0001-render-structured-diffs-with-an-argus-owned-webkit-bridge.md` defines ownership and runtime boundaries for structured diff rendering.
+- `docs/proposals/` contains future behavior and is not authoritative for the current application until a proposal is implemented and promoted into the spec.

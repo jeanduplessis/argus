@@ -2,7 +2,12 @@
 
 ## Status
 
-Proposal. Product behavior is agreed; implementation has not started.
+- Lifecycle: Accepted
+- Implementation: Not started
+- Last reviewed: 2026-07-23
+- Stable-contract target: `docs/SPEC.md`
+
+This proposal does not describe current v1 behavior. When implementation and verification are complete, promote the shipped behavior into `docs/SPEC.md` and mark this proposal Implemented or Superseded.
 
 ## Summary
 
@@ -39,7 +44,7 @@ This proposal does not add:
 - support for coding agents other than Kilo;
 - changes to Kilo source code.
 
-The broader Agent Integration rules currently in `docs/SPEC.md` describe several of these behaviors. This proposal intentionally narrows the first implementation to successful turn completion. The application spec must be reconciled when this proposal is implemented.
+This proposal intentionally limits the first external integration to successful turn completion. The broader behaviors above remain out of scope unless they receive separate proposals. The application spec must be updated with the behavior actually shipped when this proposal is implemented.
 
 ## Terminology
 
