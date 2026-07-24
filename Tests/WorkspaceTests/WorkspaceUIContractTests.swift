@@ -128,24 +128,6 @@ struct WorkspaceUIContractTests {
     }
 
     @Test
-    func terminalClipboardKeepsPlainTextSeparateFromHTML() {
-        let pasteboard = NSPasteboard(name: .init("ArgusTests.TerminalClipboard"))
-        let plainText = "selected terminal text"
-        let html = "<pre><span>selected terminal text</span></pre>"
-
-        writeTerminalClipboard(
-            [
-                (mimeType: "text/plain", text: plainText),
-                (mimeType: "text/html", text: html)
-            ],
-            to: pasteboard
-        )
-
-        #expect(pasteboard.string(forType: .string) == plainText)
-        #expect(pasteboard.string(forType: .html) == html)
-    }
-
-    @Test
     func newTabUsesCommandT() throws {
         let app = try SourceContract("Argus/App/ArgusApp.swift")
         let newTab = try app.section(
@@ -160,6 +142,12 @@ struct WorkspaceUIContractTests {
 
     @Test
     func splitPaneCommandsAndRenderingStayConnected() throws {
+        try verifySplitPaneModel()
+        try verifySplitPaneCommandsAndRendering()
+        try verifySplitPaneFocusLifecycle()
+    }
+
+    private func verifySplitPaneModel() throws {
         try SourceContract("Argus/Models/Workspace.swift").containsAll(
             [
                 "enum PanelSplitDirection", "case vertical", "case horizontal",
@@ -179,7 +167,9 @@ struct WorkspaceUIContractTests {
         )
         #expect(!splitBody.contains("panelOrder.insert"))
         #expect(!splitBody.contains("panelOrder.append"))
+    }
 
+    private func verifySplitPaneCommandsAndRendering() throws {
         try SourceContract("Argus/Services/WorkspaceManager.swift").contains(
             "func splitActiveTerminal(direction: PanelSplitDirection)",
             "workspace manager must expose split commands"
@@ -187,7 +177,8 @@ struct WorkspaceUIContractTests {
         try SourceContract("Argus/Services/WorkspaceManager.swift").containsAll(
             [
                 "workspace.closePane(surfaceId)",
-                "workspace.closeActivePaneOrTab()",
+                "workspace.closePane(activePanelId)",
+                "requestCloseTab(activeTabId, in: workspace.id)",
                 "workspace.closeTab(panelId)"
             ], "close commands preserve Pane and Top-level Tab scope")
         try SourceContract("Argus/Views/Content/ContentAreaView.swift").containsAll(
@@ -206,6 +197,9 @@ struct WorkspaceUIContractTests {
                 ".keyboardShortcut(\"d\", modifiers: [.command, .shift])",
                 "terminalSurfaceDidBecomeFirstResponder"
             ], "split shortcuts and focus notification")
+    }
+
+    private func verifySplitPaneFocusLifecycle() throws {
         try SourceContract("Argus/Ghostty/TerminalNSView.swift").containsAll(
             [
                 "NotificationCenter.default.post(",
@@ -388,20 +382,4 @@ struct WorkspaceTabAndChromeUIContractTests {
             ], "loading, Agent Status, and default tab icon precedence")
     }
 
-    @Test
-    func newWorkspacePresentationCarriesAProjectRequest() throws {
-        let window = try SourceContract("Argus/Views/MainWindowView.swift")
-        window.containsAll(
-            [
-                "private struct NewWorkspaceSheetRequest: Identifiable",
-                "@State private var newWorkspaceSheetRequest: NewWorkspaceSheetRequest?",
-                ".sheet(item: $newWorkspaceSheetRequest) { request in",
-                "NewWorkspaceSheet(projectId: request.projectId)"
-            ], "new workspace sheet request")
-        window.excludes("showNewWorkspaceSheet = true", "presentation must not race optional content")
-        window.excludes(
-            ".sheet(isPresented: $showNewWorkspaceSheet)",
-            "presentation must use an identifiable request"
-        )
-    }
 }

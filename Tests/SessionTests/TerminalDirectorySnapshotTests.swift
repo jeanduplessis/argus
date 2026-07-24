@@ -8,7 +8,7 @@ struct TerminalDirectorySnapshotTests {
     @Test
     func coveredBehaviors() throws {
         try terminalMetadataRoundTrips()
-        liveTerminalDirectoryIsRestored()
+        try liveTerminalDirectoryIsRestored()
         try legacySnapshotUsesWorkspaceDirectory()
         reconciliationPreservesTerminalMetadata()
     }
@@ -82,9 +82,9 @@ struct TerminalDirectorySnapshotTests {
         )
     }
 
-    private func liveTerminalDirectoryIsRestored() {
+    private func liveTerminalDirectoryIsRestored() throws {
         let workspace = Workspace(title: "Terminal", workingDirectory: "/repo")
-        let terminal = workspace.activePanel as! TerminalPanel
+        let terminal = try #require(workspace.activePanel as? TerminalPanel)
 
         NotificationCenter.default.post(
             name: .argusSetSurfacePwd,
@@ -94,7 +94,7 @@ struct TerminalDirectorySnapshotTests {
 
         let snapshot = workspace.snapshot()
         let restoredWorkspace = Workspace(snapshot: snapshot)
-        let restoredTerminal = restoredWorkspace.activePanel as! TerminalPanel
+        let restoredTerminal = try #require(restoredWorkspace.activePanel as? TerminalPanel)
 
         assertEqual(
             snapshot.terminalDirectories,

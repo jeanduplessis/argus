@@ -139,7 +139,9 @@ struct NewWorkspaceSheet: View {
             }
         }
     }
+}
 
+extension NewWorkspaceSheet {
     // MARK: - Subviews
 
     @ViewBuilder

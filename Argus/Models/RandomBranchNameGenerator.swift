@@ -34,7 +34,7 @@ enum RandomBranchNameGenerator {
         "spry", "steady", "stellar", "stormy", "sturdy", "sunny", "swift", "tidy",
         "tranquil", "trusty", "twilight", "unbowed", "upbeat", "valiant", "velvet", "vibrant",
         "vivid", "warm", "wary", "whimsical", "wild", "willing", "windy", "wise",
-        "witty", "zealous", "zesty", "zippy",
+        "witty", "zealous", "zesty", "zippy"
     ]
 
     private static let nouns = [
@@ -54,6 +54,6 @@ enum RandomBranchNameGenerator {
         "reef", "ridge", "river", "rocket", "sage", "savanna", "sequoia", "shore",
         "sparrow", "sphinx", "spruce", "starling", "summit", "swan", "tarn", "thicket",
         "thistle", "thunder", "tiger", "timber", "toucan", "tundra", "valley", "vine",
-        "vista", "voyager", "walnut", "warbler", "waterfall", "willow", "wolf", "wren",
+        "vista", "voyager", "walnut", "warbler", "waterfall", "willow", "wolf", "wren"
     ]
 }
