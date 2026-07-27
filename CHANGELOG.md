@@ -2,6 +2,10 @@
 
 This file records changes pushed for local Argus releases. New entries use a `YYYY-MM-DD` heading and link to their commit or commits.
 
+## 2026-07-27
+
+- Argus now includes a Review Work Mode for opening and reviewing GitHub pull requests, with independent navigation, durable drafts, cached remote content, conversations, and review submission controls. Local build variants can run alongside the main Argus application with isolated state and runtime resources. ([20658d5](https://github.com/jeanduplessis/argus/commit/20658d5))
+
 ## 2026-07-25
 
 - Releases now use one version manifest and bounded verification stages that retain diagnostics, validate the built app and Companion CLI, and stop timed-out or interrupted command groups. Concurrent Git commands no longer leave the test run waiting after the processes have exited. ([cb1b68a](https://github.com/jeanduplessis/argus/commit/cb1b68a))
