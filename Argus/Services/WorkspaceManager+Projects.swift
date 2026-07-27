@@ -82,6 +82,37 @@ extension WorkspaceManager {
         projects.filter { !$0.isCatchAll }
     }
 
+    /// Returns a value-only reference for Review Work Mode identity matching.
+    /// A local Project participates only after a hosted identity was explicitly
+    /// associated; paths and display names are never used as hosted identity.
+    func namedProject(matching identity: RepositoryIdentity) -> SharedProjectReference? {
+        guard let project = namedProjects.first(where: { $0.repositoryIdentity == identity }),
+              let providerMetadata = project.providerMetadata
+        else { return nil }
+        return .init(
+            projectID: project.id,
+            displayName: project.displayName,
+            repositoryIdentity: identity,
+            providerMetadata: providerMetadata
+        )
+    }
+
+    /// Safely records a verified hosted identity for a Named Project. This is
+    /// intentionally explicit so local repository paths and git remotes cannot
+    /// accidentally create a hosted association.
+    @discardableResult
+    func associateRepositoryIdentity(
+        _ identity: RepositoryIdentity,
+        providerMetadata: RepositoryProviderMetadata,
+        withNamedProject projectID: UUID
+    ) -> SharedProjectReference? {
+        guard namedProjects.allSatisfy({ $0.repositoryIdentity == nil || $0.id == projectID || $0.repositoryIdentity != identity }),
+              let project = namedProjects.first(where: { $0.id == projectID }),
+              project.associateRepositoryIdentity(identity, providerMetadata: providerMetadata)
+        else { return nil }
+        return namedProject(matching: identity)
+    }
+
     @discardableResult
     func adoptOrphanedWorktree(_ orphan: OrphanedWorktreeInfo) -> Workspace? {
         guard workspaces.count < Self.maxWorkspaces,

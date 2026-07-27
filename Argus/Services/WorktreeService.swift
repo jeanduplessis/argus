@@ -128,11 +128,7 @@ final class WorktreeService: Sendable {
     private let gitCommandTimeout: TimeInterval
 
     /// Base directory for all Argus-managed worktrees.
-    static let worktreeBaseURL: URL = {
-        FileManager.default
-            .homeDirectoryForCurrentUser
-            .appendingPathComponent(".argus/worktrees", isDirectory: true)
-    }()
+    static let worktreeBaseURL = ArgusRuntimeConfiguration.current.worktreeBaseURL
 
     /// Path to the git binary.
     private static let gitPath = "/usr/bin/git"

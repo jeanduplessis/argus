@@ -107,6 +107,7 @@ private struct WorkspaceDeletionProgressView: View {
 
 struct MainWindowView: View {
     @EnvironmentObject var workspaceManager: WorkspaceManager
+    @EnvironmentObject var reviewWorkMode: ReviewWorkModeModel
     @ObservedObject private var ghosttyApp = GhosttyApp.shared
     @StateObject private var sidebarState = SidebarState()
     @StateObject private var gitSidebarState = GitSidebarState()
@@ -135,6 +136,9 @@ struct MainWindowView: View {
     @State private var showWorkspaceDeletionError = false
     @State private var workspaceDeletionErrorMessage = ""
     @State private var windowWidth: CGFloat = 600
+    @AppStorage(WorkModeStorage.key) private var storedWorkMode = WorkModeStorage.defaultValue
+
+    private var workMode: WorkMode { WorkModeStorage.parse(storedWorkMode) }
 
     var body: some View {
         GeometryReader { geometry in
@@ -152,7 +156,13 @@ struct MainWindowView: View {
             HStack(spacing: 0) {
                 // Left sidebar
                 if sidebarState.isVisible {
-                    SidebarView()
+                    VStack(spacing: 0) {
+                        WorkModePicker(
+                            mode: Binding(get: { workMode }, set: { selectWorkMode($0) }),
+                            hasAttention: reviewWorkMode.store.session.pullRequests.contains { $0.attention != .none }
+                        )
+                        if workMode == .code { SidebarView() } else { ReviewSidebarView(model: reviewWorkMode) }
+                    }
                         .frame(width: sidebarState.width)
                     SidebarDivider(
                         position: $sidebarState.width,
@@ -163,7 +173,10 @@ struct MainWindowView: View {
 
                 // Content area fills remaining space and draws into the
                 // transparent titlebar, matching the compact cmux-style chrome.
-                ContentAreaView()
+                Group {
+                    if workMode == .code { ContentAreaView() }
+                    else { ReviewWorkModeView(model: reviewWorkMode) }
+                }
                     .frame(
                         minWidth: SidebarLayout.centerMinWidth,
                         maxWidth: .infinity,
@@ -172,7 +185,7 @@ struct MainWindowView: View {
                     .background(ChromeColors.shellBackground)
 
                 // Right side panel
-                if gitSidebarState.isVisible {
+                if workMode == .code && gitSidebarState.isVisible {
                     GitSidebarDivider(
                         position: $gitSidebarState.width,
                         minValue: min(SidebarLayout.rightMinWidth, rightMaxWidth),
@@ -180,6 +193,9 @@ struct MainWindowView: View {
                     )
                     RightSidebarView()
                         .frame(width: gitSidebarState.width)
+                } else if workMode == .review && reviewWorkMode.store.session.isRightSidebarVisible {
+                    ReviewResizeSidebar(model: reviewWorkMode)
+                        .frame(width: CGFloat(reviewWorkMode.store.session.rightSidebarWidth))
                 }
             }
             .ignoresSafeArea(.container, edges: .top)
@@ -213,9 +229,12 @@ struct MainWindowView: View {
             clampSidebarWidths(windowWidth: windowWidth)
         }
         .onReceive(NotificationCenter.default.publisher(for: .toggleGitSidebar)) { _ in
-            gitSidebarState.toggle()
+            if workMode == .code { gitSidebarState.toggle() }
+            else { reviewWorkMode.setRightSidebar(visible: !reviewWorkMode.store.session.isRightSidebarVisible) }
             clampSidebarWidths(windowWidth: windowWidth)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .selectCodeWorkMode)) { _ in selectWorkMode(.code) }
+        .onReceive(NotificationCenter.default.publisher(for: .selectReviewWorkMode)) { _ in selectWorkMode(.review) }
         // Sheet: New Project
         .sheet(isPresented: $showNewProjectSheet) {
             NewProjectSheet()
@@ -339,6 +358,7 @@ struct MainWindowView: View {
         }
         .task {
             await detectOrphanedWorktrees()
+            await reviewWorkMode.restore()
         }
     }
 
@@ -378,6 +398,70 @@ struct MainWindowView: View {
         }
         if gitSidebarState.width != widths.right {
             gitSidebarState.width = widths.right
+        }
+    }
+
+    /// Writes review drafts before replacing its visible Work Mode. The review
+    /// store performs I/O off the main actor, so this synchronous boundary does
+    /// not wait on MainActor work and cannot form a main-thread deadlock.
+    private func selectWorkMode(_ destination: WorkMode) {
+        guard destination != workMode else { return }
+        reviewWorkMode.flushSynchronously()
+        storedWorkMode = destination.rawValue
+    }
+}
+
+private struct ReviewResizeSidebar: View {
+    @ObservedObject var model: ReviewWorkModeModel
+    @State private var startingWidth: CGFloat?
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Rectangle()
+                .fill(.separator)
+                .frame(width: 1)
+                .frame(width: 12)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 1)
+                        .onChanged { value in
+                            let start = startingWidth ?? CGFloat(model.store.session.rightSidebarWidth)
+                            startingWidth = start
+                            model.setRightSidebar(width: start - value.translation.width)
+                        }
+                        .onEnded { _ in
+                            startingWidth = nil
+                        }
+                )
+                .help("Resize Review context sidebar")
+                .accessibilityLabel("Resizable Review context sidebar divider")
+            VStack(alignment: .leading, spacing: 8) {
+                Picker(
+                    "Review context",
+                    selection: Binding(
+                        get: { model.store.session.selectedSidebarContext },
+                        set: { model.setRightSidebar(context: $0) }
+                    )
+                ) {
+                    Text("Files")
+                        .tag(ReviewSection.files)
+                    Text("Activity")
+                        .tag(ReviewSection.activity)
+                    Text("Checks")
+                        .tag(ReviewSection.checks)
+                }
+                .pickerStyle(.segmented)
+                .padding(8)
+                Text("Review context")
+                    .font(.headline)
+                    .padding(.horizontal, 8)
+                Text("Use the Pull Request tab to inspect \(model.store.session.selectedSidebarContext.rawValue).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                Spacer()
+            }
+            .background(ChromeColors.shellBackground)
         }
     }
 }

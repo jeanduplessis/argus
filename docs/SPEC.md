@@ -2,7 +2,7 @@
 
 ## Status
 
-Stable v1 baseline, updated 2026-07-23.
+Stable v1 baseline, updated 2026-07-26.
 
 This document defines behavior implemented by the current Argus application. Future work belongs under `docs/proposals/` until it is implemented and incorporated here.
 
@@ -66,6 +66,58 @@ Argus is a single-user, single-machine application. It has one main Workspace wi
 8. The left sidebar MUST show Project and Workspace hierarchy, selection, Workspace type, branch when available, and Agent Status when present.
 9. A Standalone Workspace MUST allow its Workspace Root to be changed from its left-sidebar context menu.
 10. Changing a Standalone Workspace's Workspace Root MUST immediately update its Files View and Git Status Root. New Terminal tabs MUST start at the new Workspace Root without changing existing Terminal Working Directories.
+
+## Work Modes
+
+1. Argus MUST provide Code Work Mode and Review Work Mode through a Work Mode picker in the left-sidebar header.
+2. A Work Mode is an application-level state boundary, not a filter over shared content. Code and Review MUST independently retain their navigation selection, center tabs, Right Sidebar state, and restoration state.
+3. Switching Work Modes MUST preserve the source mode and restore the destination mode without creating, closing, reordering, or refreshing tabs solely because of the switch.
+4. A Work Mode change MUST NOT redirect pending work, selection, focus, or visible content in the other Work Mode.
+5. Argus MUST persist the last selected Work Mode and restore it at launch. Before leaving Review Work Mode, it MUST flush durable Review Session State.
+6. Global Settings remain shared. A Project's hosted Repository Identity MUST be shared when a Review Project is explicitly associated with a Named Project; display names, filesystem paths, and Git remotes MUST NOT be used to infer that association.
+
+## Pull Request review
+
+### Provider, Project, and intake
+
+1. Review Work Mode currently supports GitHub through the active GitHub CLI (`gh`) account for the requested host.
+2. Argus MUST NOT request, receive, store, refresh, or display GitHub credentials. Provider commands MUST run without interactive authentication prompts.
+3. Missing `gh`, unauthenticated-host, authorization, rate-limit, network, validation, not-found, timeout, and malformed-provider-response failures MUST remain distinguishable to the user.
+4. A Repository Identity MUST be provider-qualified by provider, host, owner, and repository name. A Pull Request identity MUST combine that Repository Identity with a positive Pull Request number.
+5. Review Work Mode MUST retain remote-capable Review Project records for hosted repositories that have no local checkout. Opening or synchronizing a Pull Request MUST reuse the matching Review Project or explicitly associated Named Project identity; it MUST NOT clone, fetch, create a Worktree Workspace, or infer a local association.
+6. Review Work Mode MUST accept canonical HTTPS GitHub Pull Request URLs without user information, query, fragment, or port. A valid URL MUST load provider metadata before becoming a Saved Pull Request and opening or selecting its review tab.
+
+### Inbox, Saved, and review tabs
+
+1. The Review Inbox MUST contain the active account's GitHub review requests. Review Work Mode MUST show Inbox and Saved membership separately.
+2. A Pull Request opened from a URL, an open review tab, or retained user-authored review state MUST be Saved. Inbox synchronization MUST NOT close a review tab or discard local authored state; an item that ceases to be in the Inbox but must be retained MUST become Saved.
+3. Removing a Saved Pull Request MUST require confirmation and MUST identify any open tab or unsent reply and Pending Review content that will be discarded.
+4. A Pull Request Review Tab MUST be identified by provider-qualified Pull Request identity. Opening an already open Pull Request MUST select its existing tab. Tabs MUST support selection, reordering, and closing within Review Work Mode.
+5. Closing a Pull Request Review Tab MUST retain unsent replies and Pending Review content in Review Session State. Closing a tab MUST NOT publish content.
+6. Each Pull Request Review Tab MUST provide Files, Activity, and Checks sections. Section selection, selected file, review layout, and authored content are tab-local.
+7. The Files section MUST keep changed-file selection within the Pull Request Review Tab. It MUST show a diff for the selected file, explicit Viewed or Unviewed action, conversation state, and Pending Review state.
+8. Argus MUST mark a file Viewed or Unviewed only after an explicit user action. It MAY show a pending state while GitHub synchronization is in progress; successful provider state becomes authoritative.
+
+### Review revisions, conversations, and submission
+
+1. A review tab MUST read one immutable Review Revision, consisting of its base and head commits, at a time. Diffs MUST read content for those exact provider commits and MUST NOT read a local checkout, index, or working tree.
+2. When GitHub reports a new head commit, Argus MUST keep the loaded Review Revision visible, announce the update, and wait for explicit user action before replacing it.
+3. Updating a Review Revision MUST preserve inline drafts where safely mapped by renamed path. Drafts without safe mapping MUST remain available and require remapping or explicit discard.
+4. Published conversations MUST show their available comments and resolved, outdated, and permission state. Selecting a conversation MUST select its file and record its line anchor in native Review state. The current renderer does not programmatically scroll the WebKit diff body to that anchor.
+5. A reply MUST remain local until the user explicitly sends it. A successful reply publishes immediately and is separate from a Pending Review. A failed send MUST retain the reply text and report the failure.
+6. A new inline comment MUST be a local draft in one Pending Review for the loaded Review Revision. Drafts MUST remain local until review submission and MUST be distinguishable from published conversations.
+7. A Pending Review MAY contain inline drafts, a summary, and one explicit Review Disposition: Approve, Comment, or Request Changes. Argus MUST NOT infer the disposition.
+8. Review submission MUST require confirmation. Success MUST clear submitted Pending Review content and refresh the tab; failure MUST preserve authored content and report the provider error. Mode changes, refresh, revision updates, offline operation, and application termination MUST NOT silently submit authored content.
+
+### Review persistence, cache, offline behavior, and safety
+
+1. Review Session State MUST be independent from the Code Work Mode Session Snapshot and stored at `~/Library/Application Support/Argus/review-session.json`.
+2. Review Session State MUST persist Review Projects, Pull Requests, selection, review tabs, section and file selection, Review Revisions, layout state, reply drafts, and Pending Review state. Provider payloads MUST NOT be authoritative session data.
+3. User-authored Review Session State MUST use debounced atomic saves and flush at Review tab, Work Mode, and application lifecycle boundaries. If a session snapshot cannot be decoded, Argus MUST preserve a user-only corrupt copy before blocking automatic writes.
+4. Complete provider reads MUST be cached separately at `~/Library/Caches/Argus/Review`. Cache cleanup MUST NOT delete Review Session State or authored drafts. Review Session State directories and files MUST use user-only permissions.
+5. If a complete cached Review Revision is available after a provider read fails, Argus MUST make that cached revision available as stale content. Provider writes, including Viewed synchronization, replies, conversation resolution, and review submission, MUST remain unavailable while the tab is stale or blocked.
+6. Provider URLs, repository fields, file paths, commit identifiers, and review anchors MUST be validated before use. `gh` commands MUST pass values as process arguments, not shell text. Error diagnostics MUST redact credential-like values and local configuration paths.
+7. Review status, attention, Viewed state, draft state, and errors MUST have text or accessibility equivalents and MUST NOT rely on color alone.
 
 ## Panels, tabs, and panes
 

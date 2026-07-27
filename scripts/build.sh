@@ -3,8 +3,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-BUILD_DIR="${PROJECT_DIR}/.build"
+BASE_BUILD_DIR="${PROJECT_DIR}/.build"
+BUILD_DIR="${BASE_BUILD_DIR}"
 APP_NAME="Argus"
+APP_DISPLAY_NAME="Argus"
+APP_BUNDLE_IDENTIFIER="com.argus.app"
+BUILD_VARIANT=""
 CLI_NAME="argus"
 BUILD_CLI=1
 
@@ -29,6 +33,7 @@ Options:
   --release   Use Release configuration
   --no-cli    Build the app without building/bundling the CLI
   --no-open   Don't launch the app after run/install
+  --variant NAME  Isolate the build and runtime state under NAME
 
 Examples:
   ./scripts/build.sh build
@@ -36,6 +41,7 @@ Examples:
   ./scripts/build.sh cli
   ./scripts/build.sh run
   ./scripts/build.sh run --release
+  ./scripts/build.sh run --variant feature-a
   ./scripts/build.sh install
   ./scripts/build.sh clean
 EOF
@@ -56,6 +62,11 @@ while [[ $# -gt 0 ]]; do
         --release)  CONFIGURATION="Release"; shift ;;
         --no-cli)   BUILD_CLI=0;             shift ;;
         --no-open)  OPEN_APP=0;              shift ;;
+        --variant)
+            [[ $# -ge 2 ]] || { printf '%s\n' "--variant requires a name" >&2; exit 1; }
+            BUILD_VARIANT="$2"
+            shift 2
+            ;;
         -h|--help)  usage ;;
         *) echo "Unknown option: $1"; usage ;;
     esac
@@ -63,6 +74,22 @@ done
 
 # Default command
 COMMAND="${COMMAND:-build}"
+
+if [[ -n "${BUILD_VARIANT}" ]]; then
+    if [[ ! "${BUILD_VARIANT}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+        printf '%s\n' "Invalid variant '${BUILD_VARIANT}'. Use letters, numbers, dots, underscores, or hyphens." >&2
+        exit 1
+    fi
+    if [[ ${#BUILD_VARIANT} -gt 32 ]]; then
+        printf '%s\n' "Invalid variant '${BUILD_VARIANT}'. Use at most 32 characters." >&2
+        exit 1
+    fi
+    VARIANT_IDENTIFIER="$(printf '%s' "${BUILD_VARIANT}" | shasum -a 256 | cut -c1-16)"
+    BUILD_DIR="${BASE_BUILD_DIR}/Variants/${BUILD_VARIANT}"
+    APP_NAME="Argus-${BUILD_VARIANT}"
+    APP_DISPLAY_NAME="Argus (${BUILD_VARIANT})"
+    APP_BUNDLE_IDENTIFIER="com.argus.app.variant.${VARIANT_IDENTIFIER}"
+fi
 
 # --------------------------------------------------------------------------
 # Helpers
@@ -100,12 +127,18 @@ cli_build_path() {
 
 quit_running() {
     local pids
-    pids="$(pgrep -x "${APP_NAME}" || true)"
+    pids="$(
+        osascript -l JavaScript \
+            -e 'ObjC.import("AppKit")' \
+            -e "const bundleIdentifier = '${APP_BUNDLE_IDENTIFIER}';" \
+            -e '$.NSWorkspace.sharedWorkspace.runningApplications.js.filter(app => app.bundleIdentifier.js === bundleIdentifier).map(app => app.processIdentifier.js).join("\\n");' \
+            2>/dev/null || true
+    )"
     [[ -n "${pids}" ]] || return 0
 
     log "Quitting running ${APP_NAME}..."
     while IFS= read -r pid; do
-        # Target the process that was already running. `tell application
+        # Target the process with this build identity. `tell application
         # "Argus" to quit` may launch another registered Argus bundle when
         # the running bundle has just been replaced, and that transient app
         # can overwrite the saved session with a fresh one.
@@ -236,7 +269,7 @@ bundle_cli() {
 
 do_build() {
     ensure_xcode_project
-    log "Building ${APP_NAME} (${CONFIGURATION})..."
+    log "Building ${APP_DISPLAY_NAME} (${CONFIGURATION})..."
     time_start
 
     # The script mutates the built .app when bundling the CLI. Remove the
@@ -249,6 +282,10 @@ do_build() {
         -scheme Argus \
         -configuration "${CONFIGURATION}" \
         -derivedDataPath "${BUILD_DIR}" \
+        PRODUCT_NAME="${APP_NAME}" \
+        PRODUCT_BUNDLE_IDENTIFIER="${APP_BUNDLE_IDENTIFIER}" \
+        INFOPLIST_KEY_CFBundleDisplayName="${APP_DISPLAY_NAME}" \
+        INFOPLIST_KEY_CFBundleName="${APP_DISPLAY_NAME}" \
         build
 
     local app_path
@@ -256,6 +293,12 @@ do_build() {
     if [[ -z "$app_path" ]]; then
         err "Build product not found"
         exit 1
+    fi
+
+    if [[ -n "${BUILD_VARIANT}" ]]; then
+        /usr/libexec/PlistBuddy \
+            -c "Add :ArgusBuildVariant string ${BUILD_VARIANT}" \
+            "${app_path}/Contents/Info.plist"
     fi
 
     if [[ ${BUILD_CLI} -eq 1 ]]; then
@@ -294,7 +337,11 @@ do_install() {
 
 do_clean() {
     log "Cleaning build artifacts..."
-    rm -rf "${BUILD_DIR}"
+    if [[ -n "${BUILD_VARIANT}" ]]; then
+        rm -rf "${BUILD_DIR}"
+    else
+        rm -rf "${BASE_BUILD_DIR}"
+    fi
     ok "Clean complete"
 }
 

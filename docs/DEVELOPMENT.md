@@ -68,6 +68,16 @@ Pass `--no-cli` to omit the CLI scaffold or `--no-open` to build or install with
 
 Build products are written under `.build/Build/Products/<configuration>/`. Within the built application, the CLI is bundled at `Argus.app/Contents/Resources/bin/argus`. It currently exposes version and help output only; socket-backed commands are future work.
 
+### Run multiple local versions
+
+The build without a variant is the stable `Argus` application intended for the main branch. Use a named build variant from another branch or Git worktree to run it alongside the stable application:
+
+```sh
+./scripts/build.sh run --variant feature-a
+```
+
+A variant uses its own application name, bundle identifier, build directory, preferences, Session Snapshot, Review Session State, caches, Managed Worktrees, and Unix Domain Socket. Reusing the same variant name intentionally reuses that variant's state and replaces only that running variant. Variant names may contain up to 32 letters, numbers, dots, underscores, and hyphens.
+
 ## Tests and formatting
 
 Run the complete app and CLI validation suite:

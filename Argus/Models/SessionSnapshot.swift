@@ -285,7 +285,9 @@ private struct SessionSnapshotReconciler {
                 workspaceById: workspaceById
             ),
             isExpanded: project.isExpanded,
-            color: project.color
+            color: project.color,
+            repositoryIdentity: project.repositoryIdentity,
+            providerMetadata: project.providerMetadata
         )
     }
 
@@ -308,7 +310,9 @@ private struct SessionSnapshotReconciler {
                 workspaceById: workspaceById
             ),
             isExpanded: catchAll.isExpanded,
-            color: catchAll.color
+            color: catchAll.color,
+            repositoryIdentity: nil,
+            providerMetadata: nil
         )
     }
 }

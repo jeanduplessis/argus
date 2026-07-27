@@ -215,8 +215,7 @@ final class TerminalSurface: ObservableObject, Identifiable {
         var env: [String: String] = [:]
 
         // Argus-specific env vars (spec §Terminal Rendering rule 5)
-        let socketPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".argus/argus.sock").path
+        let socketPath = ArgusRuntimeConfiguration.current.socketURL.path
         env["ARGUS_SOCKET_PATH"] = socketPath
         env["ARGUS_WORKSPACE_ID"] = workspaceId.uuidString
         env["ARGUS_SURFACE_ID"] = id.uuidString

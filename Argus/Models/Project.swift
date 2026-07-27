@@ -61,6 +61,32 @@ struct ProjectSnapshot: Codable, Sendable {
     let workspaceIds: [UUID]
     let isExpanded: Bool
     let color: ProjectColor?
+    let repositoryIdentity: RepositoryIdentity?
+    let providerMetadata: RepositoryProviderMetadata?
+
+    init(
+        id: UUID,
+        repositoryPath: String,
+        isCatchAll: Bool,
+        displayName: String,
+        mainBranch: String,
+        workspaceIds: [UUID],
+        isExpanded: Bool,
+        color: ProjectColor?,
+        repositoryIdentity: RepositoryIdentity? = nil,
+        providerMetadata: RepositoryProviderMetadata? = nil
+    ) {
+        self.id = id
+        self.repositoryPath = repositoryPath
+        self.isCatchAll = isCatchAll
+        self.displayName = displayName
+        self.mainBranch = mainBranch
+        self.workspaceIds = workspaceIds
+        self.isExpanded = isExpanded
+        self.color = color
+        self.repositoryIdentity = repositoryIdentity
+        self.providerMetadata = providerMetadata
+    }
 }
 
 /// A project groups workspaces under a single git repository.
@@ -83,6 +109,8 @@ final class Project: Identifiable, ObservableObject {
     let id: UUID
     let repositoryPath: String
     let isCatchAll: Bool
+    @Published private(set) var repositoryIdentity: RepositoryIdentity?
+    @Published private(set) var providerMetadata: RepositoryProviderMetadata?
 
     // MARK: - Published state
 
@@ -104,6 +132,8 @@ final class Project: Identifiable, ObservableObject {
         self.id = UUID()
         self.repositoryPath = repositoryPath
         self.isCatchAll = false
+        self.repositoryIdentity = nil
+        self.providerMetadata = nil
         self.displayName =
             displayName
             ?? (repositoryPath as NSString).lastPathComponent
@@ -118,6 +148,8 @@ final class Project: Identifiable, ObservableObject {
         self.id = snapshot.id
         self.repositoryPath = snapshot.repositoryPath
         self.isCatchAll = snapshot.isCatchAll
+        self.repositoryIdentity = snapshot.repositoryIdentity
+        self.providerMetadata = snapshot.providerMetadata
         self.displayName = snapshot.displayName
         self.mainBranch = snapshot.mainBranch
         self.workspaceIds = snapshot.workspaceIds
@@ -136,7 +168,7 @@ final class Project: Identifiable, ObservableObject {
                 mainBranch: "",
                 workspaceIds: [],
                 isExpanded: true,
-                color: nil
+            color: nil
             ))
     }
 
@@ -152,8 +184,22 @@ final class Project: Identifiable, ObservableObject {
             mainBranch: mainBranch,
             workspaceIds: workspaceIds,
             isExpanded: isExpanded,
-            color: color
+            color: color,
+            repositoryIdentity: repositoryIdentity,
+            providerMetadata: providerMetadata
         )
+    }
+
+    /// Explicitly associates a verified hosted identity. Callers must not infer
+    /// this from a display name, path, or git remote.
+    func associateRepositoryIdentity(
+        _ identity: RepositoryIdentity,
+        providerMetadata: RepositoryProviderMetadata
+    ) -> Bool {
+        guard !isCatchAll, (repositoryIdentity == nil || repositoryIdentity == identity) else { return false }
+        repositoryIdentity = identity
+        self.providerMetadata = providerMetadata
+        return true
     }
 
     // MARK: - Workspace Management

@@ -3,7 +3,8 @@
 ## Status
 
 This document is the target UI behavior contract for Argus. It is derived from
-the application spec and recent workspace, Files, Changes, diff, and tab work.
+the application spec and recent workspace, Files, Changes, diff, tab, Work Mode,
+and Review work.
 Recent code supplies evidence for these rules, but not every existing view is
 fully compliant.
 
@@ -56,6 +57,32 @@ spec explicitly introduces a multi-window workflow.
 Native Settings is application configuration, not inspectable content. It MAY
 use the standard macOS Settings surface and MUST NOT be presented as a Workspace
 tab.
+
+## Work Modes and Review tabs
+
+The Work Mode picker belongs in the project-wide left-sidebar header. It MUST
+make Code and Review equally reachable, expose Review attention without opening
+the picker, and preserve the selected mode's context when the other mode is
+chosen. Switching Work Modes MUST NOT steal focus, reset a tab, or turn a
+background refresh into navigation.
+
+Code and Review are separate navigation environments. Their sidebars, tabs, and
+Right Sidebar state MUST stay isolated even when a hosted repository is shared.
+The picker is global chrome, not a filter within a workspace or review tab.
+
+A Pull Request Review Tab owns its own Files, Activity, and Checks selection,
+changed-file selection, layout, and review drafts. It is not a Code Workspace
+tab and it does not use the global Right Sidebar as a requirement for review.
+The diff stays primary: at a usable wide size, changed files, diff, and
+conversations may appear together; as room narrows, changed files and then
+conversations collapse into keyboard-reachable tab-local controls. Responsive
+collapse MUST NOT overwrite a user-controlled collapsed state.
+
+Review tab dividers MUST use the same enlarged drag target and resize cursor as
+other split controls. Resizing or opening a Review region MUST NOT reload data,
+change the selected file, or move keyboard focus without an explicit user
+action. A compact review footer may expand into the summary composer, but its
+draft count, disposition, and submission controls must remain legible.
 
 ## Settings controls
 
@@ -272,6 +299,23 @@ Destructive actions SHOULD NOT dominate idle UI. They belong in hover actions,
 context menus, or explicit confirmation flows, with semantic color used for the
 decision rather than decoration.
 
+## Authored review text and attention
+
+Reply text, inline drafts, and review summaries are authored text. Refreshing,
+closing a review tab, switching Work Modes, revising a Pull Request, and going
+offline MUST preserve them unless the user explicitly chooses a discard action.
+Sending a reply and submitting a Pending Review are separate, deliberate
+actions. Submission confirmation MUST name the Pull Request, selected
+disposition, and inline draft count.
+
+Review attention is visual context, not navigation. New requests, remote
+activity, new commits, draft state, and failed operations MUST use a label,
+symbol, or accessibility value in addition to color. Background review work
+MUST NOT switch Work Modes, select a Pull Request, activate a tab, raise the
+application, or move focus. Selecting a conversation may select its native
+file and line state, but current Review rendering does not scroll the WebKit
+diff body programmatically to that line.
+
 ## Loading, empty, error, and disabled states
 
 Every asynchronous surface MUST define initial loading, refresh, empty, error,
@@ -398,6 +442,10 @@ These files contain the patterns from which this contract was derived:
   separator colors.
 - `Argus/Views/Sidebar/SidebarDivider.swift`: enlarged invisible drag targets
   and resize cursors.
+- `Argus/Views/MainWindowView.swift`: Work Mode routing and isolation.
+- `Argus/Views/Review/ReviewWorkModeView.swift`: Review navigation and tabs.
+- `Argus/Views/Review/PullRequestReviewTab.swift`: tab-local Review regions,
+  authored text, and review actions.
 - `Tests/GitStatusTests/GitStatusUIContractTests.swift` and
   `Tests/WorkspaceTests/WorkspaceUIContractTests.swift`: executable UI wiring
   contracts.

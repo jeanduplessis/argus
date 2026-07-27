@@ -8,6 +8,7 @@ struct ArgusApp: App {
     @StateObject private var appSettings: AppSettings
     @StateObject private var turnCompletionAttentionStore: TurnCompletionAttentionStore
     @StateObject private var kiloIntegration: KiloIntegrationModel
+    @StateObject private var reviewWorkMode: ReviewWorkModeModel
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
@@ -18,6 +19,8 @@ struct ArgusApp: App {
         _workspaceManager = StateObject(wrappedValue: manager)
         _turnCompletionAttentionStore = StateObject(wrappedValue: attentionStore)
         _kiloIntegration = StateObject(wrappedValue: KiloIntegrationModel())
+        let review = ReviewWorkModeModel(workspaceManager: manager)
+        _reviewWorkMode = StateObject(wrappedValue: review)
         let runtime = TurnCompletionRuntime(
             workspaceManager: manager,
             attentionStore: attentionStore,
@@ -35,6 +38,7 @@ struct ArgusApp: App {
             workspaceManager: manager,
             runtime: runtime
         )
+        appDelegate.configureReviewWorkMode(review)
 
         // Initialize GhosttyApp singleton — this triggers ghostty_init and
         // configures the terminal environment (TERM, PATH, GHOSTTY_RESOURCES_DIR).
@@ -48,6 +52,7 @@ struct ArgusApp: App {
                 .environmentObject(agentStatusStore)
                 .environmentObject(appSettings)
                 .environmentObject(turnCompletionAttentionStore)
+                .environmentObject(reviewWorkMode)
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1200, height: 800)
@@ -72,44 +77,71 @@ struct ArgusApp: App {
                 .keyboardShortcut("n", modifiers: [.command])
 
                 Button("New Tab") {
+                    guard WorkModeCodeCommandEligibility.isEnabled(in: activeWorkMode) else { return }
                     workspaceManager.addTab()
                 }
                 .keyboardShortcut("t", modifiers: [.command])
+                .disabled(!WorkModeCodeCommandEligibility.isEnabled(in: activeWorkMode))
 
                 Button("New Browser Tab") {
+                    guard WorkModeCodeCommandEligibility.isEnabled(in: activeWorkMode) else { return }
                     workspaceManager.addBrowserTab()
                 }
+                .disabled(!WorkModeCodeCommandEligibility.isEnabled(in: activeWorkMode))
 
                 Button("Split Vertically") {
+                    guard WorkModeCodeCommandEligibility.isEnabled(in: activeWorkMode) else { return }
                     workspaceManager.splitActiveTerminal(direction: .vertical)
                 }
                 .keyboardShortcut("d", modifiers: [.command])
+                .disabled(!WorkModeCodeCommandEligibility.isEnabled(in: activeWorkMode))
 
                 Button("Split Horizontally") {
+                    guard WorkModeCodeCommandEligibility.isEnabled(in: activeWorkMode) else { return }
                     workspaceManager.splitActiveTerminal(direction: .horizontal)
                 }
                 .keyboardShortcut("d", modifiers: [.command, .shift])
+                .disabled(!WorkModeCodeCommandEligibility.isEnabled(in: activeWorkMode))
             }
 
             CommandGroup(after: .textEditing) {
                 Divider()
 
                 Button("Find\u{2026}") {
+                    guard WorkModeCodeCommandEligibility.isEnabled(in: activeWorkMode) else { return }
                     workspaceManager.requestFindInActiveBrowser()
                 }
                 .keyboardShortcut("f", modifiers: [.command])
+                .disabled(!WorkModeCodeCommandEligibility.isEnabled(in: activeWorkMode))
             }
 
             // Close commands — placed after new-item group
             CommandGroup(after: .newItem) {
                 Button("Close Tab") {
-                    workspaceManager.closeCurrentTab()
+                    closeActiveTab()
                 }
                 .keyboardShortcut("w", modifiers: [.command])
             }
 
             // View menu — sidebar toggles and workspace selection
             CommandGroup(after: .toolbar) {
+                Button("Code Work Mode") {
+                    NotificationCenter.default.post(
+                        name: .selectCodeWorkMode,
+                        object: nil
+                    )
+                }
+                .keyboardShortcut("1", modifiers: [.command, .option])
+
+                Button("Review Work Mode") {
+                    NotificationCenter.default.post(
+                        name: .selectReviewWorkMode,
+                        object: nil
+                    )
+                }
+                .keyboardShortcut("2", modifiers: [.command, .option])
+
+                Divider()
                 Button("Toggle Sidebar") {
                     NotificationCenter.default.post(
                         name: .toggleSidebar, object: nil
@@ -127,14 +159,38 @@ struct ArgusApp: App {
                 Divider()
 
                 Button("Select Previous Tab") {
-                    workspaceManager.selectPreviousTab()
+                    selectPreviousTab()
                 }
                 .keyboardShortcut("[", modifiers: [.command])
 
                 Button("Select Next Tab") {
-                    workspaceManager.selectNextTab()
+                    selectNextTab()
                 }
                 .keyboardShortcut("]", modifiers: [.command])
+
+                Button("Next Changed File") {
+                    NotificationCenter.default.post(
+                        name: .reviewNextChangedFile,
+                        object: nil
+                    )
+                }
+                .keyboardShortcut("n", modifiers: [.command, .option])
+
+                Button("Next Unviewed File") {
+                    NotificationCenter.default.post(
+                        name: .reviewNextUnviewedFile,
+                        object: nil
+                    )
+                }
+                .keyboardShortcut("u", modifiers: [.command, .option])
+
+                Button("Review Summary") {
+                    NotificationCenter.default.post(
+                        name: .reviewShowSummary,
+                        object: nil
+                    )
+                }
+                .keyboardShortcut("r", modifiers: [.command, .option])
 
                 Divider()
 
@@ -151,6 +207,46 @@ struct ArgusApp: App {
             }
         }
     }
+
+    private var isReviewWorkMode: Bool {
+        WorkModeStorage.read() == .review
+    }
+
+    private func closeActiveTab() {
+        switch WorkModeTabCommandRouter.route(.close, in: activeWorkMode) {
+        case .closeReviewTab:
+            guard let activeTabID = reviewWorkMode.store.session.activeTabID else { return }
+            reviewWorkMode.closeTab(activeTabID)
+        case .closeCodeTab:
+            workspaceManager.closeCurrentTab()
+        default:
+            return
+        }
+    }
+
+    private func selectPreviousTab() {
+        switch WorkModeTabCommandRouter.route(.selectPrevious, in: activeWorkMode) {
+        case .selectReviewTab(let offset):
+            reviewWorkMode.selectRelativeTab(offset)
+        case .selectCodeTab:
+            workspaceManager.selectPreviousTab()
+        default:
+            return
+        }
+    }
+
+    private func selectNextTab() {
+        switch WorkModeTabCommandRouter.route(.selectNext, in: activeWorkMode) {
+        case .selectReviewTab(let offset):
+            reviewWorkMode.selectRelativeTab(offset)
+        case .selectCodeTab:
+            workspaceManager.selectNextTab()
+        default:
+            return
+        }
+    }
+
+    private var activeWorkMode: WorkMode { isReviewWorkMode ? .review : .code }
 }
 
 // MARK: - Notification Names
@@ -164,4 +260,9 @@ extension Notification.Name {
     static let workspaceContextDidChange = Notification.Name("ArgusWorkspaceContextDidChange")
     /// Terminal NSView focus changed; synchronize the active split pane.
     static let terminalSurfaceDidBecomeFirstResponder = Notification.Name("ArgusTerminalSurfaceDidBecomeFirstResponder")
+    static let selectCodeWorkMode = Notification.Name("ArgusSelectCodeWorkMode")
+    static let selectReviewWorkMode = Notification.Name("ArgusSelectReviewWorkMode")
+    static let reviewNextChangedFile = Notification.Name("ArgusReviewNextChangedFile")
+    static let reviewNextUnviewedFile = Notification.Name("ArgusReviewNextUnviewedFile")
+    static let reviewShowSummary = Notification.Name("ArgusReviewShowSummary")
 }

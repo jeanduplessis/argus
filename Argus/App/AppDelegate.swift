@@ -13,6 +13,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var workspaceManager: WorkspaceManager?
     private var turnCompletionRuntime: TurnCompletionRuntime?
     private var agentSocketServer: AgentSocketServer?
+    private var reviewWorkMode: ReviewWorkModeModel?
 
     // MARK: - NSApplicationDelegate
 
@@ -25,6 +26,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         self.workspaceManager = workspaceManager
         turnCompletionRuntime = runtime
         startAgentSocketIfReady()
+    }
+
+    func configureReviewWorkMode(_ reviewWorkMode: ReviewWorkModeModel) {
+        self.reviewWorkMode = reviewWorkMode
     }
 
     func application(_ application: NSApplication, shouldSaveApplicationState coder: NSCoder) -> Bool {
@@ -94,6 +99,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         workspaceManager?.saveSession()
+        reviewWorkMode?.flushSynchronously()
         if let windowTitleObserver {
             NotificationCenter.default.removeObserver(windowTitleObserver)
         }
@@ -154,7 +160,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func startAgentSocketIfReady() {
         guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
         guard agentSocketServer == nil, let turnCompletionRuntime else { return }
-        let path = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".argus/argus.sock").path
+        let path = ArgusRuntimeConfiguration.current.socketURL.path
         let server = AgentSocketServer(path: path) { event in
             turnCompletionRuntime.receive(event)
         }

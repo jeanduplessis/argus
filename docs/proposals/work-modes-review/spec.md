@@ -2,12 +2,15 @@
 
 ## Status
 
-- Lifecycle: Accepted
-- Implementation: Not started
+- Lifecycle: Implemented
+- Implementation: Implemented
+- Promoted to stable contract: 2026-07-26
 - Last reviewed: 2026-07-26
 - Stable-contract target: `docs/SPEC.md`
 
-This proposal defines future behavior. `docs/SPEC.md` remains authoritative for the shipped application until each delivery phase is implemented and promoted.
+This proposal is the historical design for the implemented feature. `docs/SPEC.md` and `docs/UI_DESIGN_PRINCIPLES.md` define the shipped contract.
+
+The implemented renderer records and selects conversation file and line anchors in native Review state and its header. It does not programmatically scroll the WebKit diff body to a selected conversation anchor.
 
 ## Summary
 

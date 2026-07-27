@@ -85,6 +85,5 @@ private struct SidebarHeader: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .padding(.top, 28)  // Space for titlebar traffic lights
     }
 }

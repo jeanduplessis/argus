@@ -97,9 +97,7 @@ final class WorkspaceManager: ObservableObject {
     static let maxWorkspaces = 128
 
     /// Default application support path for persisted session state.
-    static let defaultSessionSnapshotURL: URL = FileManager.default
-        .homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Application Support/Argus/session.json")
+    static let defaultSessionSnapshotURL = ArgusRuntimeConfiguration.current.sessionSnapshotURL
 
     // MARK: - Notification Observers
 
