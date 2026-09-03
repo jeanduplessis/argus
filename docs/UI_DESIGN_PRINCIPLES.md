@@ -327,10 +327,15 @@ Worktree Workspace Pull Request Status MUST use this shared leading slot:
   resume time, and disable manual Refresh until the deadline. Paused work MUST
   NOT display an indefinite loading indicator.
 - For a known Pull Request, the single status icon MUST use the highest-priority
-  applicable signal: stale → failed checks → changes requested → pending checks →
-  unavailable → approval; otherwise, use lifecycle. Merged/closed MUST suppress
-  every signal except stale. Use semantic icons and text, not color alone or
-  pulsing; help and the popover MUST retain full details.
+  applicable signal: stale (error-based) → failed checks → changes requested →
+  pending checks → unavailable → approval; otherwise, use lifecycle.
+  Merged/closed MUST suppress every signal except stale. The stale signal MUST
+  fire only when a non-nil refresh error is present; age-only staleness (elapsed
+  time without an error) MUST retain the last-known check, review, or lifecycle
+  icon rather than replacing it with an orange warning triangle. Both kinds of
+  staleness MUST retain stale or cached detail in help and the popover, with an
+  orange warning style for error-based and a neutral style for age-only. Use
+  semantic icons and text, not color alone or pulsing.
 
 The Changes View MUST render the ordered typed Change Sections in the active
 Git Status Snapshot. With both Changes View settings disabled, it MUST preserve

@@ -48,13 +48,18 @@ struct PullRequestStatusPresentationTests {
         (PullRequestChecks(passed: 1), .required, nil),
         (PullRequestChecks(), .none, nil)
     ])
-    func checkAndReviewSignalsUseActionablePrecedence(
+    func checkAndReviewSignalsKeepPrecedenceAsCachedStatusAgesAndRefreshes(
         checks: PullRequestChecks, review: PullRequestReviewDecision, expected: PullRequestStatusSignal?
     ) {
-        let state = WorkspacePullRequestState(
-            status: status(review: review, checks: checks), lastSuccess: date, hasLoaded: true)
-
-        #expect(PullRequestStatusPresentation(state: state, date: date).signal == expected)
+        for isRefreshing in [false, true] {
+            let state = WorkspacePullRequestState(
+                status: status(review: review, checks: checks), isRefreshing: isRefreshing,
+                lastSuccess: date, hasLoaded: true)
+            for elapsed in [0.0, 661.0] {
+                let presentation = PullRequestStatusPresentation(state: state, date: date.addingTimeInterval(elapsed))
+                #expect(presentation.signal == expected)
+            }
+        }
     }
 
     @Test(arguments: [PullRequestLifecycle.open, .draft])
@@ -69,16 +74,18 @@ struct PullRequestStatusPresentationTests {
         #expect(presentation.help.contains("1 failed"))
     }
 
-    @Test(arguments: [PullRequestLifecycle.merged, .closed])
-    func completedLifecycleSuppressesCheckSignalsButNotStaleness(lifecycle: PullRequestLifecycle) {
+    @Test(arguments: [PullRequestLifecycle.merged, .closed], [false, true])
+    func completedLifecycleIgnoresAgeOnlyStaleness(lifecycle: PullRequestLifecycle, isRefreshing: Bool) {
         let state = WorkspacePullRequestState(
             status: status(lifecycle: lifecycle, review: .changesRequested, checks: PullRequestChecks(failed: 1)),
-            lastSuccess: date, hasLoaded: true)
+            isRefreshing: isRefreshing, lastSuccess: date, hasLoaded: true)
         let fresh = PullRequestStatusPresentation(state: state, date: date)
         let stale = PullRequestStatusPresentation(state: state, date: date.addingTimeInterval(661))
 
         #expect(fresh.signal == nil)
-        #expect(stale.signal == .stale)
+        #expect(stale.signal == nil)
+        #expect(stale.isStale)
+        #expect(stale.help.contains("Stale"))
         #expect(stale.title == fresh.title)
         #expect(stale.help.contains(lifecycle.label))
     }
@@ -163,8 +170,25 @@ struct PullRequestStatusPresentationTests {
         let presentation = PullRequestStatusPresentation(state: state, date: date)
 
         #expect(presentation.isStale == isStale)
-        #expect(presentation.signal == (isStale ? .stale : .approved))
+        #expect(presentation.signal == .approved)
         #expect(presentation.help.contains("Stale") == isStale)
+    }
+
+    @Test(arguments: [PullRequestLifecycle.open, .draft, .merged, .closed], [false, true])
+    func refreshProblemsWarnAcrossLifecyclesAndWhileRetrying(lifecycle: PullRequestLifecycle, isRefreshing: Bool) {
+        for error in [
+            PullRequestStatusError.providerTimedOut,
+            .quotaPaused(until: date.addingTimeInterval(600)),
+            .repositoryUnavailable("Remote changed.")
+        ] {
+            let state = WorkspacePullRequestState(
+                status: status(lifecycle: lifecycle), isRefreshing: isRefreshing, lastSuccess: date, error: error,
+                hasLoaded: true)
+            let presentation = PullRequestStatusPresentation(state: state, date: date)
+
+            #expect(presentation.signal == .stale)
+            #expect(presentation.help.contains(error.localizedDescription))
+        }
     }
 
     @Test

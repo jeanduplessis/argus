@@ -86,7 +86,8 @@ struct PullRequestStatusPresentation {
 
     var signal: PullRequestStatusSignal? {
         guard let status = state.status else { return nil }
-        if isStale { return .stale }
+        // Inactivity can age cached status without a refresh failure.
+        if state.error != nil { return .stale }
         guard status.lifecycle == .open || status.lifecycle == .draft else { return nil }
         if status.checks.state == .failed { return .failedChecks }
         if status.review == .changesRequested { return .changesRequested }
@@ -245,9 +246,15 @@ struct PullRequestStatusSummary: View {
             Text("Review: \(status.review.label)").font(.system(size: 12))
             Text("Checks: \(status.checks.summary)").font(.system(size: 12))
             if presentation.isStale {
-                Label("Stale — showing last known status", systemImage: "exclamationmark.triangle")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.orange)
+                if presentation.state.error != nil {
+                    Label("Stale — showing last known status", systemImage: "exclamationmark.triangle")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.orange)
+                } else {
+                    Label("Stale — showing last known status", systemImage: "clock")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }
