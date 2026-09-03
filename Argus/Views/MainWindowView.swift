@@ -9,6 +9,7 @@ import SwiftUI
 private struct NewWorkspaceSheetRequest: Identifiable {
     let id = UUID()
     let projectId: UUID
+    let stackParentBranch: String?
 }
 
 extension WorkspaceDeletionStage {
@@ -245,7 +246,7 @@ struct MainWindowView: View {  // swiftlint:disable:this type_body_length
         }
         // Sheet: New Workspace
         .sheet(item: $newWorkspaceSheetRequest) { request in
-            NewWorkspaceSheet(projectId: request.projectId)
+            NewWorkspaceSheet(projectId: request.projectId, stackParentBranch: request.stackParentBranch)
                 .environmentObject(workspaceManager)
         }
         .changeWorkspaceRootSheet(
@@ -298,7 +299,9 @@ struct MainWindowView: View {  // swiftlint:disable:this type_body_length
         }
         .onReceive(NotificationCenter.default.publisher(for: .showNewWorkspaceSheet)) { notification in
             if let projectId = notification.userInfo?["projectId"] as? UUID {
-                newWorkspaceSheetRequest = NewWorkspaceSheetRequest(projectId: projectId)
+                let parentBranch = notification.userInfo?["parentBranch"] as? String
+                newWorkspaceSheetRequest = NewWorkspaceSheetRequest(
+                    projectId: projectId, stackParentBranch: parentBranch)
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .showRenameProjectSheet)) { notification in

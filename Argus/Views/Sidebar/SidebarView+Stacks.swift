@@ -15,6 +15,16 @@ extension ProjectSection {
                 )
                 .modifier(SidebarWorkspaceReordering(projectId: project.id, workspaceId: workspaceId))
                 .contextMenu {
+                    if let parentBranch = group.newWorkspaceParentBranch {
+                        Button("New Workspace in Stack…") {
+                            NotificationCenter.default.post(
+                                name: .showNewWorkspaceSheet,
+                                object: nil,
+                                userInfo: ["projectId": project.id, "parentBranch": parentBranch]
+                            )
+                        }
+                        Divider()
+                    }
                     workspaceMoveActions(for: workspaceId, isStack: true)
                 }
 

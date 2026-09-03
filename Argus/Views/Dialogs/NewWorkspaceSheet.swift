@@ -15,6 +15,8 @@ struct NewWorkspaceSheet: View {
 
     /// The project to add the workspace to (set by the caller).
     let projectId: UUID
+    /// The recorded parent for a new branch added through a Stack Group.
+    var stackParentBranch: String?
 
     @State private var workspaceName: String = ""
     @State private var branchMode: BranchMode = .new
@@ -42,7 +44,7 @@ struct NewWorkspaceSheet: View {
                 Text("New Workspace")
                     .font(.headline)
                 if let project = workspaceManager.projects.first(where: { $0.id == projectId }) {
-                    Text(project.displayName)
+                    Text(stackParentBranch.map { "\(project.displayName) · Based on \($0)" } ?? project.displayName)
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
@@ -74,16 +76,18 @@ struct NewWorkspaceSheet: View {
 
                     Spacer()
 
-                    Picker("Source", selection: $branchMode) {
-                        ForEach(BranchMode.allCases, id: \.self) { mode in
-                            Text(mode.rawValue).tag(mode)
+                    if stackParentBranch == nil {
+                        Picker("Source", selection: $branchMode) {
+                            ForEach(BranchMode.allCases, id: \.self) { mode in
+                                Text(mode.rawValue).tag(mode)
+                            }
                         }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .controlSize(.small)
+                        .fixedSize()
+                        .disabled(isCreating)
                     }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .controlSize(.small)
-                    .fixedSize()
-                    .disabled(isCreating)
                 }
 
                 switch branchMode {
@@ -357,7 +361,8 @@ extension NewWorkspaceSheet {
             projectId,
             branchName: branchSelection.branchName,
             createNewBranch: branchSelection.createNewBranch,
-            customTitle: trimmedName.isEmpty ? nil : trimmedName
+            customTitle: trimmedName.isEmpty ? nil : trimmedName,
+            parentBranch: stackParentBranch
         )
 
         if result != nil {

@@ -25,6 +25,7 @@ struct WorkspaceStackGroup: Equatable, Identifiable, Sendable {
     let rows: [WorkspaceStackRow]
 
     var workspaceIds: [UUID] { rows.compactMap(\.workspaceId) }
+    var newWorkspaceParentBranch: String? { rows.last(where: { $0.workspaceId != nil })?.branch }
     var laneCount: Int { (rows.map(\.lane).max() ?? 0) + 1 }
 }
 

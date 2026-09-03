@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AB739136C32C4C10AC183841 /* StackWorkspaceCreationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB739136C32C4C10AC183842 /* StackWorkspaceCreationTests.swift */; };
+		AB739136C32C4C10AC183843 /* WorkspaceStackUIContractTests+Creation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB739136C32C4C10AC183844 /* WorkspaceStackUIContractTests+Creation.swift */; };
 		0005F1BE34EC7C0DA1814AFC /* WorktreeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709721096373D93A263660AB /* WorktreeService.swift */; };
 		009EDD4EF70E0ECD40403AFD /* WorkspacePullRequestLocalInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33DD4836E8671FB5492642EE /* WorkspacePullRequestLocalInputTests.swift */; };
 		00B80A1012001A81F4F25980 /* WorkspacePullRequestStatusModelLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 230BD564B7A3E6B3245DAC24 /* WorkspacePullRequestStatusModelLifecycleTests.swift */; };
@@ -282,6 +284,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		AB739136C32C4C10AC183842 /* StackWorkspaceCreationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackWorkspaceCreationTests.swift; sourceTree = "<group>"; };
+		AB739136C32C4C10AC183844 /* WorkspaceStackUIContractTests+Creation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspaceStackUIContractTests+Creation.swift"; sourceTree = "<group>"; };
 		0163CE072B8461A861431A19 /* GitTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitTestSupport.swift; sourceTree = "<group>"; };
 		021986DA7812FCB17C12FC29 /* GitPreviewErrorPropagationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitPreviewErrorPropagationTests.swift; sourceTree = "<group>"; };
 		0418377FEC3C8161DF8DF2FA /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
@@ -711,6 +715,7 @@
 				CC68E5584DED0324E81CEF34 /* WorkspaceStackNavigationTests.swift */,
 				48D51FA32A28AC4619FBC667 /* WorkspaceStackObservationTests.swift */,
 				367F2C98E2416C8C6EBCA0F6 /* WorkspaceStackUIContractTests.swift */,
+				AB739136C32C4C10AC183844 /* WorkspaceStackUIContractTests+Creation.swift */,
 				50C95ED19A79999FCE8827F9 /* WorkspaceStackUIContractTests+Relationships.swift */,
 				95D7FCE69AC486FA39A5DFBA /* WorkspaceTabNavigationTests.swift */,
 				E9BCAEFE4ACA1C2C2E921A6A /* WorkspaceTitleFormatterTests.swift */,
@@ -763,6 +768,7 @@
 				D81A0F7652F3030290E53436 /* CurrentBranchDetectionTests.swift */,
 				D681607918630CD263C690CE /* ExistingBranchPickerTests.swift */,
 				9C0107B8A19AEA8B1CDB683C /* ExistingBranchWorktreeTests.swift */,
+				AB739136C32C4C10AC183842 /* StackWorkspaceCreationTests.swift */,
 				D3FB117AE6DF223AE2B1A0A0 /* ExistingWorktreeBranchChoiceTests.swift */,
 				E7A44AD812BD8090BF9C57C5 /* ExternalProcessTests.swift */,
 				EDA50BB27255AFF560A99F86 /* LocalBranchPickerTests.swift */,
@@ -1353,6 +1359,7 @@
 				0CB71789E21CE29F968F9AEC /* EmptyWorkspaceUIContractTests.swift in Sources */,
 				344B25CC7C2ADD72466CD792 /* ExistingBranchPickerTests.swift in Sources */,
 				F46179E18E48775C783E104A /* ExistingBranchWorktreeTests.swift in Sources */,
+				AB739136C32C4C10AC183841 /* StackWorkspaceCreationTests.swift in Sources */,
 				5B4BB7179424815BEF595AF7 /* ExistingWorktreeBranchChoiceTests.swift in Sources */,
 				56D23E481BAE7617C4CE54B1 /* ExternalProcessTests.swift in Sources */,
 				21B3E316D345B5A2038674EF /* GitBaseBranchMetadataTests.swift in Sources */,
@@ -1442,6 +1449,7 @@
 				2266303ED8AE744D12B4504F /* WorkspaceStackTestFixture.swift in Sources */,
 				0232A72E68DA07BD35F5A87D /* WorkspaceStackUIContractTests+Relationships.swift in Sources */,
 				286635CF0AF7DA6124171BA0 /* WorkspaceStackUIContractTests.swift in Sources */,
+				AB739136C32C4C10AC183843 /* WorkspaceStackUIContractTests+Creation.swift in Sources */,
 				247685C4A4ECA874C1C850AD /* WorkspaceTabNavigationTests.swift in Sources */,
 				A65C95F2982AA18D7D80D785 /* WorkspaceTitleFormatterTests.swift in Sources */,
 				19F52C9DA9B94C0CB6CBAA7C /* WorkspaceUIContractTests.swift in Sources */,

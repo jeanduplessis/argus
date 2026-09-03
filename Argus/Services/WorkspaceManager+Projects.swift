@@ -130,7 +130,8 @@ extension WorkspaceManager {
         _ projectId: UUID,
         branchName: String,
         createNewBranch: Bool = true,
-        customTitle: String? = nil
+        customTitle: String? = nil,
+        parentBranch: String? = nil
     ) async -> Workspace? {
         lastWorkspaceCreationError = nil
         guard workspaces.count < Self.maxWorkspaces,
@@ -153,7 +154,8 @@ extension WorkspaceManager {
                 projectId: projectId,
                 repositoryPath: project.repositoryPath,
                 branchName: branchName,
-                createNewBranch: createNewBranch
+                createNewBranch: createNewBranch,
+                parentBranch: parentBranch
             )
             return await attachPreparedWorktree(
                 PreparedWorktreeAttachment(

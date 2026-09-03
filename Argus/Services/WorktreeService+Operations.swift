@@ -6,8 +6,13 @@ extension WorktreeService {
         projectId: UUID,
         repositoryPath: String,
         branchName: String,
-        createNewBranch: Bool = true
+        createNewBranch: Bool = true,
+        parentBranch: String? = nil
     ) async throws -> String {
+        // Stack creation requires a new branch; reject existing-branch mode at the service boundary.
+        if parentBranch != nil, !createNewBranch {
+            throw WorktreeError.worktreeCreationFailed("Stack creation requires a new branch")
+        }
         let configuredRemotes = (try? await remoteNames(repositoryPath: repositoryPath)) ?? []
         let remoteNames = Set(configuredRemotes + ["origin"])
         if !createNewBranch,
@@ -34,7 +39,13 @@ extension WorktreeService {
         do {
             var arguments = ["-C", repositoryPath, "worktree", "add"]
             if createNewBranch {
-                arguments += ["-b", resolvedBranchName, worktreeURL.path]
+                if let parent = parentBranch {
+                    // Stack creation: start at the exact local parent commit with --no-track
+                    // to avoid inheriting tracking configuration from the parent branch.
+                    arguments += ["--no-track", "-b", resolvedBranchName, worktreeURL.path, "refs/heads/\(parent)"]
+                } else {
+                    arguments += ["-b", resolvedBranchName, worktreeURL.path]
+                }
             } else {
                 arguments += [worktreeURL.path, resolvedBranchName]
             }
@@ -45,7 +56,41 @@ extension WorktreeService {
             }
             throw WorktreeError.worktreeCreationFailed(error.localizedDescription)
         }
+        // Publish the recorded parent only after Git has created the new branch.
+        if let parent = parentBranch {
+            try await recordStackParent(
+                parent, branchName: resolvedBranchName, worktreePath: worktreeURL.path, repositoryPath: repositoryPath)
+        }
         return worktreeURL.path
+    }
+
+    private func recordStackParent(
+        _ parent: String, branchName: String, worktreePath: String, repositoryPath: String
+    ) async throws {
+        do {
+            _ = try await runGit(
+                args: ["config", "--local", "branch.\(branchName).base", parent],
+                workingDirectory: worktreePath
+            )
+        } catch {
+            let configError = error.localizedDescription
+            let recovery: String
+            do {
+                // Hooks or another process may already have modified this checkout.
+                // Never force removal or delete the branch on a metadata-write failure.
+                try await removeWorktree(repositoryPath: repositoryPath, worktreePath: worktreePath)
+                recovery = "The clean worktree was removed. Branch '\(branchName)' was retained."
+            } catch {
+                recovery =
+                    "The worktree was retained at \(worktreePath). "
+                    + "Cleanup failed: \(error.localizedDescription)"
+            }
+            throw WorktreeError.worktreeCreationFailed(
+                "Could not record stack parent '\(parent)' for '\(branchName)': \(configError) "
+                    + recovery + " Fix the Git configuration before retrying. "
+                    + "An existing branch can be opened from the Project's New Workspace sheet."
+            )
+        }
     }
 
     /// Deleting a Managed Worktree has to survive a partially completed
