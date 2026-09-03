@@ -4,6 +4,7 @@ This file records changes pushed for local Argus releases. New entries use a `YY
 
 ## 2026-09-03
 
+- Workspace Pull Request Status now keeps its last-known icon when cached data ages while Argus is inactive. The popover still shows freshness details, while refresh failures, quota pauses, and repository-validation problems retain warning icons. ([b255b84](https://github.com/jeanduplessis/argus/commit/b255b84a5fd1042b2acdf32bb44acbd4351d2471))
 - Released Argus 1.15.0 with Collections for organizing Named Projects. Create and rename Collections, move Projects with context menus or drag-and-drop, and reorder whole Project blocks without changing open work. Removing a Collection keeps its Projects and Workspaces. ([4310d91](https://github.com/jeanduplessis/argus/commit/4310d918261998b46a894f90c5f6df83a46e616f))
 - Collections remember their order and disclosure state. Workspace shortcuts follow the same order even when groups are collapsed, and selecting a hidden Workspace reveals it. Session restore retains valid Collections even when invalid or duplicate records precede them. ([4310d91](https://github.com/jeanduplessis/argus/commit/4310d918261998b46a894f90c5f6df83a46e616f))
 - Release checks now pass the current lint rules, with Pull Request Status behavior preserved and regression coverage for invalid UTF-8 diagnostics. ([4310d91](https://github.com/jeanduplessis/argus/commit/4310d918261998b46a894f90c5f6df83a46e616f))
