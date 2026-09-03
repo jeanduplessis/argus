@@ -41,7 +41,6 @@ export async function send(socketPath, payload) {
     socket.once("error", finish(reject));
     socket.once("close", finish(resolve));
     socket.end(`${JSON.stringify(payload)}\n`);
-    socket.resume(); // Drain incoming response bytes so close fires without waiting for the deadline.
   });
 }
 
@@ -234,7 +233,7 @@ export function createPlugin({ environment: suppliedEnvironment, transport = sen
       turnPending = true;
       finalAgentError = false;
       finalAgentAborted = false;
-      enqueue(context, "running"); // Non-blocking: Pi must not wait on transport or delivery backlog.
+      return enqueue(context, "running");
     });
 
     pi.on("agent_end", (event) => {

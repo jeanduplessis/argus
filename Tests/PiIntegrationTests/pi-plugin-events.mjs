@@ -409,19 +409,67 @@ for (const interruption of ["agent_start", "session_shutdown", "session_switch"]
   await f.fire("session_shutdown");
 }
 
+// Submission stays responsive while status delivery is stalled, including a
+// second start queued behind it. Shutdown still drains the queue after failure.
+for (const failDelivery of [false, true]) {
+  let releaseRunning;
+  let runningStarted;
+  const runningBlocked = new Promise((resolve) => { releaseRunning = resolve; });
+  const deliveringRunning = new Promise((resolve) => { runningStarted = resolve; });
+  let heldRunning = false;
+  const completed = [];
+  const f = fixture({}, async (payload) => {
+    if (!heldRunning && payload.params.state === "running") {
+      heldRunning = true;
+      runningStarted();
+      await runningBlocked;
+      if (failDelivery) throw new Error("delivery failed");
+    }
+    completed.push(payload.method === "agent.statusCleared" ? "cleared" : payload.params.state);
+  });
+  await f.fire("session_start");
+  const starts = Promise.all([f.fire("agent_start"), f.fire("agent_start")]);
+  try {
+    await deliveringRunning;
+    const result = await Promise.race([
+      starts.then(() => "returned"),
+      new Promise((resolve) => setImmediate(() => resolve("blocked"))),
+    ]);
+    assert.equal(result, "returned", "agent_start must finish while delivery remains blocked");
+    assert.deepEqual(completed, ["idle"]);
+    assert.deepEqual(f.states(), ["idle", "running"], "queued delivery must remain serialized");
+  } finally {
+    releaseRunning();
+    await f.fire("session_shutdown");
+  }
+  assert.deepEqual(completed, failDelivery
+    ? ["idle", "running", "cleared"]
+    : ["idle", "running", "running", "cleared"]);
+  assert.deepEqual(f.deliveries.map((payload) => payload.params.sequence), [1, 2, 3, 4]);
+  assert.equal(f.completions().length, 0);
+}
+
+// Real socket transport: server sends a newline-terminated JSON response before close.
+// Exercises the socket.resume() drain path that prevents the 1500 ms deadline wait.
 const socketPath = join(tmpdir(), `argus-pi-transport-${process.pid}-${Date.now()}.sock`);
 let serverReleasedConnection = false;
+let requestData = "";
 const server = createServer({ allowHalfOpen: true }, (socket) => {
-  socket.on("data", () => {});
-  setTimeout(() => {
+  socket.setEncoding("utf8");
+  socket.on("data", (chunk) => { requestData += chunk; });
+  socket.once("end", () => {
     serverReleasedConnection = true;
-    socket.end();
-  }, 30);
+    socket.end(JSON.stringify({ id: "test-request", ok: true, result: { accepted: true } }) + "\n");
+  });
 });
 await new Promise((resolve, reject) => {
   server.once("error", reject);
   server.listen(socketPath, resolve);
 });
-await send(socketPath, { version: 1 });
-assert.equal(serverReleasedConnection, true, "delivery waits for the connection to close");
-await new Promise((resolve) => server.close(resolve));
+try {
+  await send(socketPath, { version: 1, id: "test-request" });
+  assert.equal(serverReleasedConnection, true, "delivery waits for the connection to close");
+  assert.equal(requestData, JSON.stringify({ version: 1, id: "test-request" }) + "\n");
+} finally {
+  await new Promise((resolve) => server.close(resolve));
+}

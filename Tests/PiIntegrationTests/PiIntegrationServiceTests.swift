@@ -37,7 +37,7 @@ struct PiIntegrationServiceTests {
         }
     }
 
-    @Test(arguments: ["1.13.0", "1.13.2"])
+    @Test(arguments: ["1.13.0", "1.13.2", "1.15.0"])
     func previousReleaseExtensionIsUpgradedAndRemoved(_ version: String) throws {
         try withFixture { fixture in
             let previousRelease = URL(filePath: #filePath)
