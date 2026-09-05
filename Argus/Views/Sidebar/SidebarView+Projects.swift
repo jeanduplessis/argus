@@ -1,3 +1,5 @@
+// Project and Workspace menus share their close/configuration presentation in this file.
+// swiftlint:disable file_length
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
@@ -86,6 +88,12 @@ struct ProjectSection: View {
             }
         }
         workspaceMoveActions(for: workspace.id, isStack: isStack)
+        if workspaceManager.setupPanel(in: workspace) != nil || workspaceManager.canRunWorktreeSetup(in: workspace) {
+            Divider()
+            Button("Show Worktree Setup") { workspaceManager.showWorktreeSetup(in: workspace) }
+            Button("Run Setup Again") { workspaceManager.runWorktreeSetupAgain(in: workspace) }
+                .disabled(!workspaceManager.canRunWorktreeSetup(in: workspace) || workspace.runningSetupCount > 0)
+        }
         if appSettings.showPullRequestStatus, !project.isCatchAll,
             workspace.workspaceType == .worktree, workspace.worktreePath?.isEmpty == false
         {
@@ -193,6 +201,8 @@ private struct ProjectHeaderRow: View {
     @State private var isHovered = false
     @State private var isAddHovered = false
     @State private var isRemovingProject = false
+    @State private var showsWorktreeSetup = false
+    @State private var removalError: String?
     @FocusState private var focusedControl: FocusedControl?
 
     private enum FocusedControl: Hashable {
@@ -259,6 +269,7 @@ private struct ProjectHeaderRow: View {
                         userInfo: ["projectId": project.id]
                     )
                 }
+                Button("Worktree Setup…") { showsWorktreeSetup = true }
                 ProjectCollectionMenu(projectId: project.id)
                 Button("Refresh Stacks") {
                     workspaceManager.refreshWorkspaceStacks(in: project.id)
@@ -270,6 +281,19 @@ private struct ProjectHeaderRow: View {
                 }
                 .disabled(isRemovingProject)
             }
+        }
+        .sheet(isPresented: $showsWorktreeSetup) {
+            WorktreeSetupSheet(project: project).environmentObject(workspaceManager)
+        }
+        .alert(
+            "Could not remove Project",
+            isPresented: Binding(
+                get: { removalError != nil }, set: { if !$0 { removalError = nil } }
+            )
+        ) {
+            Button("OK") { removalError = nil }
+        } message: {
+            Text(removalError ?? "")
         }
     }
 
@@ -372,6 +396,12 @@ private struct ProjectHeaderRow: View {
         isRemovingProject = true
         Task {
             await workspaceManager.removeProject(project.id)
+            isRemovingProject = false
+            if workspaceManager.projects.contains(where: { $0.id == project.id }) {
+                removalError =
+                    workspaceManager.lastWorkspaceDeletionError?.localizedDescription
+                    ?? "The Project could not be removed."
+            }
         }
     }
 
@@ -382,6 +412,8 @@ private struct ProjectHeaderRow: View {
         let worktreeLabel = worktreeCount == 1 ? "worktree" : "worktrees"
         return "This permanently removes \(workspaceCount) \(workspaceLabel) from Argus "
             + "and deletes \(worktreeCount) associated \(worktreeLabel) from disk. "
+            + (childWorkspaces.contains(where: { $0.runningProcessCount + $0.runningSetupCount > 0 })
+                ? "Running terminal and Worktree Setup processes will be terminated. " : "")
             + "This cannot be undone."
     }
 }

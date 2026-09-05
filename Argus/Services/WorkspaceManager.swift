@@ -3,6 +3,7 @@ import Foundation
 import SwiftUI
 
 enum WorkspaceDeletionStage: Int, CaseIterable, Sendable {
+    case stoppingSetup
     case removingWorktree
     case closingWorkspace
 }
@@ -62,6 +63,12 @@ final class WorkspaceManager: ObservableObject {
 
     /// Shared worktree service for git operations.
     let worktreeService: WorktreeService
+    let worktreeSetupRunner: any WorktreeSetupRunning
+    var closingSetupWorkspaceIDs: Set<UUID> = []
+    var closingSetupProjectIDs: Set<UUID> = []
+    /// Canonical roots reserved through worktree deletion and Workspace state removal.
+    @Published var worktreeDeletionRoots: Set<String> = []
+    var isStoppingAllWorktreeSetups = false
 
     /// Provider boundary used only by explicit Pull Request intake.
     let pullRequestService: GitHubPullRequestService
@@ -155,10 +162,12 @@ final class WorkspaceManager: ObservableObject {
         environment: [String: String] = ProcessInfo.processInfo.environment,
         worktreeService: WorktreeService = WorktreeService(),
         pullRequestService: GitHubPullRequestService = GitHubPullRequestService(),
-        workspaceStackReader: any WorkspaceStackReading = WorkspaceStackService()
+        workspaceStackReader: any WorkspaceStackReading = WorkspaceStackService(),
+        worktreeSetupRunner: any WorktreeSetupRunning = WorktreeSetupRunner()
     ) {
         self.settings = settings
         self.worktreeService = worktreeService
+        self.worktreeSetupRunner = worktreeSetupRunner
         self.pullRequestService = pullRequestService
         self.workspaceStackReader = workspaceStackReader
         self.sessionSnapshotURL = Self.resolvedSessionSnapshotURL(
@@ -354,13 +363,16 @@ final class WorkspaceManager: ObservableObject {
     /// discarded by returning `false` so callers can create a fresh session.
     @discardableResult
     func restoreSession(from snapshot: ArgusSessionSnapshot) -> Bool {
-        guard snapshot.isValidForRestore(maxWorkspaces: Self.maxWorkspaces) else { return false }
+        guard totalRunningSetupCount == 0, snapshot.isValidForRestore(maxWorkspaces: Self.maxWorkspaces) else {
+            return false
+        }
 
         let reconciledSnapshot = snapshot.reconciledForRestore()
         let restoredProjects = reconciledSnapshot.projects.map(Project.init(snapshot:))
         let catchAll = restoredProjects.first(where: { $0.isCatchAll }) ?? Project.catchAll()
         let restoredWorkspaces = reconciledSnapshot.workspaces.map(Workspace.init(snapshot:))
 
+        for workspace in workspaces { workspace.worktreeSetupPanel = nil }
         self.catchAllProject = catchAll
         self.projects = restoredProjects
         self.workspaces = restoredWorkspaces
@@ -441,6 +453,11 @@ final class WorkspaceManager: ObservableObject {
     /// When the last workspace is removed a fresh Standalone Workspace with
     /// one Terminal Tab is created automatically.
     func removeWorkspace(_ workspaceId: UUID) {
+        guard let workspace = workspaces.first(where: { $0.id == workspaceId }) else { return }
+        if workspace.runningSetupCount > 0 {
+            requestCloseWorkspace(workspaceId)
+            return
+        }
         removeWorkspaceFromState(workspaceId)
     }
 
@@ -469,7 +486,7 @@ final class WorkspaceManager: ObservableObject {
     /// with the same Project or directory context used in the titlebar.
     func runningProcessLocations() -> [RunningProcessLocation] {
         sidebarOrderedWorkspaces.compactMap { _, workspace in
-            let processCount = workspace.runningProcessCount
+            let processCount = workspace.runningProcessCount + workspace.runningSetupCount
             guard processCount > 0 else { return nil }
             return RunningProcessLocation(
                 workspaceId: workspace.id,
@@ -484,13 +501,14 @@ final class WorkspaceManager: ObservableObject {
 
     func shouldConfirmRunningProcessBeforeClosingWorkspace(_ workspaceId: UUID) -> Bool {
         guard let workspace = workspaces.first(where: { $0.id == workspaceId }) else { return false }
-        return workspace.runningProcessCount > 0
+        return workspace.runningProcessCount + workspace.runningSetupCount > 0
     }
 
     func removeWorkspaceFromState(_ workspaceId: UUID) {
         guard let index = workspaces.firstIndex(where: { $0.id == workspaceId }) else { return }
 
         let workspace = workspaces[index]
+        guard workspace.runningSetupCount == 0 else { return }
         let previousOrder = sidebarOrderedWorkspaces.map(\.workspace.id)
 
         turnCompletionRuntime?.removeAttention(forWorkspace: workspaceId)
@@ -500,6 +518,8 @@ final class WorkspaceManager: ObservableObject {
         for panelId in workspace.panelOrder {
             workspace.closeTab(panelId)
         }
+
+        workspace.worktreeSetupPanel = nil
 
         // Remove from parent project.
         if let project = project(for: workspaceId) {

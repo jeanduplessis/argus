@@ -401,6 +401,43 @@ struct PullRequestWorkspaceTests {
         #expect(project.workspaceIds.count == projectWorkspaceCount + 1)
     }
 
+    @Test @MainActor
+    func newlyCreatedPullRequestRunsSetupButExactReuseDoesNot() async throws {
+        let fixture = try PullRequestGitFixture()
+        defer { fixture.remove() }
+        let suiteName = "ArgusTests.PullRequestSetup.\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let setup = SetupTestRunner()
+        let provider = RecordingGitHubCommandRunner(
+            result: GitHubCommandResult(
+                stdout: Data(fixture.githubMetadataJSON(title: "Setup fixture").utf8), stderr: Data(), exitCode: 0
+            ))
+        let manager = WorkspaceManager(
+            settings: AppSettings(defaults: defaults),
+            sessionSnapshotURL: fixture.root.appendingPathComponent("session.json"),
+            environment: ["ARGUS_UNDER_TEST": "1"],
+            worktreeService: WorktreeService(worktreeBaseURL: fixture.root.appendingPathComponent("managed")),
+            pullRequestService: GitHubPullRequestService(
+                commandRunner: provider, executableURL: URL(fileURLWithPath: "/test/gh")),
+            worktreeSetupRunner: setup
+        )
+        let project = try #require(await manager.createProject(repositoryPath: fixture.repository.path))
+        try manager.setWorktreeSetupCommand("printf pr-fixture", for: project.id)
+        let workspace = try await manager.createWorkspace(fromPullRequest: "42", in: project.id)
+        let panel = try #require(manager.setupPanel(in: workspace))
+        for _ in 0..<300 where panel.isRunning { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(await setup.requests.count == 1)
+        #expect(panel.outcome == .succeeded)
+        let reused = try await manager.createWorkspace(fromPullRequest: "42", in: project.id)
+        #expect(reused === workspace)
+        #expect(await setup.requests.count == 1)
+        manager.removeWorkspace(workspace.id)
+        let reattached = try await manager.createWorkspace(fromPullRequest: "42", in: project.id)
+        #expect(manager.setupPanel(in: reattached) == nil)
+        #expect(await setup.requests.count == 1)
+    }
+
     private func sessionSnapshot(at url: URL) throws -> ArgusSessionSnapshot {
         try JSONDecoder().decode(
             ArgusSessionSnapshot.self,

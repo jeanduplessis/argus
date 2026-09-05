@@ -107,6 +107,29 @@ replace or hide the navigator that opened it.
 Persistence for every panel type MUST follow the application spec. Adding a new
 content type requires an explicit persistence decision and corresponding tests.
 
+## Worktree Setup
+
+The Named Project context menu MUST present Worktree Setup configuration in a
+native Save/Cancel sheet, separate from execution. It MUST explain local code
+execution authority, fork Pull Requests, noninteractive execution, and unsupported
+prompts/background services. Command text MUST remain a draft until Save.
+
+The runtime Worktree Setup Panel MUST keep the initial Terminal Tab and use the
+normal content-tab lifecycle. Its header MUST contain native Stop and Run Setup
+Again controls, with duplicate runs disabled. Command, directory, live bounded
+output, truncation, and result MUST be plain selectable monospaced content using
+shared ChromeColors. The current command for retry MUST be visible. No extra
+close button or independent content window is permitted. Closing a stopped tab
+MUST retain its last bounded log/result for explicit reopening during this app
+session, without rerunning. Quiet output MUST become
+visible while the command is still running; updates MUST NOT take focus or scroll
+away from content the user is inspecting.
+
+Active setup termination MUST be included in tab, Workspace, Project, main-window,
+and quit confirmation without changing Terminal Surface process badge semantics.
+Cancel preserves task and content. Confirmed closure waits for cleanup; failed
+cleanup retains the tab and worktree and reports why closure could not complete.
+
 ## Tabs and split panes
 
 A top-level tab MAY own a split tree of terminal panes. The tab remains the unit

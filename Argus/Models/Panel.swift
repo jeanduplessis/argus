@@ -8,6 +8,7 @@ public enum PanelType: String, Codable, Sendable {
     case file
     case releaseNotes
     case gitPreview
+    case worktreeSetup
 }
 
 /// Protocol for all panel types.

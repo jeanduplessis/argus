@@ -20,6 +20,8 @@ private struct NewWorkspaceSheetRequest: Identifiable {
 extension WorkspaceDeletionStage {
     fileprivate var title: String {
         switch self {
+        case .stoppingSetup:
+            "Stopping Worktree Setup"
         case .removingWorktree:
             "Removing Git worktree"
         case .closingWorkspace:
@@ -29,6 +31,8 @@ extension WorkspaceDeletionStage {
 
     fileprivate var detail: String {
         switch self {
+        case .stoppingSetup:
+            "Waiting for the setup command and its ordinary child processes to stop before deleting files."
         case .removingWorktree:
             "Git is unregistering the worktree and deleting its files. Large worktrees can take longer."
         case .closingWorkspace:
@@ -344,7 +348,7 @@ struct MainWindowView: View {  // swiftlint:disable:this type_body_length
                         requestedByLastTerminalTab: requestedByLastTerminalTab,
                         canDeleteWorktree:
                             workspaceManager.shouldConfirmWorktreeDeletionBeforeClosing(workspaceId),
-                        runningProcessCount: workspace.runningProcessCount
+                        runningProcessCount: workspace.runningProcessCount + workspace.runningSetupCount
                     )
                     runningProcessRequest = nil
                 }
@@ -364,7 +368,14 @@ struct MainWindowView: View {  // swiftlint:disable:this type_body_length
     private func closeWorkspace(_ request: CloseWorkspaceRequest) {
         guard closeWorkspaceRequest == request else { return }
         closeWorkspaceRequest = nil
-        workspaceManager.removeWorkspace(request.id)
+        Task {
+            if !(await workspaceManager.removeWorkspace(request.id, deletingWorktree: false)) {
+                workspaceDeletionErrorMessage =
+                    workspaceManager.lastWorkspaceDeletionError?.localizedDescription
+                    ?? "The Workspace could not be closed."
+                showWorkspaceDeletionError = true
+            }
+        }
     }
 
     private func cancelRunningProcessClose(_ request: RunningProcessCloseRequest) {

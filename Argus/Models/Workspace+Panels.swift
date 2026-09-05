@@ -108,6 +108,24 @@ extension Workspace {
         }
     }
 
+    @discardableResult
+    func openWorktreeSetupPanel() -> WorktreeSetupPanel {
+        let panel = worktreeSetupPanel ?? WorktreeSetupPanel()
+        worktreeSetupPanel = panel
+        if panels[panel.id] != nil {
+            selectPanel(panel.id)
+            return panel
+        }
+        panels[panel.id] = panel
+        panelCancellables[panel.id] = panel.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
+        insertAfterActiveTab(panel.id)
+        tabLayouts[panel.id] = .leaf(panel.id)
+        selectPanel(panel.id)
+        return panel
+    }
+
     private func insertAfterActiveTab(_ panelId: UUID) {
         if let tabId = activeTabId,
             let activeIndex = panelOrder.firstIndex(of: tabId)
@@ -157,6 +175,7 @@ extension Workspace {
     func closeTab(_ tabId: UUID) {
         guard let removedIndex = panelOrder.firstIndex(of: tabId) else { return }
         let leafIds = layout(for: tabId).leaves
+        guard !leafIds.contains(where: { (panels[$0] as? WorktreeSetupPanel)?.isRunning == true }) else { return }
         let removedPanels = leafIds.compactMap { panels.removeValue(forKey: $0) }
         for leafId in leafIds {
             terminalCustomTitles.removeValue(forKey: leafId)

@@ -62,6 +62,7 @@ struct ProjectSnapshot: Codable, Sendable {
     let isExpanded: Bool
     let color: ProjectColor?
     var collapsedStackIds: Set<String>?
+    var worktreeSetupCommand: String?
 }
 
 /// A project groups workspaces under a single git repository.
@@ -93,6 +94,7 @@ final class Project: Identifiable, ObservableObject {
     @Published var isExpanded: Bool
     @Published var color: ProjectColor?
     @Published var collapsedStackIds: Set<String> = []
+    @Published var worktreeSetupCommand: String?
 
     // MARK: - Initializers
 
@@ -126,6 +128,8 @@ final class Project: Identifiable, ObservableObject {
         self.isExpanded = snapshot.isExpanded
         self.color = snapshot.color
         self.collapsedStackIds = snapshot.collapsedStackIds ?? []
+        self.worktreeSetupCommand =
+            snapshot.isCatchAll ? nil : (try? WorktreeSetupCommand.validated(snapshot.worktreeSetupCommand ?? ""))
     }
 
     /// Creates the non-removable catch-all project for unassigned workspaces.
@@ -156,7 +160,8 @@ final class Project: Identifiable, ObservableObject {
             workspaceIds: workspaceIds,
             isExpanded: isExpanded,
             color: color,
-            collapsedStackIds: collapsedStackIds
+            collapsedStackIds: collapsedStackIds,
+            worktreeSetupCommand: isCatchAll ? nil : worktreeSetupCommand
         )
     }
 

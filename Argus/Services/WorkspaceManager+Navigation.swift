@@ -183,11 +183,21 @@ extension WorkspaceManager {
         lastWorkspaceDeletionError = nil
         guard let workspace = workspaces.first(where: { $0.id == workspaceId }) else { return false }
 
-        if deletingWorktree,
-            let worktreePath = workspace.worktreePath,
-            let project = project(for: workspaceId),
-            !project.isCatchAll
-        {
+        guard !closingSetupWorkspaceIDs.contains(workspaceId) else { return false }
+        let deletionProject = deletingWorktree ? project(for: workspaceId) : nil
+        let worktreePath = deletionProject?.isCatchAll == false ? workspace.worktreePath.map(canonicalPath) : nil
+        guard
+            let deletionRoots = acquireWorktreeDeletionRoots(
+                worktreePath.map { [$0] } ?? [], closingWorkspaceIDs: [workspaceId]
+            )
+        else { return false }
+        defer { worktreeDeletionRoots.subtract(deletionRoots) }
+        closingSetupWorkspaceIDs.insert(workspaceId)
+        defer { closingSetupWorkspaceIDs.remove(workspaceId) }
+        if workspace.runningSetupCount > 0 { onProgress?(.stoppingSetup) }
+        guard await stopWorktreeSetup(in: workspace) else { return false }
+
+        if let worktreePath, let project = deletionProject {
             do {
                 onProgress?(.removingWorktree)
                 try await worktreeService.removeWorktree(
@@ -238,15 +248,22 @@ extension WorkspaceManager {
             return
         }
 
-        let runningProcessCount = workspace.runningProcessCount(inTab: tabId)
+        let setup = workspace.panels[tabId] as? WorktreeSetupPanel
+        let runningProcessCount = workspace.runningProcessCount(inTab: tabId) + (setup?.isRunning == true ? 1 : 0)
         if !confirmingRunningProcess && runningProcessCount > 0 {
             NotificationCenter.default.post(
                 name: .showRunningProcessConfirmation,
                 object: RunningProcessCloseRequest(
                     scope: .tab(workspaceId: workspaceId, tabId: tabId),
-                    processCount: runningProcessCount
+                    processCount: runningProcessCount,
+                    includesWorktreeSetup: setup?.isRunning == true
                 )
             )
+            return
+        }
+
+        if let setup, setup.isRunning {
+            stopWorktreeSetupAndCloseTab(tabId, in: workspace)
             return
         }
 

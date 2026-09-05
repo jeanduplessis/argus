@@ -255,3 +255,49 @@ Argus writes user state outside the repository:
 - App-owned socket: `~/.argus/argus.sock`
 
 Set `ARGUS_DISABLE_SESSION_RESTORE=1` to launch without restoring the previous Session Snapshot.
+
+## Worktree Setup
+
+Use a Named Project's **Worktree Setup…** context action to save an optional local
+command. Blank disables it. Argus runs the exact command through non-login,
+noninteractive `/bin/sh -c` in every newly created worktree, including Stack and
+fork Pull Request worktrees. Save grants execution with your user permissions:
+only enable commands and repositories you trust. Argus does not discover setup
+configuration or copy ignored files. Existing/reused, adopted, Main-checkout, and
+restored Workspaces do not run setup automatically.
+
+The initial Terminal Tab remains. The runtime **Worktree Setup** tab shows the
+command, directory, live output (last 1 MiB), and result. **Stop** terminates the
+owned ordinary process group. **Run Setup Again** uses the current Project command
+after validating ownership. The Workspace context menu can reopen the log or run
+setup explicitly. Closing a stopped tab retains its last bounded log/result until
+the Workspace closes or Argus exits; reopening does not rerun it. Explicit retry
+replaces prior output. Failures keep the Workspace. Logs are not saved or sent to
+system logs; the Project command is stored locally in the Session Snapshot.
+
+The inherited environment includes installed `/opt/homebrew/bin` and
+`/usr/local/bin` paths but excludes Argus socket/Workspace/Surface identity.
+Stdin is EOF; there is no terminal prompt support, login-shell startup, or service
+supervisor. Commands time out after one hour. Do not start detached background
+services: process-group cleanup is not containment of deliberately daemonized
+code. Closing active setup requires confirmation and waits for cleanup before
+worktree deletion. Failed cleanup retains the owned group and blocks closure;
+Stop can retry verification without signaling a recycled process-group ID.
+
+Multiple Workspaces can reference one worktree. Deletion is refused if setup is
+pending, running, or awaiting cleanup in another Workspace outside the close
+scope. Stop setup in the Workspace named by the error, then retry deletion.
+This denial does not stop either Workspace's task or remove files. Close without
+deletion still stops only its target. Project removal checks all captured child
+worktree roots before stopping any child setup. While deletion or its setup
+cleanup is in progress, those canonical roots cannot start setup from any
+Workspace, including a newly attached duplicate. Reservations release on failure
+and after deletion/state removal. Adoption is refused while its Project is closing
+or application-wide setup cleanup is in progress.
+
+Focused tests are `WorktreeSetupRunnerTests`, `WorktreeSetupManagerTests`, and
+`WorktreeSetupLifecycleTests`; Pull Request integration has a setup-specific
+fixture in `PullRequestWorkspaceTests`. Runner tests execute only synthetic local
+commands in disposable directories. Manager tests inject a runner and use local
+Git fixtures, never repository-provided setup commands or live provider access.
+See ADR 0012 for runtime and ownership trade-offs.

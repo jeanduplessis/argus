@@ -9,6 +9,24 @@ extension WorktreeService {
         createNewBranch: Bool = true,
         parentBranch: String? = nil
     ) async throws -> String {
+        try await prepareWorktree(
+            projectId: projectId, repositoryPath: repositoryPath, branchName: branchName,
+            createNewBranch: createNewBranch, parentBranch: parentBranch
+        ).path
+    }
+
+    struct PreparedWorktree: Sendable {
+        let path: String
+        let reusedExistingWorktree: Bool
+    }
+
+    func prepareWorktree(
+        projectId: UUID,
+        repositoryPath: String,
+        branchName: String,
+        createNewBranch: Bool = true,
+        parentBranch: String? = nil
+    ) async throws -> PreparedWorktree {
         // Stack creation requires a new branch; reject existing-branch mode at the service boundary.
         if parentBranch != nil, !createNewBranch {
             throw WorktreeError.worktreeCreationFailed("Stack creation requires a new branch")
@@ -22,7 +40,7 @@ extension WorktreeService {
                 remoteNames: remoteNames
             )
         {
-            return existingPath
+            return PreparedWorktree(path: existingPath, reusedExistingWorktree: true)
         }
         let resolvedBranchName =
             createNewBranch
@@ -61,7 +79,7 @@ extension WorktreeService {
             try await recordStackParent(
                 parent, branchName: resolvedBranchName, worktreePath: worktreeURL.path, repositoryPath: repositoryPath)
         }
-        return worktreeURL.path
+        return PreparedWorktree(path: worktreeURL.path, reusedExistingWorktree: false)
     }
 
     private func recordStackParent(

@@ -369,7 +369,8 @@ private struct SessionSnapshotReconciler {
             ),
             isExpanded: project.isExpanded,
             color: project.color,
-            collapsedStackIds: project.collapsedStackIds
+            collapsedStackIds: project.collapsedStackIds,
+            worktreeSetupCommand: try? WorktreeSetupCommand.validated(project.worktreeSetupCommand ?? "")
         )
     }
 

@@ -29,6 +29,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {  // swiftlint:disable:this 
     private let mainWindowCloseGuard = MainWindowCloseGuard()
     private var allowTermination = false
     private var isWaitingForQuitReply = false
+    private var isStoppingForQuit = false
 
     func configureTurnCompletion(
         workspaceManager: WorkspaceManager,
@@ -153,7 +154,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {  // swiftlint:disable:this 
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        if isRunningUnderTest || allowTermination || !hasRunningProcessRequiringConfirmation {
+        if (isRunningUnderTest && (workspaceManager?.totalRunningSetupCount ?? 0) == 0)
+            || allowTermination || !hasRunningProcessRequiringConfirmation
+        {
             return .terminateNow
         }
         isWaitingForQuitReply = true
@@ -214,7 +217,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {  // swiftlint:disable:this 
     }
 
     private var hasRunningProcessRequiringConfirmation: Bool {
-        (workspaceManager?.totalRunningProcessCount ?? 0) > 0
+        (workspaceManager?.totalRunningProcessCount ?? 0) + (workspaceManager?.totalRunningSetupCount ?? 0) > 0
     }
 
     private var isRunningUnderTest: Bool {
@@ -239,7 +242,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {  // swiftlint:disable:this 
     }
 
     private func allowMainWindowClose() -> Bool {
-        if isRunningUnderTest || allowTermination || !hasRunningProcessRequiringConfirmation {
+        if (isRunningUnderTest && (workspaceManager?.totalRunningSetupCount ?? 0) == 0)
+            || allowTermination || !hasRunningProcessRequiringConfirmation
+        {
             return true
         }
         requestApplicationQuitConfirmation()
@@ -247,13 +252,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {  // swiftlint:disable:this 
     }
 
     private func requestApplicationQuitConfirmation() {
-        let processCount = workspaceManager?.totalRunningProcessCount ?? 0
+        guard !isStoppingForQuit else { return }
+        let processCount =
+            (workspaceManager?.totalRunningProcessCount ?? 0) + (workspaceManager?.totalRunningSetupCount ?? 0)
         NotificationCenter.default.post(
             name: .showRunningProcessConfirmation,
             object: RunningProcessCloseRequest(
                 scope: .application,
                 processCount: max(processCount, 1),
-                locations: workspaceManager?.runningProcessLocations() ?? []
+                locations: workspaceManager?.runningProcessLocations() ?? [],
+                includesWorktreeSetup: (workspaceManager?.totalRunningSetupCount ?? 0) > 0
             )
         )
     }
@@ -266,7 +274,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {  // swiftlint:disable:this 
                 queue: .main
             ) { [weak self] _ in
                 Task { @MainActor [weak self] in
-                    self?.confirmApplicationQuit()
+                    await self?.confirmApplicationQuit()
                 }
             },
             NotificationCenter.default.addObserver(
@@ -281,7 +289,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {  // swiftlint:disable:this 
         ]
     }
 
-    private func confirmApplicationQuit() {
+    private func confirmApplicationQuit() async {
+        guard !isStoppingForQuit else { return }
+        isStoppingForQuit = true
+        defer { isStoppingForQuit = false }
+        // NSApplication remains in terminateLater until every owned setup group has stopped.
+        guard await workspaceManager?.stopAllWorktreeSetups() != false else {
+            cancelApplicationQuit()
+            let alert = NSAlert()
+            alert.messageText = "Could not stop Worktree Setup"
+            alert.informativeText = "Argus will remain open because setup process cleanup could not be verified."
+            alert.runModal()
+            return
+        }
         allowTermination = true
         if isWaitingForQuitReply {
             isWaitingForQuitReply = false

@@ -17,15 +17,18 @@ struct RunningProcessCloseRequest: Equatable {
     let scope: RunningProcessCloseScope
     let processCount: Int
     let locations: [RunningProcessLocation]
+    let includesWorktreeSetup: Bool
 
     init(
         scope: RunningProcessCloseScope,
         processCount: Int,
-        locations: [RunningProcessLocation] = []
+        locations: [RunningProcessLocation] = [],
+        includesWorktreeSetup: Bool = false
     ) {
         self.scope = scope
         self.processCount = processCount
         self.locations = locations
+        self.includesWorktreeSetup = includesWorktreeSetup
     }
 }
 
@@ -106,6 +109,7 @@ struct RunningProcessConfirmationView: View {
     }
 
     private var title: String {
+        if request.includesWorktreeSetup, case .tab = request.scope { return "Close Worktree Setup?" }
         switch request.scope {
         case .application:
             return "Quit Argus?"
@@ -117,6 +121,7 @@ struct RunningProcessConfirmationView: View {
     }
 
     private var confirmTitle: String {
+        if request.includesWorktreeSetup, case .tab = request.scope { return "Stop and Close" }
         switch request.scope {
         case .application:
             return "Quit"
@@ -128,6 +133,14 @@ struct RunningProcessConfirmationView: View {
     }
 
     private var message: String {
+        if request.includesWorktreeSetup {
+            if case .application = request.scope {
+                let names = ListFormatter.localizedString(byJoining: request.locations.map(\.label))
+                return "Worktree Setup or terminal processes are running in \(names). "
+                    + "Quitting will terminate them and their ordinary child processes."
+            }
+            return "Closing this tab will stop Worktree Setup and its ordinary child processes."
+        }
         switch request.scope {
         case .application:
             return RunningProcessConfirmationCopy.applicationMessage(

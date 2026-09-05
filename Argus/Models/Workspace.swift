@@ -155,6 +155,9 @@ final class Workspace: Identifiable, ObservableObject {
     /// because a workspace can contain mixed terminal and browser panels.
     @Published var panels: [UUID: any Panel] = [:]
 
+    /// Runtime-only last setup log. Closing its tab can hide only a fully stopped run.
+    @Published var worktreeSetupPanel: WorktreeSetupPanel?
+
     /// The `id` of the currently active (focused) panel, or `nil` if the
     /// workspace has no panels.
     @Published var activePanelId: UUID?

@@ -272,6 +272,10 @@ struct PanelContentView: View {
                     .id(terminalPanel.surface.id)
                 }
             }
+        case .worktreeSetup:
+            if let setupPanel = panel as? WorktreeSetupPanel {
+                WorktreeSetupPanelView(panel: setupPanel).id(setupPanel.id)
+            }
         case .browser:
             if let browserPanel = panel as? BrowserPanel {
                 BrowserView(panel: browserPanel, isActive: isActive)
