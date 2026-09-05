@@ -4,8 +4,12 @@
 
 Choose **New Collection…** from the Projects plus menu or File menu. Use a
 Project's context menu to move it into a Collection or back to **No Collection**.
-The same menus provide move-up/down actions; Collection menus also offer rename
-and removal. Removing a Collection keeps its Projects and all open work intact.
+The same menus provide move-up/down actions. Choose **New Project…** from a
+Collection's context menu to create a Named Project directly in that Collection;
+its Main-checkout Workspace is selected and the Collection is revealed.
+Top-level and File-menu **New Project…** actions create ungrouped Named Projects.
+Collection menus also offer rename and removal. Removing a Collection keeps its
+Projects and all open work intact.
 
 Drag Project headers to reorder or move whole Project blocks. Drop on a
 Collection header to append, or on the top Projects header to return a Project

@@ -6,6 +6,11 @@
 import AppKit
 import SwiftUI
 
+private struct NewProjectSheetRequest: Identifiable {
+    let id = UUID()
+    let collectionId: UUID?
+}
+
 private struct NewWorkspaceSheetRequest: Identifiable {
     let id = UUID()
     let projectId: UUID
@@ -102,7 +107,7 @@ struct MainWindowView: View {  // swiftlint:disable:this type_body_length
 
     // MARK: - Sheet State
 
-    @State private var showNewProjectSheet = false
+    @State private var newProjectSheetRequest: NewProjectSheetRequest?
     @State private var collectionSheetRequest: CollectionSheetRequest?
     @State private var newWorkspaceSheetRequest: NewWorkspaceSheetRequest?
     @State private var changeWorkspaceRootSheetRequest: ChangeWorkspaceRootSheetRequest?
@@ -121,7 +126,7 @@ struct MainWindowView: View {  // swiftlint:disable:this type_body_length
     @State private var workspaceDeletionErrorMessage = ""
     @State private var windowWidth: CGFloat = 600
 
-    var body: some View {
+    private var windowContent: some View {
         GeometryReader { geometry in
             let leftMaxWidth = SidebarLayout.liveLeftMaxWidth(
                 windowWidth: geometry.size.width,
@@ -235,121 +240,125 @@ struct MainWindowView: View {  // swiftlint:disable:this type_body_length
             gitSidebarState.toggle()
             clampSidebarWidths(windowWidth: windowWidth)
         }
-        // Sheet: New Project
-        .sheet(isPresented: $showNewProjectSheet) {
-            NewProjectSheet()
-                .environmentObject(workspaceManager)
-        }
-        .sheet(item: $collectionSheetRequest) { request in
-            CollectionNameSheet(request: request)
-                .environmentObject(workspaceManager)
-        }
-        // Sheet: New Workspace
-        .sheet(item: $newWorkspaceSheetRequest) { request in
-            NewWorkspaceSheet(projectId: request.projectId, stackParentBranch: request.stackParentBranch)
-                .environmentObject(workspaceManager)
-        }
-        .changeWorkspaceRootSheet(
-            request: $changeWorkspaceRootSheetRequest,
-            workspaceManager: workspaceManager
-        )
-        // Sheet: Orphaned Worktrees
-        .sheet(isPresented: $showOrphanedWorktreesSheet) {
-            OrphanedWorktreesSheet(orphans: orphanedWorktrees)
-                .environmentObject(workspaceManager)
-        }
-        // Alert: Rename Project
-        .alert("Rename Project", isPresented: $showRenameProjectAlert) {
-            TextField("Project name", text: $renameProjectText)
-            Button("Cancel", role: .cancel) {}
-            Button("Rename") {
-                if let id = renameProjectId {
-                    workspaceManager.renameProject(id, name: renameProjectText)
+    }
+
+    var body: some View {
+        windowContent
+            // Sheet: New Project
+            .sheet(item: $newProjectSheetRequest) { request in
+                NewProjectSheet(collectionId: request.collectionId)
+                    .environmentObject(workspaceManager)
+            }
+            .sheet(item: $collectionSheetRequest) { request in
+                CollectionNameSheet(request: request)
+                    .environmentObject(workspaceManager)
+            }
+            // Sheet: New Workspace
+            .sheet(item: $newWorkspaceSheetRequest) { request in
+                NewWorkspaceSheet(projectId: request.projectId, stackParentBranch: request.stackParentBranch)
+                    .environmentObject(workspaceManager)
+            }
+            .changeWorkspaceRootSheet(
+                request: $changeWorkspaceRootSheetRequest,
+                workspaceManager: workspaceManager
+            )
+            // Sheet: Orphaned Worktrees
+            .sheet(isPresented: $showOrphanedWorktreesSheet) {
+                OrphanedWorktreesSheet(orphans: orphanedWorktrees)
+                    .environmentObject(workspaceManager)
+            }
+            // Alert: Rename Project
+            .alert("Rename Project", isPresented: $showRenameProjectAlert) {
+                TextField("Project name", text: $renameProjectText)
+                Button("Cancel", role: .cancel) {}
+                Button("Rename") {
+                    if let id = renameProjectId {
+                        workspaceManager.renameProject(id, name: renameProjectText)
+                    }
                 }
             }
-        }
-        // Alert: Rename Workspace
-        .alert("Rename Workspace", isPresented: $showRenameWorkspaceAlert) {
-            TextField("Workspace name", text: $renameWorkspaceText)
-            Button("Cancel", role: .cancel) {}
-            Button("Rename") {
-                if let id = renameWorkspaceId {
-                    workspaceManager.renameWorkspace(id, title: renameWorkspaceText)
+            // Alert: Rename Workspace
+            .alert("Rename Workspace", isPresented: $showRenameWorkspaceAlert) {
+                TextField("Workspace name", text: $renameWorkspaceText)
+                Button("Cancel", role: .cancel) {}
+                Button("Rename") {
+                    if let id = renameWorkspaceId {
+                        workspaceManager.renameWorkspace(id, title: renameWorkspaceText)
+                    }
                 }
             }
-        }
-        .alert("Could Not Delete Worktree", isPresented: $showWorkspaceDeletionError) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(workspaceDeletionErrorMessage)
-        }
-        // Notification receivers for sheet/alert triggers
-        .onReceive(NotificationCenter.default.publisher(for: .showCollectionSheet)) { notification in
-            if let collectionId = notification.object as? UUID {
-                guard let collection = workspaceManager.collections.first(where: { $0.id == collectionId }) else {
-                    return
+            .alert("Could Not Delete Worktree", isPresented: $showWorkspaceDeletionError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(workspaceDeletionErrorMessage)
+            }
+            // Notification receivers for sheet/alert triggers
+            .onReceive(NotificationCenter.default.publisher(for: .showCollectionSheet)) { notification in
+                if let collectionId = notification.object as? UUID {
+                    guard let collection = workspaceManager.collections.first(where: { $0.id == collectionId }) else {
+                        return
+                    }
+                    collectionSheetRequest = CollectionSheetRequest(collectionId: collectionId, name: collection.name)
+                } else {
+                    collectionSheetRequest = CollectionSheetRequest()
                 }
-                collectionSheetRequest = CollectionSheetRequest(collectionId: collectionId, name: collection.name)
-            } else {
-                collectionSheetRequest = CollectionSheetRequest()
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .showNewProjectSheet)) { _ in
-            showNewProjectSheet = true
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .showNewWorkspaceSheet)) { notification in
-            if let projectId = notification.userInfo?["projectId"] as? UUID {
-                let parentBranch = notification.userInfo?["parentBranch"] as? String
-                newWorkspaceSheetRequest = NewWorkspaceSheetRequest(
-                    projectId: projectId, stackParentBranch: parentBranch)
+            .onReceive(NotificationCenter.default.publisher(for: .showNewProjectSheet)) { notification in
+                newProjectSheetRequest = NewProjectSheetRequest(collectionId: notification.object as? UUID)
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .showRenameProjectSheet)) { notification in
-            if let projectId = notification.userInfo?["projectId"] as? UUID,
-                let project = workspaceManager.projects.first(where: { $0.id == projectId })
-            {
-                renameProjectId = projectId
-                renameProjectText = project.displayName
-                showRenameProjectAlert = true
+            .onReceive(NotificationCenter.default.publisher(for: .showNewWorkspaceSheet)) { notification in
+                if let projectId = notification.userInfo?["projectId"] as? UUID {
+                    let parentBranch = notification.userInfo?["parentBranch"] as? String
+                    newWorkspaceSheetRequest = NewWorkspaceSheetRequest(
+                        projectId: projectId, stackParentBranch: parentBranch)
+                }
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .showRenameWorkspaceSheet)) { notification in
-            if let workspaceId = notification.userInfo?["workspaceId"] as? UUID,
-                let workspace = workspaceManager.workspaces.first(where: { $0.id == workspaceId })
-            {
-                renameWorkspaceId = workspaceId
-                renameWorkspaceText = workspace.displayTitle
-                showRenameWorkspaceAlert = true
+            .onReceive(NotificationCenter.default.publisher(for: .showRenameProjectSheet)) { notification in
+                if let projectId = notification.userInfo?["projectId"] as? UUID,
+                    let project = workspaceManager.projects.first(where: { $0.id == projectId })
+                {
+                    renameProjectId = projectId
+                    renameProjectText = project.displayName
+                    showRenameProjectAlert = true
+                }
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .showCloseWorkspaceConfirmation)) { notification in
-            if let workspaceId = notification.userInfo?["workspaceId"] as? UUID,
-                let workspace = workspaceManager.workspaces.first(where: { $0.id == workspaceId })
-            {
-                let requestedByLastTerminalTab =
-                    notification.userInfo?["requestedByLastTerminalTab"] as? Bool ?? false
-                closeWorkspaceRequest = CloseWorkspaceRequest(
-                    id: workspaceId,
-                    title: workspace.displayTitle,
-                    worktreePath: workspace.worktreePath ?? "",
-                    requestedByLastTerminalTab: requestedByLastTerminalTab,
-                    canDeleteWorktree:
-                        workspaceManager.shouldConfirmWorktreeDeletionBeforeClosing(workspaceId),
-                    runningProcessCount: workspace.runningProcessCount
-                )
-                runningProcessRequest = nil
+            .onReceive(NotificationCenter.default.publisher(for: .showRenameWorkspaceSheet)) { notification in
+                if let workspaceId = notification.userInfo?["workspaceId"] as? UUID,
+                    let workspace = workspaceManager.workspaces.first(where: { $0.id == workspaceId })
+                {
+                    renameWorkspaceId = workspaceId
+                    renameWorkspaceText = workspace.displayTitle
+                    showRenameWorkspaceAlert = true
+                }
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .showRunningProcessConfirmation)) { notification in
-            guard let request = notification.object as? RunningProcessCloseRequest else { return }
-            runningProcessRequest = request
-            if case .application = request.scope {
-                closeWorkspaceRequest = nil
+            .onReceive(NotificationCenter.default.publisher(for: .showCloseWorkspaceConfirmation)) { notification in
+                if let workspaceId = notification.userInfo?["workspaceId"] as? UUID,
+                    let workspace = workspaceManager.workspaces.first(where: { $0.id == workspaceId })
+                {
+                    let requestedByLastTerminalTab =
+                        notification.userInfo?["requestedByLastTerminalTab"] as? Bool ?? false
+                    closeWorkspaceRequest = CloseWorkspaceRequest(
+                        id: workspaceId,
+                        title: workspace.displayTitle,
+                        worktreePath: workspace.worktreePath ?? "",
+                        requestedByLastTerminalTab: requestedByLastTerminalTab,
+                        canDeleteWorktree:
+                            workspaceManager.shouldConfirmWorktreeDeletionBeforeClosing(workspaceId),
+                        runningProcessCount: workspace.runningProcessCount
+                    )
+                    runningProcessRequest = nil
+                }
             }
-        }
-        .task {
-            await detectOrphanedWorktrees()
-        }
+            .onReceive(NotificationCenter.default.publisher(for: .showRunningProcessConfirmation)) { notification in
+                guard let request = notification.object as? RunningProcessCloseRequest else { return }
+                runningProcessRequest = request
+                if case .application = request.scope {
+                    closeWorkspaceRequest = nil
+                }
+            }
+            .task {
+                await detectOrphanedWorktrees()
+            }
     }
 
     private func closeWorkspace(_ request: CloseWorkspaceRequest) {

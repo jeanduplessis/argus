@@ -4,9 +4,11 @@ extension WorkspaceManager {
     func createProject(
         repositoryPath: String,
         displayName: String? = nil,
-        mainBranchOverride: String? = nil
+        mainBranchOverride: String? = nil,
+        collectionId: UUID? = nil
     ) async -> Project? {
-        guard workspaces.count < Self.maxWorkspaces,
+        guard collectionId == nil || collections.contains(where: { $0.id == collectionId }),
+            workspaces.count < Self.maxWorkspaces,
             namedProjects.count < Self.maxWorkspaces,
             let repositoryRoot = try? await worktreeService.canonicalRepositoryRoot(for: repositoryPath),
             !hasDuplicateProject(repositoryRoot: repositoryRoot)
@@ -23,7 +25,9 @@ extension WorkspaceManager {
         let checkoutBranch =
             (try? await worktreeService.currentBranchName(repositoryPath: repositoryRoot))
             ?? mainBranch
-        guard workspaces.count < Self.maxWorkspaces,
+        let collectionIndex = collectionId.flatMap { id in collections.firstIndex { $0.id == id } }
+        guard collectionId == nil || collectionIndex != nil,
+            workspaces.count < Self.maxWorkspaces,
             namedProjects.count < Self.maxWorkspaces,
             !hasDuplicateProject(repositoryRoot: repositoryRoot)
         else { return nil }
@@ -42,6 +46,9 @@ extension WorkspaceManager {
         )
         workspaces.append(workspace)
         project.addWorkspace(workspace.id)
+        if let collectionIndex {
+            collections[collectionIndex].projectIds.append(project.id)
+        }
         selectWorkspace(workspace.id)
         saveSession()
         return project

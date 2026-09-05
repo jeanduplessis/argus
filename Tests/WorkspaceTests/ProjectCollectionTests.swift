@@ -200,6 +200,169 @@ struct ProjectCollectionTests {
         #expect(manager.isObservingWorkspaceStacks)
     }
 
+}
+
+extension ProjectCollectionTests {
+    @Test
+    func projectCreationAppendsToCollapsedCollectionAndPersistsSelectionAndReveal() async throws {
+        let fixture = try WorkspaceStackTestFixture()
+        defer { fixture.cleanup() }
+        let manager = fixture.manager
+        let projects = addProjects(to: fixture)
+        let repository = try makeRepository(in: fixture)
+        let other = try #require(manager.createCollection(name: "Client"))
+        let destination = try #require(manager.createCollection(name: "Client"))
+        manager.moveProject(projects[1].id, toCollection: other.id)
+        manager.moveProject(projects[2].id, toCollection: destination.id)
+        manager.moveProject(projects[0].id, toCollection: destination.id)
+        manager.toggleCollection(destination.id)
+        let previousWorkspaceCount = manager.workspaces.count
+        let revision = manager.workspaceRevealRevision
+
+        let project = try #require(
+            await manager.createProject(
+                repositoryPath: repository.path, displayName: "New Client", collectionId: destination.id))
+        let workspace = try #require(manager.selectedWorkspace)
+        let memberIds = [projects[2].id, projects[0].id, project.id]
+        #expect(manager.projects(in: destination.id).map(\.id) == memberIds)
+        #expect(manager.projects(in: other.id).map(\.id) == [projects[1].id])
+        #expect(!manager.ungroupedProjects.contains { $0.id == project.id })
+        #expect(manager.collections.last?.isExpanded == true)
+        #expect(project.isExpanded)
+        #expect(project.displayName == "New Client")
+        #expect(project.mainBranch == "main")
+        #expect(manager.workspaces.count == previousWorkspaceCount + 1)
+        #expect(workspace.workspaceType == .mainCheckout)
+        #expect(workspace.projectId == project.id)
+        #expect(workspace.currentDirectory == repository.resolvingSymlinksInPath().path)
+        #expect(project.workspaceIds == [workspace.id])
+        #expect(workspace.panels.count == 1)
+        #expect(workspace.panelOrder.count == 1)
+        #expect(manager.workspaceRevealRevision == revision + 1)
+        let saved = try JSONDecoder().decode(
+            ArgusSessionSnapshot.self, from: Data(contentsOf: manager.sessionSnapshotURL))
+        #expect(saved.collections?.last?.projectIds == memberIds)
+        #expect(saved.collections?.last?.isExpanded == true)
+        #expect(saved.selectedWorkspaceId == workspace.id)
+        #expect(manager.restoreSession(from: saved))
+        #expect(manager.collections.last?.projectIds == memberIds)
+        #expect(manager.collections.last?.isExpanded == true)
+        #expect(manager.selectedWorkspaceId == workspace.id)
+    }
+
+    @Test(arguments: [false, true])
+    func projectCreationWithNilDestinationRemainsUngrouped(hasCollection: Bool) async throws {
+        let fixture = try WorkspaceStackTestFixture()
+        defer { fixture.cleanup() }
+        let manager = fixture.manager
+        let repository = try makeRepository(in: fixture)
+        if hasCollection {
+            let collection = try #require(manager.createCollection(name: "Work"))
+            manager.moveProject(fixture.project.id, toCollection: collection.id)
+            manager.toggleCollection(collection.id)
+        }
+        let collections = manager.collections
+        let project = try #require(await manager.createProject(repositoryPath: repository.path, collectionId: nil))
+        #expect(manager.ungroupedProjects.last?.id == project.id)
+        #expect(manager.collection(containing: project.id) == nil)
+        #expect(manager.selectedWorkspace?.projectId == project.id)
+        #expect(manager.collections == collections)
+        let saved = try JSONDecoder().decode(
+            ArgusSessionSnapshot.self, from: Data(contentsOf: manager.sessionSnapshotURL))
+        #expect(saved.collections ?? [] == collections)
+    }
+
+    @Test(arguments: [false, true])
+    func projectCreationRejectsUnknownOrRemovedDestination(wasRemoved: Bool) async throws {
+        let fixture = try WorkspaceStackTestFixture()
+        defer { fixture.cleanup() }
+        let manager = fixture.manager
+        let repository = try makeRepository(in: fixture)
+        let collection = try #require(manager.createCollection(name: "Work"))
+        let destinationId = wasRemoved ? collection.id : UUID()
+        if wasRemoved {
+            manager.removeCollection(collection.id)
+            #expect(manager.createCollection(name: "Work") != nil)
+        }
+        let projectIds = manager.projects.map(\.id)
+        let workspaceIds = manager.workspaces.map(\.id)
+        let selection = manager.selectedWorkspaceId
+        let collections = manager.collections
+        let saved = try Data(contentsOf: manager.sessionSnapshotURL)
+
+        #expect(await manager.createProject(repositoryPath: repository.path, collectionId: destinationId) == nil)
+        #expect(manager.projects.map(\.id) == projectIds)
+        #expect(manager.workspaces.map(\.id) == workspaceIds)
+        #expect(manager.selectedWorkspaceId == selection)
+        #expect(manager.collections == collections)
+        #expect(try Data(contentsOf: manager.sessionSnapshotURL) == saved)
+    }
+
+    @Test
+    func destinationRemovedDuringGitReadsDoesNotCreateAnUngroupedProject() async throws {
+        let fixture = try WorkspaceStackTestFixture()
+        defer { fixture.cleanup() }
+        let manager = fixture.manager
+        let repository = try makeRepository(in: fixture)
+        let collection = try #require(manager.createCollection(name: "Work"))
+        let projectIds = manager.projects.map(\.id)
+        let workspaceIds = manager.workspaces.map(\.id)
+        let selection = manager.selectedWorkspaceId
+        // This MainActor task cannot run until creation suspends for its Git reads.
+        let removal = Task { @MainActor in
+            manager.removeCollection(collection.id)
+            manager.createCollection(name: "Work")
+        }
+        let project = await manager.createProject(repositoryPath: repository.path, collectionId: collection.id)
+        await removal.value
+        #expect(project == nil)
+        #expect(manager.projects.map(\.id) == projectIds)
+        #expect(manager.workspaces.map(\.id) == workspaceIds)
+        #expect(manager.selectedWorkspaceId == selection)
+        #expect(manager.collections.first?.id != collection.id)
+        #expect(manager.collections.first?.projectIds.isEmpty == true)
+        let saved = try JSONDecoder().decode(
+            ArgusSessionSnapshot.self, from: Data(contentsOf: manager.sessionSnapshotURL))
+        #expect(saved.projects.map(\.id) == projectIds)
+        #expect(saved.workspaces.map(\.id) == workspaceIds)
+    }
+
+    @Test
+    func collectionDestinationPreservesDuplicateAndNonRepositoryRejection() async throws {
+        let fixture = try WorkspaceStackTestFixture()
+        defer { fixture.cleanup() }
+        let manager = fixture.manager
+        let repository = try makeRepository(in: fixture)
+        let project = try #require(await manager.createProject(repositoryPath: repository.path))
+        let collection = try #require(manager.createCollection(name: "Work"))
+        let childDirectory = repository.appendingPathComponent("child")
+        try FileManager.default.createDirectory(at: childDirectory, withIntermediateDirectories: true)
+        let projectIds = manager.projects.map(\.id)
+        let workspaceIds = manager.workspaces.map(\.id)
+        let saved = try Data(contentsOf: manager.sessionSnapshotURL)
+        for path in [childDirectory.path, fixture.root.path] {
+            #expect(await manager.createProject(repositoryPath: path, collectionId: collection.id) == nil)
+        }
+        #expect(manager.projects.map(\.id) == projectIds)
+        #expect(manager.workspaces.map(\.id) == workspaceIds)
+        #expect(manager.selectedWorkspace?.projectId == project.id)
+        #expect(manager.collections.first?.projectIds.isEmpty == true)
+        #expect(try Data(contentsOf: manager.sessionSnapshotURL) == saved)
+    }
+
+    private func makeRepository(in fixture: WorkspaceStackTestFixture) throws -> URL {
+        let repository = fixture.root.appendingPathComponent("new-repository")
+        try FileManager.default.createDirectory(at: repository, withIntermediateDirectories: true)
+        try TestGit.run(["init", "-b", "main", "."], in: repository)
+        try TestGit.run(
+            [
+                "-c", "user.name=Test User", "-c", "user.email=test@example.com",
+                "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null",
+                "commit", "--allow-empty", "-m", "initial"
+            ], in: repository, environment: ["GIT_CONFIG_GLOBAL": "/dev/null"])
+        return repository
+    }
+
     private func addProjects(to fixture: WorkspaceStackTestFixture) -> [Project] {
         (1...3).map { index in
             let project = Project(

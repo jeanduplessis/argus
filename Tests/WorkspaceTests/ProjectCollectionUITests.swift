@@ -146,6 +146,44 @@ struct ProjectCollectionUITests {
         collections.excludes("collection.projectIds.count", "Collection headers do not show counts")
     }
 
+    @Test
+    func collectionNewProjectUsesAFreshUUIDScopedSheetRequest() throws {
+        let collections = try SourceContract("Argus/Views/Sidebar/SidebarView+Collections.swift")
+        let firstAction = try collections.section(after: ".contextMenu {", before: "Button(\"Rename Collection…\")")
+        #expect(firstAction.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("Button(\"New Project…\")"))
+        #expect(firstAction.contains("name: .showNewProjectSheet, object: collection.id"))
+        let window = try SourceContract("Argus/Views/MainWindowView.swift")
+        let request = try window.section(
+            after: "private struct NewProjectSheetRequest: Identifiable {",
+            before: "private struct NewWorkspaceSheetRequest")
+        #expect(request.contains("let id = UUID()"))
+        #expect(request.contains("let collectionId: UUID?"))
+        window.containsAll(
+            [
+                "@State private var newProjectSheetRequest: NewProjectSheetRequest?",
+                ".sheet(item: $newProjectSheetRequest) { request in",
+                "NewProjectSheet(collectionId: request.collectionId)"
+            ], "sheet lifetime owns its destination and cancellation clears the request")
+        let receive = try window.section(
+            after: ".onReceive(NotificationCenter.default.publisher(for: .showNewProjectSheet)) { notification in",
+            before: ".onReceive(NotificationCenter.default.publisher(for: .showNewWorkspaceSheet))")
+        #expect(
+            receive.contains(
+                "newProjectSheetRequest = NewProjectSheetRequest(collectionId: notification.object as? UUID)"))
+        for path in ["Argus/App/ArgusApp.swift", "Argus/Views/Sidebar/SidebarView+Header.swift"] {
+            try SourceContract(path).contains(
+                "name: .showNewProjectSheet, object: nil", "top-level actions explicitly request no Collection")
+        }
+        let sheet = try SourceContract("Argus/Views/Dialogs/NewProjectSheet.swift")
+        sheet.containsAll(
+            [
+                "let collectionId: UUID?", "collectionId: collectionId", "await workspaceManager.createProject(",
+                "Button(\"Cancel\") { dismiss() }", ".keyboardShortcut(.cancelAction)",
+                ".keyboardShortcut(.defaultAction)", "Collection no longer exists. Cancel and open New Project again."
+            ], "existing native sheet passes the destination to the creation boundary and reports stale destinations")
+        sheet.excludes("workspaceManager.moveProject", "membership is not a create-then-move view operation")
+    }
+
     private func accessibilityDescendants(_ object: AnyObject) -> [AnyObject] {
         [object] + (object.accessibilityChildren?() ?? []).flatMap { accessibilityDescendants($0 as AnyObject) }
     }

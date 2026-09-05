@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct NewProjectSheet: View {
+    let collectionId: UUID?
+
     @EnvironmentObject var workspaceManager: WorkspaceManager
     @Environment(\.dismiss) private var dismiss
 
@@ -184,10 +186,15 @@ struct NewProjectSheet: View {
             let project = await workspaceManager.createProject(
                 repositoryPath: path,
                 displayName: name.isEmpty ? nil : name,
-                mainBranchOverride: branch.isEmpty ? nil : branch
+                mainBranchOverride: branch.isEmpty ? nil : branch,
+                collectionId: collectionId
             )
             guard project != nil else {
-                validationError = "Could not create project"
+                if let collectionId, !workspaceManager.collections.contains(where: { $0.id == collectionId }) {
+                    validationError = "Collection no longer exists. Cancel and open New Project again."
+                } else {
+                    validationError = "Could not create project"
+                }
                 isCreating = false
                 return
             }

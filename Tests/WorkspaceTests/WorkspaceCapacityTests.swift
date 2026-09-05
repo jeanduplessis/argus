@@ -6,8 +6,8 @@ import Testing
 @Suite
 @MainActor
 struct WorkspaceCapacityTests {
-    @Test
-    func projectCreationCannotExceedTheRestorableWorkspaceLimit() async throws {
+    @Test(arguments: [false, true])
+    func projectCreationCannotExceedTheRestorableWorkspaceLimit(hasCollection: Bool) async throws {
         let temporary = try TestTemporaryDirectory(prefix: "argus-workspace-capacity")
         defer { temporary.remove() }
         let repo = temporary.url.appendingPathComponent("repo", isDirectory: true)
@@ -25,12 +25,15 @@ struct WorkspaceCapacityTests {
             #expect(manager.addWorkspace() != nil)
         }
 
+        let collectionId = hasCollection ? try #require(manager.createCollection(name: "Work")).id : nil
         let project = await manager.createProject(
             repositoryPath: repo.path,
-            mainBranchOverride: "main"
+            mainBranchOverride: "main",
+            collectionId: collectionId
         )
 
         #expect(project == nil)
+        #expect(manager.collections.allSatisfy { $0.projectIds.isEmpty })
         #expect(manager.workspaces.count == WorkspaceManager.maxWorkspaces)
         let persisted = try JSONDecoder().decode(
             ArgusSessionSnapshot.self,

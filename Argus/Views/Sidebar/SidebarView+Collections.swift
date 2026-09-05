@@ -93,6 +93,10 @@ struct SidebarCollectionHeader: View {
         .accessibilityValue(collection.isExpanded ? "Expanded" : "Collapsed")
         .accessibilityIdentifier("collection-\(collection.id)")
         .contextMenu {
+            Button("New Project…") {
+                NotificationCenter.default.post(name: .showNewProjectSheet, object: collection.id)
+            }
+            Divider()
             Button("Rename Collection…") {
                 NotificationCenter.default.post(name: .showCollectionSheet, object: collection.id)
             }
