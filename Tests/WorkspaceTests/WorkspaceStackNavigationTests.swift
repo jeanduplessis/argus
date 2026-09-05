@@ -18,8 +18,8 @@ struct WorkspaceStackNavigationTests {
         #expect(group.rows.map(\.branch) == ["feature/parent", "feature/gap", "feature/child"])
         #expect(group.rows.filter { $0.workspaceId == nil }.count == 1)
         let ordered = fixture.orderedIds
-        let manualOrder = fixture.project.workspaceIds
-        fixture.project.isExpanded = false
+        let manualOrder = fixture.manualOrder
+        fixture.isExpanded = false
         manager.toggleWorkspaceStack(group.id, in: fixture.project.id)
         manager.selectedWorkspaceId = fixture.child.id
 
@@ -28,7 +28,7 @@ struct WorkspaceStackNavigationTests {
         #expect(ordered.count == 11)
         #expect(ordered.map { manager.workspaceShortcutDigit(for: $0) } == [1, 2, 3, 4, 5, 6, 7, 8, nil, nil, 9])
         #expect(manager.selectedWorkspaceIndex == 1)
-        #expect(fixture.project.workspaceIds == manualOrder)
+        #expect(fixture.manualOrder == manualOrder)
         manager.handleWorkspaceShortcut(number: 1)
         #expect(manager.selectedWorkspaceId == fixture.parent.id)
         manager.handleWorkspaceShortcut(number: 8)
@@ -62,18 +62,18 @@ struct WorkspaceStackNavigationTests {
         let manager = fixture.manager
         let terminal = try #require(fixture.child.addTerminalPanel(workingDirectory: fixture.root.path))
         let group = try #require(manager.stackGroup(for: fixture.child.id, in: fixture.project.id))
-        fixture.project.isExpanded = false
-        fixture.project.collapsedStackIds = [group.id]
+        fixture.isExpanded = false
+        fixture.collapsedStackIds = [group.id]
         let revision = manager.workspaceRevealRevision
         manager.selectWorkspace(fixture.child.id)
 
         #expect(manager.workspaceRevealRevision == revision + 1)
         #expect(manager.selectedWorkspaceId == fixture.child.id)
-        #expect(fixture.project.isExpanded)
-        #expect(!fixture.project.collapsedStackIds.contains(group.id))
+        #expect(fixture.isExpanded)
+        #expect(!fixture.collapsedStackIds.contains(group.id))
         #expect(fixture.child.activePanelId == terminal.id)
         manager.toggleWorkspaceStack(group.id, in: fixture.project.id)
-        #expect(fixture.project.collapsedStackIds.contains(group.id))
+        #expect(fixture.collapsedStackIds.contains(group.id))
         #expect(manager.workspaceRevealRevision == revision + 1)
         #expect(manager.selectedWorkspaceId == fixture.child.id)
         #expect(fixture.child.activePanelId == terminal.id)
@@ -94,11 +94,11 @@ struct WorkspaceStackNavigationTests {
         #expect(!manager.canMoveWorkspace(in: projectId, moving: fixture.child.id, offset: -1))
         #expect(manager.canMoveWorkspace(in: projectId, moving: fixture.parent.id, offset: 1))
         #expect(manager.moveWorkspace(in: projectId, moving: fixture.child.id, offset: 1))
-        #expect(fixture.project.workspaceIds == [fixture.ordinary.id, fixture.parent.id, fixture.child.id])
-        #expect(fixture.orderedIds == fixture.project.workspaceIds)
+        #expect(fixture.manualOrder.prefix(3) == [fixture.ordinary.id, fixture.child.id, fixture.parent.id])
+        #expect(fixture.orderedIds.prefix(3) == [fixture.ordinary.id, fixture.parent.id, fixture.child.id])
         #expect(!manager.canMoveWorkspace(in: projectId, moving: fixture.parent.id, offset: 1))
         #expect(manager.moveWorkspace(in: projectId, moving: fixture.parent.id, offset: -1))
-        #expect(fixture.project.workspaceIds == [fixture.parent.id, fixture.child.id, fixture.ordinary.id])
+        #expect(fixture.manualOrder.prefix(3) == [fixture.child.id, fixture.parent.id, fixture.ordinary.id])
         #expect(!manager.moveWorkspace(in: projectId, moving: fixture.child.id, offset: 0))
         #expect(!manager.moveWorkspace(in: projectId, moving: fixture.child.id, offset: 2))
         #expect(manager.selectedWorkspaceId == selection)
@@ -112,18 +112,18 @@ struct WorkspaceStackNavigationTests {
         let manager = fixture.manager
         let projectId = fixture.project.id
         let standalone = try #require(manager.addWorkspace(workingDirectory: fixture.root.path))
-        let manualOrder = fixture.project.workspaceIds
+        let manualOrder = fixture.manualOrder
         #expect(!manager.reorderWorkspace(in: projectId, moving: fixture.parent.id, before: fixture.child.id))
         #expect(!manager.reorderWorkspace(in: projectId, moving: fixture.child.id, before: fixture.parent.id))
         #expect(!manager.reorderWorkspace(in: projectId, moving: fixture.child.id, before: fixture.ordinary.id))
         #expect(!manager.reorderWorkspace(in: projectId, moving: standalone.id, before: fixture.parent.id))
         #expect(!manager.reorderWorkspace(in: projectId, moving: fixture.child.id, before: standalone.id))
         #expect(!manager.reorderWorkspace(in: projectId, moving: UUID(), before: fixture.child.id))
-        #expect(fixture.project.workspaceIds == manualOrder)
+        #expect(fixture.manualOrder == manualOrder)
         #expect(manager.reorderWorkspace(in: projectId, moving: fixture.ordinary.id, before: fixture.child.id))
-        #expect(fixture.project.workspaceIds == [fixture.ordinary.id, fixture.parent.id, fixture.child.id])
+        #expect(fixture.manualOrder.prefix(3) == [fixture.ordinary.id, fixture.child.id, fixture.parent.id])
         #expect(manager.reorderWorkspace(in: projectId, moving: fixture.child.id, before: fixture.ordinary.id))
-        #expect(fixture.project.workspaceIds == [fixture.parent.id, fixture.child.id, fixture.ordinary.id])
+        #expect(fixture.manualOrder.prefix(3) == [fixture.child.id, fixture.parent.id, fixture.ordinary.id])
     }
 }
 
@@ -137,7 +137,7 @@ extension WorkspaceStackNavigationTests {
         let parent = fixture.makeWorkspace(branch: "other/parent")
         let child = fixture.makeWorkspace(branch: "other/child")
         manager.workspaces += [child, parent]
-        project.workspaceIds = [fixture.child.id, child.id, fixture.ordinary.id, fixture.parent.id, parent.id]
+        fixture.manualOrder = [fixture.child.id, child.id, fixture.ordinary.id, fixture.parent.id, parent.id]
         manager.workspaceStackSnapshots[project.id] = WorkspaceStackSnapshot(
             gitCommonDirectory: fixture.snapshot.gitCommonDirectory,
             worktrees: fixture.snapshot.worktrees + [
@@ -149,9 +149,9 @@ extension WorkspaceStackNavigationTests {
             )
         )
         #expect(manager.moveWorkspace(in: project.id, moving: fixture.child.id, offset: 1))
-        #expect(project.workspaceIds == [parent.id, child.id, fixture.parent.id, fixture.child.id, fixture.ordinary.id])
+        #expect(fixture.manualOrder == [child.id, parent.id, fixture.child.id, fixture.parent.id, fixture.ordinary.id])
         #expect(manager.reorderWorkspace(in: project.id, moving: fixture.parent.id, before: child.id))
-        #expect(project.workspaceIds == [fixture.parent.id, fixture.child.id, parent.id, child.id, fixture.ordinary.id])
+        #expect(fixture.manualOrder == [fixture.child.id, fixture.parent.id, child.id, parent.id, fixture.ordinary.id])
     }
 
     @Test
@@ -165,7 +165,7 @@ extension WorkspaceStackNavigationTests {
         #expect(fixture.manager.workspaces.contains { $0.id == fixture.child.id })
         #expect(fixture.child.panelOrder == [terminal.id])
         #expect(fixture.manager.stackGroup(for: fixture.child.id, in: fixture.project.id) == nil)
-        #expect(fixture.project.workspaceIds == [fixture.child.id, fixture.ordinary.id])
+        #expect(fixture.manualOrder == [fixture.child.id, fixture.ordinary.id])
     }
 
     @Test
@@ -190,7 +190,7 @@ extension WorkspaceStackNavigationTests {
         standalone.currentDirectory = fixture.project.repositoryPath
         standalone.worktreePath = fixture.child.worktreePath
         fixture.manager.workspaces.append(standalone)
-        fixture.project.addWorkspace(standalone.id)
+        fixture.manager.appendPlacement(standalone.id, to: nil)
 
         let group = try #require(fixture.manager.stackGroup(for: fixture.parent.id, in: fixture.project.id))
         #expect(group.workspaceIds == [fixture.parent.id, fixture.child.id])
@@ -215,9 +215,9 @@ extension WorkspaceStackNavigationTests {
         let activePanelId = workspace.activePanelId
         #expect(manager.stackGroup(for: workspace.id, in: fixture.project.id) == nil)
         #expect(workspace.branchName == "outdated-branch-label")
-        #expect(!fixture.project.collapsedStackIds.isEmpty)
+        #expect(!fixture.collapsedStackIds.isEmpty)
         await waitForStackState { reader.requests.count == 3 }
-        manager.cancelPendingWorkspaceStackReveal(in: manager.catchAllProject.id)
+        manager.cancelPendingWorkspaceStackReveal(in: UUID())
         let refreshed = WorkspaceStackSnapshot(
             gitCommonDirectory: fixture.snapshot.gitCommonDirectory,
             worktrees: fixture.snapshotIncludingGap.worktrees, parents: fixture.snapshot.parents,
@@ -228,8 +228,8 @@ extension WorkspaceStackNavigationTests {
         await waitForStackState { manager.workspaceRevealRevision == revision + 1 }
         #expect(manager.workspaceStackErrors[fixture.project.id] == refreshed.issue)
         #expect(manager.selectedWorkspaceId == workspace.id)
-        #expect(fixture.project.isExpanded)
-        #expect(fixture.project.collapsedStackIds.isEmpty)
+        #expect(fixture.isExpanded)
+        #expect(fixture.collapsedStackIds.isEmpty)
         #expect(fixture.orderedIds == [fixture.parent.id, workspace.id, fixture.child.id, fixture.ordinary.id])
         #expect(workspace.activePanelId == activePanelId)
         #expect(manager.workspaceContextRevision == contextRevision)
@@ -239,7 +239,7 @@ extension WorkspaceStackNavigationTests {
         await waitForStackState { reader.requests.count == 4 }
         reader.complete(3, with: .success(fixture.snapshotIncludingGap))
         await waitForStackState { !manager.refreshingWorkspaceStackProjectIds.contains(fixture.project.id) }
-        #expect(!fixture.project.collapsedStackIds.isEmpty)
+        #expect(!fixture.collapsedStackIds.isEmpty)
         #expect(manager.workspaceRevealRevision == revision + 1)
     }
 
@@ -263,18 +263,18 @@ extension WorkspaceStackNavigationTests {
             manager.toggleWorkspaceStack(fixture.stackId, in: fixture.project.id)
         case .projectDisclosure:
             manager.cancelPendingWorkspaceStackReveal(in: fixture.project.id)
-            fixture.project.isExpanded.toggle()
-            fixture.project.isExpanded.toggle()
+            fixture.isExpanded.toggle()
+            fixture.isExpanded.toggle()
         case .collapsedProject:
-            fixture.project.isExpanded = false
+            fixture.isExpanded = false
         }
         let revision = manager.workspaceRevealRevision
         let selection = manager.selectedWorkspaceId
-        let isExpanded = fixture.project.isExpanded
+        let isExpanded = fixture.isExpanded
         reader.complete(2, with: .success(fixture.snapshotIncludingGap))
         await waitForStackState { manager.workspaceStackSnapshots[fixture.project.id] == fixture.snapshotIncludingGap }
-        #expect(fixture.project.collapsedStackIds == [fixture.stackId])
-        #expect(fixture.project.isExpanded == isExpanded)
+        #expect(fixture.collapsedStackIds == [fixture.stackId])
+        #expect(fixture.isExpanded == isExpanded)
         #expect(manager.selectedWorkspaceId == selection)
         #expect(manager.workspaceRevealRevision == revision)
         #expect(manager.pendingWorkspaceStackReveal == nil)
@@ -287,7 +287,7 @@ extension WorkspaceStackNavigationTests {
         let manager = fixture.manager
         let sibling = fixture.makeWorkspace(branch: "feature/sibling")
         manager.workspaces.append(sibling)
-        fixture.project.addWorkspace(sibling.id)
+        fixture.manager.appendPlacement(sibling.id, to: nil)
         manager.workspaceStackSnapshots[fixture.project.id] = WorkspaceStackSnapshot(
             gitCommonDirectory: fixture.snapshot.gitCommonDirectory,
             worktrees: fixture.snapshot.worktrees + [
@@ -326,11 +326,10 @@ extension WorkspaceStackNavigationTests {
         let first = try #require(manager.addWorkspace(workingDirectory: fixture.root.path))
         let second = try #require(manager.addWorkspace(workingDirectory: fixture.root.path))
         let last = try #require(manager.addWorkspace(workingDirectory: fixture.root.path))
-        let project = try #require(manager.catchAllProject)
-        #expect(!manager.reorderWorkspace(in: project.id, moving: first.id, before: second.id))
-        #expect(manager.reorderWorkspace(in: project.id, moving: last.id, before: first.id))
-        #expect(project.workspaceIds == [last.id, first.id, second.id])
-        #expect(manager.moveWorkspace(in: project.id, moving: last.id, offset: 1))
-        #expect(project.workspaceIds == [first.id, last.id, second.id])
+        #expect(!manager.reorderWorkspace(in: nil, moving: first.id, before: second.id))
+        #expect(manager.reorderWorkspace(in: nil, moving: last.id, before: first.id))
+        #expect(Array(fixture.manualOrder.suffix(3)) == [last.id, first.id, second.id])
+        #expect(manager.moveWorkspace(in: nil, moving: last.id, offset: 1))
+        #expect(Array(fixture.manualOrder.suffix(3)) == [first.id, last.id, second.id])
     }
 }

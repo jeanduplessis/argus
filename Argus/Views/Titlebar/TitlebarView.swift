@@ -153,7 +153,7 @@ struct TitlebarView: View {
     }
 
     private func titleContext(for workspace: Workspace, project: Project?) -> String {
-        if let project, !project.isCatchAll {
+        if let project {
             return project.displayName
         }
 

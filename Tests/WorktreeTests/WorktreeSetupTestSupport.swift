@@ -169,3 +169,48 @@ final class SetupCloseRecorder: @unchecked Sendable {
     private func recordWorkspace(_ id: UUID?) { lock.withLock { storedWorkspaceID = id } }
     deinit { observers.forEach(NotificationCenter.default.removeObserver) }
 }
+
+/// Suspends a real local Git command without modifying application I/O boundaries.
+final class BoundedGitHookGate {
+    let marker: URL
+    let releaseFile: URL
+    let hook: URL
+    let expiration: URL
+    var didTimeOut: Bool { FileManager.default.fileExists(atPath: expiration.path) }
+
+    init(root: URL, repository: URL, name: String, monitorsStatus: Bool = false) throws {
+        marker = root.appendingPathComponent("\(name)-started")
+        releaseFile = root.appendingPathComponent("\(name)-release")
+        expiration = root.appendingPathComponent("\(name)-expired")
+        hook = repository.appendingPathComponent(
+            monitorsStatus ? ".git/hooks/test-fsmonitor" : ".git/hooks/post-checkout")
+        let script = """
+            #!/bin/sh
+            if mkdir '\(marker.path)-lock' 2>/dev/null; then
+                touch '\(marker.path)'
+                count=0
+                while [ ! -f '\(releaseFile.path)' ] && [ "$count" -lt 500 ]; do
+                    sleep 0.02
+                    count=$((count+1))
+                done
+                if [ ! -f '\(releaseFile.path)' ]; then touch '\(expiration.path)'; fi
+            fi
+            \(monitorsStatus ? "printf 'gate-token\\0'" : "exit 0")
+            """
+        try Data(script.utf8).write(to: hook)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hook.path)
+        if monitorsStatus { try TestGit.run(["config", "core.fsmonitor", hook.path], in: repository) }
+    }
+
+    @MainActor
+    func waitUntilStarted() async throws {
+        for _ in 0..<500 {
+            if FileManager.default.fileExists(atPath: marker.path) { return }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        Issue.record("Git fixture did not reach the bounded hook")
+    }
+
+    func release() { try? Data().write(to: releaseFile) }
+    deinit { release() }
+}

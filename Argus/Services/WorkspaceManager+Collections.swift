@@ -1,24 +1,63 @@
 import Foundation
 
 extension WorkspaceManager {
-    func collection(containing projectId: UUID) -> ProjectCollection? {
-        collections.first { $0.projectIds.contains(projectId) }
+    func collection(containing workspaceId: UUID) -> ProjectCollection? {
+        collections.first { $0.workspaceIds.contains(workspaceId) }
     }
 
-    func projects(in collectionId: UUID?) -> [Project] {
-        guard let collectionId else { return ungroupedProjects }
-        guard let collection = collections.first(where: { $0.id == collectionId }) else { return [] }
-        return collection.projectIds.compactMap { id in namedProjects.first { $0.id == id } }
+    func manualWorkspaceIds(in collectionId: UUID?) -> [UUID] {
+        guard let collectionId else { return ungroupedWorkspaceIds }
+        return collections.first { $0.id == collectionId }?.workspaceIds ?? []
     }
 
-    var ungroupedProjects: [Project] {
-        let groupedIds = Set(collections.flatMap(\.projectIds))
-        return namedProjects.filter { !groupedIds.contains($0.id) }
+    func workspaceIds(for project: Project) -> [UUID] {
+        workspaces.filter { $0.projectId == project.id }.map(\.id)
     }
 
-    /// All navigation uses this order, regardless of Collection/Project/Stack disclosure.
-    var sidebarOrderedProjects: [Project] {
-        collections.flatMap { projects(in: $0.id) } + ungroupedProjects + projects.filter(\.isCatchAll)
+    /// The fully expanded projection is the sole navigation order. Repository
+    /// blocks occupy their first manual member; discovery never rewrites placement.
+    var navigationSections: [WorkspaceNavigationSection] {
+        (collections.map { Optional($0.id) } + [nil]).map { sectionId in
+            let ids = manualWorkspaceIds(in: sectionId)
+            var seenProjects = Set<UUID>()
+            let blocks = ids.compactMap { id -> WorkspaceNavigationBlock? in
+                guard let workspace = workspaces.first(where: { $0.id == id }) else { return nil }
+                guard let project = project(for: id) else {
+                    return WorkspaceNavigationBlock(project: nil, items: [.workspace(workspace.id)])
+                }
+                guard seenProjects.insert(project.id).inserted else { return nil }
+                return WorkspaceNavigationBlock(project: project, items: sidebarItems(for: project, in: sectionId))
+            }
+            return WorkspaceNavigationSection(id: sectionId, blocks: blocks)
+        }
+    }
+
+    func repositoryDisclosure(for projectId: UUID, in collectionId: UUID?) -> RepositoryDisclosure {
+        let records =
+            collectionId.flatMap { id in collections.first { $0.id == id }?.repositoryDisclosure }
+            ?? ungroupedRepositoryDisclosure
+        return records.first { $0.projectId == projectId } ?? RepositoryDisclosure(projectId: projectId)
+    }
+
+    func updateRepositoryDisclosure(
+        for projectId: UUID, in collectionId: UUID?, _ update: (inout RepositoryDisclosure) -> Void
+    ) {
+        var record = repositoryDisclosure(for: projectId, in: collectionId)
+        update(&record)
+        if let collectionId {
+            guard let index = collections.firstIndex(where: { $0.id == collectionId }) else { return }
+            collections[index].repositoryDisclosure.removeAll { $0.projectId == projectId }
+            collections[index].repositoryDisclosure.append(record)
+        } else {
+            ungroupedRepositoryDisclosure.removeAll { $0.projectId == projectId }
+            ungroupedRepositoryDisclosure.append(record)
+        }
+    }
+
+    func toggleRepository(_ projectId: UUID, in collectionId: UUID?) {
+        pendingWorkspaceStackReveal = nil
+        updateRepositoryDisclosure(for: projectId, in: collectionId) { $0.isExpanded.toggle() }
+        saveSession()
     }
 
     var canCreateCollection: Bool { collections.count < ProjectCollection.maximumCount }
@@ -44,70 +83,70 @@ extension WorkspaceManager {
 
     func toggleCollection(_ collectionId: UUID) {
         guard let index = collections.firstIndex(where: { $0.id == collectionId }) else { return }
-        for projectId in collections[index].projectIds { cancelPendingWorkspaceStackReveal(in: projectId) }
+        pendingWorkspaceStackReveal = nil
         collections[index].isExpanded.toggle()
         saveSession()
     }
 
-    func revealCollection(containing projectId: UUID) {
-        guard let index = collections.firstIndex(where: { $0.projectIds.contains(projectId) }),
-            !collections[index].isExpanded
-        else { return }
+    func revealCollection(containing workspaceId: UUID) {
+        guard let index = collections.firstIndex(where: { $0.workspaceIds.contains(workspaceId) }) else { return }
         collections[index].isExpanded = true
-        saveSession()
     }
 
     func removeCollection(_ collectionId: UUID) {
         guard let index = collections.firstIndex(where: { $0.id == collectionId }) else { return }
-        let members = projects(in: collectionId)
-        collections.remove(at: index)
-        // Append as a block, preserving member order rather than old registry positions.
-        placeUngroupedProjects(
-            members,
-            at: ungroupedProjects.filter { project in
-                !members.contains { $0.id == project.id }
-            }.count)
+        pendingWorkspaceStackReveal = nil
+        ungroupedWorkspaceIds += collections.remove(at: index).workspaceIds
         saveSession()
     }
 
-    /// A nil destination means Other Projects. A nil insertion index appends.
-    /// This changes navigation only: no Workspace, Panel or resource lifecycle calls.
-    @discardableResult
-    func moveProject(_ projectId: UUID, toCollection collectionId: UUID?, at insertionIndex: Int? = nil) -> Bool {
-        guard let project = namedProjects.first(where: { $0.id == projectId }),
-            collectionId == nil || collections.contains(where: { $0.id == collectionId })
-        else { return false }
-        let destination = projects(in: collectionId).filter { $0.id != projectId }
-        let index = insertionIndex ?? destination.count
-        guard (0...destination.count).contains(index) else { return false }
-        let previousOrder = projects(in: collectionId).map(\.id)
-        var nextOrder = destination.map(\.id)
-        nextOrder.insert(projectId, at: index)
-        guard collection(containing: projectId)?.id != collectionId || previousOrder != nextOrder else { return false }
-        for index in collections.indices { collections[index].projectIds.removeAll { $0 == projectId } }
-        if let collectionId, let collectionIndex = collections.firstIndex(where: { $0.id == collectionId }) {
-            collections[collectionIndex].projectIds = nextOrder
-            if !collections[collectionIndex].isExpanded { cancelPendingWorkspaceStackReveal(in: projectId) }
-        } else {
-            placeUngroupedProjects([project], at: index)
+    func validateCreationDestination(_ collectionId: UUID?) -> Bool {
+        guard collectionId == nil || collections.contains(where: { $0.id == collectionId }) else {
+            lastWorkspaceCreationError = .worktreeCreationFailed(
+                "The destination Collection was removed. Choose a new destination.")
+            return false
         }
-        saveSession()
         return true
     }
 
-    func canMoveProject(_ projectId: UUID, offset: Int) -> Bool {
-        guard offset == -1 || offset == 1 else { return false }
-        let siblings = projects(in: collection(containing: projectId)?.id)
-        guard let index = siblings.firstIndex(where: { $0.id == projectId }) else { return false }
-        return siblings.indices.contains(index + offset)
+    func appendPlacement(_ workspaceId: UUID, to collectionId: UUID?) {
+        if let collectionId, let index = collections.firstIndex(where: { $0.id == collectionId }) {
+            collections[index].workspaceIds.append(workspaceId)
+        } else {
+            ungroupedWorkspaceIds.append(workspaceId)
+        }
     }
 
+    func removePlacement(_ workspaceId: UUID) {
+        pendingWorkspaceStackReveal = nil
+        ungroupedWorkspaceIds.removeAll { $0 == workspaceId }
+        for index in collections.indices { collections[index].workspaceIds.removeAll { $0 == workspaceId } }
+    }
+
+    func setManualWorkspaceIds(_ ids: [UUID], in collectionId: UUID?) {
+        if let collectionId, let index = collections.firstIndex(where: { $0.id == collectionId }) {
+            collections[index].workspaceIds = ids
+        } else if collectionId == nil {
+            ungroupedWorkspaceIds = ids
+        }
+    }
+
+    /// Individual placement never changes repository association or content.
     @discardableResult
-    func moveProject(_ projectId: UUID, offset: Int) -> Bool {
-        guard canMoveProject(projectId, offset: offset) else { return false }
-        let collectionId = collection(containing: projectId)?.id
-        guard let index = projects(in: collectionId).firstIndex(where: { $0.id == projectId }) else { return false }
-        return moveProject(projectId, toCollection: collectionId, at: index + offset)
+    func moveWorkspace(_ workspaceId: UUID, toCollection collectionId: UUID?, at insertionIndex: Int? = nil) -> Bool {
+        guard workspaces.contains(where: { $0.id == workspaceId }),
+            collectionId == nil || collections.contains(where: { $0.id == collectionId })
+        else { return false }
+        let previous = manualWorkspaceIds(in: collectionId)
+        var next = previous.filter { $0 != workspaceId }
+        let index = insertionIndex ?? next.count
+        guard (0...next.count).contains(index) else { return false }
+        next.insert(workspaceId, at: index)
+        guard collection(containing: workspaceId)?.id != collectionId || previous != next else { return false }
+        removePlacement(workspaceId)
+        setManualWorkspaceIds(next, in: collectionId)
+        saveSession()
+        return true
     }
 
     func canMoveCollection(_ collectionId: UUID, offset: Int) -> Bool {
@@ -130,19 +169,29 @@ extension WorkspaceManager {
         guard let source = collections.firstIndex(where: { $0.id == collectionId }),
             collections.indices.contains(index), source != index
         else { return false }
+        pendingWorkspaceStackReveal = nil
         collections.insert(collections.remove(at: source), at: index)
         saveSession()
         return true
     }
-
-    private func placeUngroupedProjects(_ moved: [Project], at index: Int) {
-        let movedIds = Set(moved.map(\.id))
-        var ungrouped = ungroupedProjects.filter { !movedIds.contains($0.id) }
-        ungrouped.insert(contentsOf: moved, at: index)
-        let ungroupedIds = Set(ungrouped.map(\.id))
-        // Grouped registry positions are not navigation order; membership owns that order.
-        projects =
-            namedProjects.filter { !ungroupedIds.contains($0.id) }
-            + ungrouped + projects.filter(\.isCatchAll)
+    func restoreSelectionAfterRemovingWorkspaces(_ removedIds: Set<UUID>, previousOrder: [UUID]) {
+        guard let selectedWorkspaceId, removedIds.contains(selectedWorkspaceId) else { return }
+        if workspaces.isEmpty {
+            let workspace = freshStandaloneWorkspace(workingDirectory: automaticFallbackDirectory())
+            workspaces.append(workspace)
+            appendPlacement(workspace.id, to: nil)
+            selectWorkspace(workspace.id)
+            return
+        }
+        let survivingIds = Set(workspaces.map(\.id))
+        let selectedIndex = previousOrder.firstIndex(of: selectedWorkspaceId) ?? 0
+        let replacementId =
+            previousOrder.dropFirst(selectedIndex + 1).first(where: survivingIds.contains)
+            ?? previousOrder.prefix(selectedIndex).last(where: survivingIds.contains)
+            ?? sidebarOrderedWorkspaces.first?.workspace.id
+            ?? workspaces.first?.id
+        if let replacementId {
+            selectWorkspace(replacementId)
+        }
     }
 }

@@ -172,20 +172,22 @@ struct WorkspaceSnapshot: Codable, Sendable {
 
 /// Versioned minimal application session snapshot for Phase 2 persistence.
 struct ArgusSessionSnapshot: Codable, Sendable {
-    static let currentSchemaVersion = 1
+    static let currentSchemaVersion = 2
 
     let schemaVersion: Int
     let selectedWorkspaceId: UUID?
     let projects: [ProjectSnapshot]
     let workspaces: [WorkspaceSnapshot]
     let collections: [ProjectCollection]?
+    let ungroupedWorkspaceIds: [UUID]
+    let ungroupedRepositoryDisclosure: [RepositoryDisclosure]
 
     var isCompatible: Bool {
         schemaVersion == Self.currentSchemaVersion
     }
 
     func isValidForRestore(maxWorkspaces: Int) -> Bool {
-        guard isCompatible,
+        guard isCompatible || schemaVersion == 1,
             !workspaces.isEmpty,
             workspaces.count <= maxWorkspaces,
             projects.count <= maxWorkspaces + 1,
@@ -213,21 +215,37 @@ struct ArgusSessionSnapshot: Codable, Sendable {
         selectedWorkspaceId: UUID?,
         projects: [ProjectSnapshot],
         workspaces: [WorkspaceSnapshot],
-        collections: [ProjectCollection]? = nil
+        collections: [ProjectCollection]? = nil,
+        ungroupedWorkspaceIds: [UUID] = [],
+        ungroupedRepositoryDisclosure: [RepositoryDisclosure] = []
     ) {
         self.schemaVersion = schemaVersion
         self.selectedWorkspaceId = selectedWorkspaceId
         self.projects = projects
         self.workspaces = workspaces
         self.collections = collections.map(ProjectCollection.bounded)
+        self.ungroupedWorkspaceIds = ungroupedWorkspaceIds
+        self.ungroupedRepositoryDisclosure = ungroupedRepositoryDisclosure
     }
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, selectedWorkspaceId, projects, workspaces, collections
+        case ungroupedWorkspaceIds, ungroupedRepositoryDisclosure
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        var ids: [UUID] = []
+        if var values = try? container.nestedUnkeyedContainer(forKey: .ungroupedWorkspaceIds) {
+            while !values.isAtEnd {
+                let element = try values.superDecoder()
+                if let id = try? UUID(from: element), ids.count < 128 { ids.append(id) }
+            }
+        }
+        ungroupedWorkspaceIds = ids
+        ungroupedRepositoryDisclosure =
+            (try? RepositoryDisclosure.decodeList(
+                from: container.superDecoder(forKey: .ungroupedRepositoryDisclosure))) ?? []
         schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
         selectedWorkspaceId = try container.decodeIfPresent(UUID.self, forKey: .selectedWorkspaceId)
         projects = try container.decode([ProjectSnapshot].self, forKey: .projects)
@@ -244,157 +262,91 @@ private struct SessionSnapshotReconciler {
     let snapshot: ArgusSessionSnapshot
 
     func reconcile() -> ArgusSessionSnapshot {
-        let catchAll = firstCatchAll()
-        let namedProjects = snapshot.projects.filter { !$0.isCatchAll }
-        let reconciledWorkspaces = reconcileWorkspaces(
-            catchAllId: catchAll.id,
-            namedProjectIds: Set(namedProjects.map(\.id))
-        )
-        let workspaceIds = Set(reconciledWorkspaces.map(\.id))
-        let workspaceById = Dictionary(
-            uniqueKeysWithValues: reconciledWorkspaces.map { ($0.id, $0) }
-        )
-        let projects =
-            namedProjects.map {
-                reconciledProject(
-                    $0,
-                    workspaces: reconciledWorkspaces,
-                    workspaceIds: workspaceIds,
-                    workspaceById: workspaceById
-                )
-            } + [
-                reconciledCatchAll(
-                    catchAll,
-                    workspaces: reconciledWorkspaces,
-                    workspaceIds: workspaceIds,
-                    workspaceById: workspaceById
-                )
-            ]
-        let selectedId =
-            snapshot.selectedWorkspaceId.flatMap { workspaceIds.contains($0) ? $0 : nil }
-            ?? reconciledWorkspaces.first?.id
-
-        return ArgusSessionSnapshot(
-            schemaVersion: snapshot.schemaVersion,
-            selectedWorkspaceId: selectedId,
-            projects: projects,
-            workspaces: reconciledWorkspaces,
-            collections: ProjectCollection.reconciled(
-                snapshot.collections ?? [], namedProjectIds: Set(namedProjects.map(\.id)))
-        )
-    }
-
-    private func firstCatchAll() -> ProjectSnapshot {
-        snapshot.projects.first(where: \.isCatchAll)
-            ?? ProjectSnapshot(
-                id: UUID(),
-                repositoryPath: "",
-                isCatchAll: true,
-                displayName: "Workspaces",
-                mainBranch: "",
-                workspaceIds: [],
-                isExpanded: true,
-                color: nil
+        let projects = snapshot.projects.filter { !$0.isCatchAll }
+        let projectIds = Set(projects.map(\.id))
+        let workspaces = snapshot.workspaces.map { workspace in
+            WorkspaceSnapshot(
+                id: workspace.id, projectId: workspace.projectId.flatMap { projectIds.contains($0) ? $0 : nil },
+                branchName: workspace.branchName, workspaceType: workspace.workspaceType,
+                worktreePath: workspace.worktreePath, title: workspace.title, customTitle: workspace.customTitle,
+                currentDirectory: workspace.currentDirectory, panelCount: workspace.panelCount,
+                terminalDirectories: workspace.terminalDirectories, terminalCustomTitles: workspace.terminalCustomTitles
             )
+        }
+        let workspaceIds = Set(workspaces.map(\.id))
+        var collections = ProjectCollection.bounded(snapshot.collections ?? [])
+        var ungrouped = snapshot.ungroupedWorkspaceIds
+        var disclosure = snapshot.ungroupedRepositoryDisclosure
+        if snapshot.schemaVersion == 1 {
+            let imported = legacyPlacement(projects: projects, workspaces: workspaces, collections: collections)
+            collections = imported.collections
+            ungrouped = imported.ungrouped
+            disclosure = imported.disclosure
+        }
+        collections = ProjectCollection.reconciled(collections, validWorkspaceIds: workspaceIds)
+        var placed = Set(collections.flatMap(\.workspaceIds))
+        ungrouped = (ungrouped + workspaces.map(\.id)).filter {
+            workspaceIds.contains($0) && placed.insert($0).inserted
+        }
+        for index in collections.indices {
+            collections[index].repositoryDisclosure = RepositoryDisclosure.reconciled(
+                collections[index].repositoryDisclosure, projectIds: projectIds)
+        }
+        return ArgusSessionSnapshot(
+            selectedWorkspaceId: snapshot.selectedWorkspaceId.flatMap { workspaceIds.contains($0) ? $0 : nil }
+                ?? workspaces.first?.id,
+            projects: projects.map { project in
+                ProjectSnapshot(
+                    id: project.id, repositoryPath: project.repositoryPath,
+                    displayName: project.displayName, mainBranch: project.mainBranch, color: project.color,
+                    worktreeSetupCommand: try? WorktreeSetupCommand.validated(project.worktreeSetupCommand ?? ""))
+            }, workspaces: workspaces, collections: collections,
+            ungroupedWorkspaceIds: ungrouped,
+            ungroupedRepositoryDisclosure: RepositoryDisclosure.reconciled(disclosure, projectIds: projectIds))
     }
 
-    private func reconcileWorkspaces(
-        catchAllId: UUID,
-        namedProjectIds: Set<UUID>
-    ) -> [WorkspaceSnapshot] {
-        snapshot.workspaces.map { workspace in
-            guard let projectId = workspace.projectId,
-                namedProjectIds.contains(projectId)
-            else {
-                return WorkspaceSnapshot(
-                    id: workspace.id,
-                    projectId: catchAllId,
-                    branchName: workspace.branchName,
-                    workspaceType: workspace.workspaceType,
-                    worktreePath: workspace.worktreePath,
-                    title: workspace.title,
-                    customTitle: workspace.customTitle,
-                    currentDirectory: workspace.currentDirectory,
-                    panelCount: workspace.panelCount,
-                    terminalDirectories: workspace.terminalDirectories,
-                    terminalCustomTitles: workspace.terminalCustomTitles
-                )
+    private struct LegacyPlacement {
+        let collections: [ProjectCollection]
+        let ungrouped: [UUID]
+        let disclosure: [RepositoryDisclosure]
+    }
+
+    private func legacyPlacement(
+        projects: [ProjectSnapshot], workspaces: [WorkspaceSnapshot],
+        collections original: [ProjectCollection]
+    ) -> LegacyPlacement {
+        var collections = original
+        // Reconcile legacy resource membership using Workspace.projectId,
+        // then expand the old manual Project order (never discovered Stack order).
+        func orderedMembers(_ project: ProjectSnapshot) -> [UUID] {
+            let members = workspaces.filter {
+                project.isCatchAll ? $0.projectId == nil : $0.projectId == project.id
             }
-            return workspace
+            let validIds = Set(members.map(\.id))
+            var seen = Set<UUID>()
+            return (project.workspaceIds + members.map(\.id)).filter {
+                validIds.contains($0) && seen.insert($0).inserted
+            }
         }
-    }
-
-    private func orderedWorkspaceIds(
-        for project: ProjectSnapshot,
-        workspaces: [WorkspaceSnapshot],
-        workspaceIds: Set<UUID>,
-        workspaceById: [UUID: WorkspaceSnapshot]
-    ) -> [UUID] {
-        var seen = Set<UUID>()
-        var ordered: [UUID] = []
-
-        for workspaceId in project.workspaceIds where workspaceIds.contains(workspaceId) {
-            guard let workspace = workspaceById[workspaceId],
-                workspace.projectId == project.id,
-                seen.insert(workspaceId).inserted
-            else { continue }
-            ordered.append(workspaceId)
+        func legacyDisclosure(_ project: ProjectSnapshot) -> RepositoryDisclosure {
+            RepositoryDisclosure(
+                projectId: project.id, isExpanded: project.isExpanded,
+                collapsedStackIds: Set((project.collapsedStackIds ?? []).sorted().prefix(128)))
         }
-
-        for workspace in workspaces where workspace.projectId == project.id {
-            guard seen.insert(workspace.id).inserted else { continue }
-            ordered.append(workspace.id)
+        var seenProjects = Set<UUID>()
+        for index in collections.indices {
+            let members = collections[index].legacyProjectIds.compactMap { id in
+                projects.first { $0.id == id }
+            }.filter { seenProjects.insert($0.id).inserted }
+            collections[index].workspaceIds = members.flatMap(orderedMembers)
+            collections[index].repositoryDisclosure = members.map(legacyDisclosure)
         }
-
-        return ordered
-    }
-
-    private func reconciledProject(
-        _ project: ProjectSnapshot,
-        workspaces: [WorkspaceSnapshot],
-        workspaceIds: Set<UUID>,
-        workspaceById: [UUID: WorkspaceSnapshot]
-    ) -> ProjectSnapshot {
-        ProjectSnapshot(
-            id: project.id,
-            repositoryPath: project.repositoryPath,
-            isCatchAll: false,
-            displayName: project.displayName,
-            mainBranch: project.mainBranch,
-            workspaceIds: orderedWorkspaceIds(
-                for: project,
-                workspaces: workspaces,
-                workspaceIds: workspaceIds,
-                workspaceById: workspaceById
-            ),
-            isExpanded: project.isExpanded,
-            color: project.color,
-            collapsedStackIds: project.collapsedStackIds,
-            worktreeSetupCommand: try? WorktreeSetupCommand.validated(project.worktreeSetupCommand ?? "")
-        )
-    }
-
-    private func reconciledCatchAll(
-        _ catchAll: ProjectSnapshot,
-        workspaces: [WorkspaceSnapshot],
-        workspaceIds: Set<UUID>,
-        workspaceById: [UUID: WorkspaceSnapshot]
-    ) -> ProjectSnapshot {
-        ProjectSnapshot(
-            id: catchAll.id,
-            repositoryPath: "",
-            isCatchAll: true,
-            displayName: catchAll.displayName.isEmpty ? "Workspaces" : catchAll.displayName,
-            mainBranch: "",
-            workspaceIds: orderedWorkspaceIds(
-                for: catchAll,
-                workspaces: workspaces,
-                workspaceIds: workspaceIds,
-                workspaceById: workspaceById
-            ),
-            isExpanded: catchAll.isExpanded,
-            color: catchAll.color,
-            collapsedStackIds: catchAll.collapsedStackIds
-        )
+        let otherProjects = projects.filter { !seenProjects.contains($0.id) }
+        var ungrouped = otherProjects.flatMap(orderedMembers)
+        if let catchAll = snapshot.projects.first(where: \.isCatchAll) {
+            ungrouped += orderedMembers(catchAll)
+        }
+        return LegacyPlacement(
+            collections: collections, ungrouped: ungrouped, disclosure: otherProjects.map(legacyDisclosure))
     }
 }

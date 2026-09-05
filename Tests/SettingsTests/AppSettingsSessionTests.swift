@@ -99,25 +99,12 @@ func temporarySnapshotURL() -> URL {
 @MainActor
 func makeRestorableSnapshot(directory: String) throws -> Data {
     let workspaceId = UUID()
-    let catchAll = Project.catchAll()
     let snapshot = ArgusSessionSnapshot(
-        selectedWorkspaceId: workspaceId,
-        projects: [
-            ProjectSnapshot(
-                id: catchAll.id,
-                repositoryPath: "",
-                isCatchAll: true,
-                displayName: "Workspaces",
-                mainBranch: "",
-                workspaceIds: [workspaceId],
-                isExpanded: true,
-                color: nil
-            )
-        ],
+        selectedWorkspaceId: workspaceId, projects: [],
         workspaces: [
             WorkspaceSnapshot(
                 id: workspaceId,
-                projectId: catchAll.id,
+                projectId: nil,
                 branchName: nil,
                 workspaceType: .external,
                 worktreePath: nil,

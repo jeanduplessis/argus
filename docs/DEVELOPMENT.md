@@ -1,22 +1,30 @@
 # Developing Argus
 
-## Organizing Projects
+## Organizing Workspaces
 
-Choose **New Collection…** from the Projects plus menu or File menu. Use a
-Project's context menu to move it into a Collection or back to **No Collection**.
-The same menus provide move-up/down actions. Choose **New Project…** from a
-Collection's context menu to create a Named Project directly in that Collection;
-its Main-checkout Workspace is selected and the Collection is revealed.
-Top-level and File-menu **New Project…** actions create ungrouped Named Projects.
-Collection menus also offer rename and removal. Removing a Collection keeps its
-Projects and all open work intact.
+Choose **New Collection…** from the sidebar plus menu or File menu. A Collection
+can mix Standalone Workspaces and unrelated repositories. One repository can
+appear in several Collections, with one shared configuration and no duplicate
+Workspace rows. Workspace menus offer **Move to Collection** and **No Collection**.
+Removing a Collection only appends its members to ungrouped placement.
 
-Drag Project headers to reorder or move whole Project blocks. Drop on a
-Collection header to append, or on the top Projects header to return a Project
-to Other Projects. Drop above or below the midpoint of another Project header
-to insert before or after it. Collection headers can be reordered the same way.
-Disclosure does not change Workspace shortcuts; selecting a hidden Workspace
-reveals all of its ancestors.
+Drag a Workspace row to a Collection header to append it, to another Workspace
+row to insert before/after it, or to the top Workspaces header to ungroup it.
+A Stack member moves independently across Collections. Collection headers can
+be reordered. Same-section move-up/down actions can move a Stack block while
+Git metadata continues to control parent order. Disclosure never renumbers
+shortcuts. Selection, including same-ID selection, reveals current ancestors.
+
+**New Workspace…** in a Collection supplies its destination and lets you choose
+Standalone or a registered repository. Repository and Stack actions also supply
+the repository and, for Stack creation, the last real local parent. Global
+creation is ungrouped; cancel discards its destination. **New Project…** remains
+explicit repository registration plus Main-checkout creation. Simply opening a
+Git directory as Standalone does not register it, contact a provider, or run setup.
+The repository picker includes repositories with no open Workspaces and provides
+**Worktree Setup…** and confirmed **Remove Empty Repository…** configuration actions.
+No local repository heading removes Workspaces from other Collections. Orphan
+adoption defaults to ungrouped placement and does not run setup automatically.
 
 ## Requirements
 
@@ -85,7 +93,9 @@ Argus groups open Workspaces from locally recorded parent relationships in:
 The same reader supplies Against Base. A valid explicit config value overrides
 tool metadata; matching tool parents coalesce, and conflicting parents are
 reported rather than guessed. A group requires at least two open Workspaces
-in one connected recorded-parent component. Forks retain their shared parent,
+in one connected recorded-parent component across the repository. Each section
+then keeps its local header even with one member. Branch references from other
+sections are nonselectable and labeled truthfully. Forks retain their shared parent,
 while independent branches merely based on the unparented Project main branch
 remain separate. Argus never initializes, repairs, restacks, or merges Stacks.
 
@@ -250,11 +260,37 @@ node Tests/PiIntegrationTests/pi-plugin-events.mjs
 
 Argus writes user state outside the repository:
 
-- Session Snapshot: `~/Library/Application Support/Argus/session.json`
+- Session Snapshot: `~/Library/Application Support/Argus/session-v2.json`
+- Legacy downgrade backup: `~/Library/Application Support/Argus/session.json`
 - Managed Worktrees: `~/.argus/worktrees/<project-uuid>/<branch-slug>/`
 - App-owned socket: `~/.argus/argus.sock`
 
 Set `ARGUS_DISABLE_SESSION_RESTORE=1` to launch without restoring the previous Session Snapshot.
+
+### Protected import and downgrade
+
+The new application writes schema 2 to `session-v2.json`. Only when that file is
+absent does it import schema-1 `session.json`. Conversion preserves repository,
+Collection, and Workspace UUIDs, manual order, roots, selection, Terminal
+metadata, zero-Panel Workspaces, and Worktree Setup consent. The new destination
+is checkpointed before normal operation; the source is never rewritten or moved.
+If the initial checkpoint fails, loaded content remains available and subsequent
+saves retry the new destination. Resolve filesystem write failures before quitting.
+
+An older application still reads/writes `session.json`. It sees the pre-conversion
+organization and cannot represent mixed/split Collection placement. Edits in the
+two files are not merged. Returning to the new app uses `session-v2.json`, not the
+old app's later edits. An existing corrupt/incompatible new destination never
+triggers repeated legacy import. Keep copies of both files before manual recovery;
+only explicitly moving the new destination aside requests a fresh legacy import.
+Managed Worktree directories remain under their existing Project UUIDs and are
+not copied or moved by import/downgrade.
+
+Test instances continue to default to the temporary per-process
+`Argus/TestSessions/<pid>/session.json`, exactly as specified in `AGENTS.md`.
+Caller-supplied destinations never fall back to production legacy state. Tests
+can inject a temporary `legacySessionSnapshotURL` to exercise protected import.
+Do not test migrations against actual application-support files.
 
 ## Worktree Setup
 

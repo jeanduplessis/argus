@@ -63,129 +63,85 @@ struct ProjectSnapshot: Codable, Sendable {
     let color: ProjectColor?
     var collapsedStackIds: Set<String>?
     var worktreeSetupCommand: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, repositoryPath, displayName, mainBranch, color, worktreeSetupCommand
+        case isCatchAll, workspaceIds, isExpanded, collapsedStackIds
+    }
+
+    init(
+        id: UUID, repositoryPath: String, isCatchAll: Bool = false, displayName: String,
+        mainBranch: String, workspaceIds: [UUID] = [], isExpanded: Bool = true,
+        color: ProjectColor?, collapsedStackIds: Set<String>? = nil, worktreeSetupCommand: String? = nil
+    ) {
+        self.id = id
+        self.repositoryPath = repositoryPath
+        self.isCatchAll = isCatchAll
+        self.displayName = displayName
+        self.mainBranch = mainBranch
+        self.workspaceIds = workspaceIds
+        self.isExpanded = isExpanded
+        self.color = color
+        self.collapsedStackIds = collapsedStackIds
+        self.worktreeSetupCommand = worktreeSetupCommand
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        repositoryPath = try container.decode(String.self, forKey: .repositoryPath)
+        displayName = try container.decode(String.self, forKey: .displayName)
+        mainBranch = try container.decode(String.self, forKey: .mainBranch)
+        color = try container.decodeIfPresent(ProjectColor.self, forKey: .color)
+        worktreeSetupCommand = try container.decodeIfPresent(String.self, forKey: .worktreeSetupCommand)
+        isCatchAll = try container.decodeIfPresent(Bool.self, forKey: .isCatchAll) ?? false
+        workspaceIds = try container.decodeIfPresent([UUID].self, forKey: .workspaceIds) ?? []
+        isExpanded = try container.decodeIfPresent(Bool.self, forKey: .isExpanded) ?? true
+        collapsedStackIds = try container.decodeIfPresent(Set<String>.self, forKey: .collapsedStackIds)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(repositoryPath, forKey: .repositoryPath)
+        try container.encode(displayName, forKey: .displayName)
+        try container.encode(mainBranch, forKey: .mainBranch)
+        try container.encodeIfPresent(color, forKey: .color)
+        try container.encodeIfPresent(worktreeSetupCommand, forKey: .worktreeSetupCommand)
+
+    }
+
 }
 
-/// A project groups workspaces under a single git repository.
-///
-/// Each project is identified by an immutable UUID used as the stable key
-/// for worktree storage paths (`~/.argus/worktrees/<project-uuid>/`).
-/// The display name is mutable and MUST NOT be used as a storage key.
-///
-/// The spec (§Projects) requires:
-/// - UUID-keyed identity, not display name.
-/// - Ordered list of child workspace references.
-/// - One non-removable catch-all project for unassigned workspaces.
-/// - Expand/collapse sidebar state that persists across sessions.
-/// - Optional color for sidebar identification.
+/// Shared repository identity and configuration, independent of navigation placement.
 @MainActor
 final class Project: Identifiable, ObservableObject {
-
-    // MARK: - Identity
-
     let id: UUID
     let repositoryPath: String
-    let isCatchAll: Bool
-
-    // MARK: - Published state
-
     @Published var displayName: String
     @Published var mainBranch: String
-    @Published var workspaceIds: [UUID]
-    @Published var isExpanded: Bool
     @Published var color: ProjectColor?
-    @Published var collapsedStackIds: Set<String> = []
     @Published var worktreeSetupCommand: String?
 
-    // MARK: - Initializers
-
-    /// Creates a named project for a git repository.
-    ///
-    /// - Parameters:
-    ///   - repositoryPath: Absolute path to the git repo root.
-    ///   - displayName: Custom name. Defaults to the repo directory basename.
-    ///   - mainBranch: Auto-detected main branch name.
     init(repositoryPath: String, displayName: String? = nil, mainBranch: String) {
         self.id = UUID()
         self.repositoryPath = repositoryPath
-        self.isCatchAll = false
-        self.displayName =
-            displayName
-            ?? (repositoryPath as NSString).lastPathComponent
+        self.displayName = displayName ?? (repositoryPath as NSString).lastPathComponent
         self.mainBranch = mainBranch
-        self.workspaceIds = []
-        self.isExpanded = true
-        self.color = nil
     }
 
-    /// Restores a project from a persisted snapshot.
     init(snapshot: ProjectSnapshot) {
-        self.id = snapshot.id
-        self.repositoryPath = snapshot.repositoryPath
-        self.isCatchAll = snapshot.isCatchAll
-        self.displayName = snapshot.displayName
-        self.mainBranch = snapshot.mainBranch
-        self.workspaceIds = snapshot.workspaceIds
-        self.isExpanded = snapshot.isExpanded
-        self.color = snapshot.color
-        self.collapsedStackIds = snapshot.collapsedStackIds ?? []
-        self.worktreeSetupCommand =
-            snapshot.isCatchAll ? nil : (try? WorktreeSetupCommand.validated(snapshot.worktreeSetupCommand ?? ""))
+        id = snapshot.id
+        repositoryPath = snapshot.repositoryPath
+        displayName = snapshot.displayName
+        mainBranch = snapshot.mainBranch
+        color = snapshot.color
+        worktreeSetupCommand = try? WorktreeSetupCommand.validated(snapshot.worktreeSetupCommand ?? "")
     }
 
-    /// Creates the non-removable catch-all project for unassigned workspaces.
-    static func catchAll() -> Project {
-        Project(
-            snapshot: ProjectSnapshot(
-                id: UUID(),
-                repositoryPath: "",
-                isCatchAll: true,
-                displayName: "Workspaces",
-                mainBranch: "",
-                workspaceIds: [],
-                isExpanded: true,
-                color: nil
-            ))
-    }
-
-    // MARK: - Snapshot
-
-    /// Creates a `Sendable` snapshot for persistence.
     func snapshot() -> ProjectSnapshot {
         ProjectSnapshot(
-            id: id,
-            repositoryPath: repositoryPath,
-            isCatchAll: isCatchAll,
-            displayName: displayName,
-            mainBranch: mainBranch,
-            workspaceIds: workspaceIds,
-            isExpanded: isExpanded,
-            color: color,
-            collapsedStackIds: collapsedStackIds,
-            worktreeSetupCommand: isCatchAll ? nil : worktreeSetupCommand
-        )
-    }
-
-    // MARK: - Workspace Management
-
-    func addWorkspace(_ workspaceId: UUID) {
-        guard !workspaceIds.contains(workspaceId) else { return }
-        workspaceIds.append(workspaceId)
-    }
-
-    func removeWorkspace(_ workspaceId: UUID) {
-        workspaceIds.removeAll { $0 == workspaceId }
-    }
-
-    func moveWorkspace(from source: Int, to destination: Int) {
-        guard source >= 0, source < workspaceIds.count,
-            destination >= 0, destination < workspaceIds.count
-        else { return }
-
-        let id = workspaceIds.remove(at: source)
-        workspaceIds.insert(id, at: destination)
-    }
-
-    func containsWorkspace(_ workspaceId: UUID) -> Bool {
-        workspaceIds.contains(workspaceId)
+            id: id, repositoryPath: repositoryPath,
+            displayName: displayName, mainBranch: mainBranch, color: color, worktreeSetupCommand: worktreeSetupCommand)
     }
 }

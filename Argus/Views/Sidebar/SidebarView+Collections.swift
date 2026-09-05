@@ -23,12 +23,11 @@ struct SidebarCollectionSection: View {
                 .modifier(SidebarNavigationDropTarget(target: .collection(collection.id)))
                 .onDrag { workspaceManager.collectionDrag(collection.id).itemProvider }
             if collection.isExpanded {
-                ForEach(workspaceManager.projects(in: collection.id)) { project in
-                    ProjectSection(project: project)
-                }
+                SidebarSectionContent(collectionId: collection.id)
             } else {
                 SidebarCollapsedWorkspaceSummary(
-                    workspaceIds: workspaceManager.projects(in: collection.id).flatMap(\.workspaceIds),
+                    workspaceIds: workspaceManager.navigationSections.first { $0.id == collection.id }?.workspaceIds
+                        ?? [],
                     showsProjectContext: true
                 )
             }
@@ -93,6 +92,11 @@ struct SidebarCollectionHeader: View {
         .accessibilityValue(collection.isExpanded ? "Expanded" : "Collapsed")
         .accessibilityIdentifier("collection-\(collection.id)")
         .contextMenu {
+            Button("New Workspace…") {
+                NotificationCenter.default.post(
+                    name: .showNewWorkspaceSheet,
+                    object: WorkspaceCreationRequest(projectId: nil, collectionId: collection.id))
+            }
             Button("New Project…") {
                 NotificationCenter.default.post(name: .showNewProjectSheet, object: collection.id)
             }
@@ -106,17 +110,17 @@ struct SidebarCollectionHeader: View {
                 .disabled(!workspaceManager.canMoveCollection(collection.id, offset: 1))
             Divider()
             Button("Remove Collection") { workspaceManager.removeCollection(collection.id) }
-                .help("Return Projects to Other Projects. No Workspaces or worktrees are removed.")
+                .help("Ungroup Workspaces. No Workspaces or worktrees are removed.")
         }
     }
 }
 
-struct SidebarOtherProjectsHeader: View {
+struct SidebarUngroupedHeader: View {
     @EnvironmentObject private var appSettings: AppSettings
     @Environment(\.sidebarWidthMetrics) private var sidebarMetrics
 
     var body: some View {
-        Text("Other Projects")
+        Text("Ungrouped")
             .lineLimit(1)
             .truncationMode(.tail)
             .font(.system(size: appSettings.presentationMetrics.textSize(forBaseSize: 11), weight: .semibold))
@@ -126,41 +130,43 @@ struct SidebarOtherProjectsHeader: View {
             .padding(.top, appSettings.presentationMetrics.projectHeaderVerticalPadding + 10)
             .padding(.bottom, appSettings.presentationMetrics.projectHeaderVerticalPadding + 2)
             .windowFocusChrome()
-            .modifier(SidebarNavigationDropTarget(target: .otherProjects))
+            .modifier(SidebarNavigationDropTarget(target: .ungrouped))
     }
 }
 
-struct ProjectCollectionMenu: View {
-    let projectId: UUID
+struct WorkspaceCollectionMenu: View {
+    let workspaceId: UUID
     @EnvironmentObject private var workspaceManager: WorkspaceManager
 
     var body: some View {
         Menu("Move to Collection") {
-            Button("No Collection") { workspaceManager.moveProject(projectId, toCollection: nil) }
-                .disabled(workspaceManager.collection(containing: projectId) == nil)
+            Button("No Collection") { workspaceManager.moveWorkspace(workspaceId, toCollection: nil) }
+                .disabled(workspaceManager.collection(containing: workspaceId) == nil)
             ForEach(workspaceManager.collections) { collection in
-                Button(collection.name) { workspaceManager.moveProject(projectId, toCollection: collection.id) }
-                    .disabled(workspaceManager.collection(containing: projectId)?.id == collection.id)
+                Button(collection.name) { workspaceManager.moveWorkspace(workspaceId, toCollection: collection.id) }
+                    .disabled(workspaceManager.collection(containing: workspaceId)?.id == collection.id)
             }
         }
-        Button("Move Project Up") { workspaceManager.moveProject(projectId, offset: -1) }
-            .disabled(!workspaceManager.canMoveProject(projectId, offset: -1))
-        Button("Move Project Down") { workspaceManager.moveProject(projectId, offset: 1) }
-            .disabled(!workspaceManager.canMoveProject(projectId, offset: 1))
     }
 }
 
-struct SidebarUngroupedProjects: View {
+struct SidebarSectionContent: View {
+    let collectionId: UUID?
     @EnvironmentObject private var workspaceManager: WorkspaceManager
     @Environment(\.sidebarWidthMetrics) private var sidebarMetrics
 
     var body: some View {
-        ForEach(workspaceManager.ungroupedProjects) { project in
-            ProjectSection(project: project)
+        ForEach(workspaceManager.navigationSections.first { $0.id == collectionId }?.blocks ?? []) { block in
+            if let project = block.project {
+                ProjectSection(project: project, collectionId: collectionId, items: block.items)
+            } else if let id = block.workspaceIds.first,
+                let workspace = workspaceManager.workspaces.first(where: { $0.id == id })
+            {
+                SidebarWorkspaceEntry(workspace: workspace)
+            }
         }
         .environment(
             \.sidebarCollectionContentInset,
-            workspaceManager.collections.isEmpty || sidebarMetrics.isCompact ? 0 : 8
-        )
+            workspaceManager.collections.isEmpty || sidebarMetrics.isCompact ? 0 : 8)
     }
 }

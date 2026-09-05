@@ -3,12 +3,12 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension UTType {
-    fileprivate static let argusProject = UTType(exportedAs: "com.argus.sidebar-project", conformingTo: .data)
+    fileprivate static let argusWorkspace = UTType(exportedAs: "com.argus.sidebar-workspace", conformingTo: .data)
     fileprivate static let argusCollection = UTType(exportedAs: "com.argus.sidebar-collection", conformingTo: .data)
 }
 
-struct SidebarProjectDrag: Codable, Equatable, Sendable {
-    let projectId: UUID
+struct SidebarWorkspaceDrag: Codable, Equatable, Sendable {
+    let workspaceId: UUID
     let sourceCollectionId: UUID?
     let sourceOrder: [UUID]
 }
@@ -19,12 +19,12 @@ struct SidebarCollectionDrag: Codable, Equatable, Sendable {
 }
 
 enum SidebarNavigationDrag: Codable, Equatable, Sendable {
-    case project(SidebarProjectDrag)
+    case workspace(SidebarWorkspaceDrag)
     case collection(SidebarCollectionDrag)
 
     var typeIdentifier: String {
         switch self {
-        case .project: UTType.argusProject.identifier
+        case .workspace: UTType.argusWorkspace.identifier
         case .collection: UTType.argusCollection.identifier
         }
     }
@@ -41,15 +41,15 @@ enum SidebarNavigationDrag: Codable, Equatable, Sendable {
 }
 
 enum SidebarNavigationDrop: Equatable, Sendable {
-    case project(UUID)
+    case workspace(UUID)
     case collection(UUID)
-    case otherProjects
+    case ungrouped
 }
 
 struct SidebarNavigationDropContext: Equatable, Sendable {
     let target: SidebarNavigationDrop
     let collectionId: UUID?
-    let projectOrder: [UUID]
+    let workspaceOrder: [UUID]
     let collectionOrder: [UUID]
 }
 
@@ -57,18 +57,18 @@ extension WorkspaceManager {
     func navigationDropContext(for target: SidebarNavigationDrop) -> SidebarNavigationDropContext? {
         let collectionId: UUID?
         switch target {
-        case .project(let projectId):
-            guard namedProjects.contains(where: { $0.id == projectId }) else { return nil }
-            collectionId = collection(containing: projectId)?.id
+        case .workspace(let workspaceId):
+            guard workspaces.contains(where: { $0.id == workspaceId }) else { return nil }
+            collectionId = collection(containing: workspaceId)?.id
         case .collection(let id):
             guard collections.contains(where: { $0.id == id }) else { return nil }
             collectionId = id
-        case .otherProjects:
+        case .ungrouped:
             collectionId = nil
         }
         return SidebarNavigationDropContext(
             target: target, collectionId: collectionId,
-            projectOrder: projects(in: collectionId).map(\.id), collectionOrder: collections.map(\.id))
+            workspaceOrder: manualWorkspaceIds(in: collectionId), collectionOrder: collections.map(\.id))
     }
 
     /// Capture the destination before the asynchronous provider read. Completion
@@ -90,12 +90,12 @@ extension WorkspaceManager {
         return applyNavigationDrop(drag, to: context.target, after: after)
     }
 
-    func projectDrag(_ projectId: UUID) -> SidebarNavigationDrag {
-        let collectionId = collection(containing: projectId)?.id
-        return .project(
-            SidebarProjectDrag(
-                projectId: projectId, sourceCollectionId: collectionId,
-                sourceOrder: projects(in: collectionId).map(\.id)))
+    func workspaceDrag(_ workspaceId: UUID) -> SidebarNavigationDrag {
+        let collectionId = collection(containing: workspaceId)?.id
+        return .workspace(
+            SidebarWorkspaceDrag(
+                workspaceId: workspaceId, sourceCollectionId: collectionId,
+                sourceOrder: manualWorkspaceIds(in: collectionId)))
     }
 
     func collectionDrag(_ collectionId: UUID) -> SidebarNavigationDrag {
@@ -107,24 +107,24 @@ extension WorkspaceManager {
     @discardableResult
     func applyNavigationDrop(_ drag: SidebarNavigationDrag, to target: SidebarNavigationDrop, after: Bool) -> Bool {
         switch drag {
-        case .project(let source):
-            guard namedProjects.contains(where: { $0.id == source.projectId }),
-                collection(containing: source.projectId)?.id == source.sourceCollectionId,
-                projects(in: source.sourceCollectionId).map(\.id) == source.sourceOrder
+        case .workspace(let source):
+            guard workspaces.contains(where: { $0.id == source.workspaceId }),
+                collection(containing: source.workspaceId)?.id == source.sourceCollectionId,
+                manualWorkspaceIds(in: source.sourceCollectionId) == source.sourceOrder
             else { return false }
             switch target {
-            case .project(let targetId):
-                guard targetId != source.projectId, namedProjects.contains(where: { $0.id == targetId }) else {
+            case .workspace(let targetId):
+                guard targetId != source.workspaceId, workspaces.contains(where: { $0.id == targetId }) else {
                     return false
                 }
                 let destinationId = collection(containing: targetId)?.id
-                let siblings = projects(in: destinationId).filter { $0.id != source.projectId }
-                guard let index = siblings.firstIndex(where: { $0.id == targetId }) else { return false }
-                return moveProject(source.projectId, toCollection: destinationId, at: index + (after ? 1 : 0))
+                let siblings = manualWorkspaceIds(in: destinationId).filter { $0 != source.workspaceId }
+                guard let index = siblings.firstIndex(of: targetId) else { return false }
+                return moveWorkspace(source.workspaceId, toCollection: destinationId, at: index + (after ? 1 : 0))
             case .collection(let collectionId):
-                return moveProject(source.projectId, toCollection: collectionId)
-            case .otherProjects:
-                return moveProject(source.projectId, toCollection: nil)
+                return moveWorkspace(source.workspaceId, toCollection: collectionId)
+            case .ungrouped:
+                return moveWorkspace(source.workspaceId, toCollection: nil)
             }
         case .collection(let source):
             guard source.sourceOrder == collections.map(\.id),
@@ -171,7 +171,7 @@ struct SidebarNavigationDropTarget: ViewModifier {
                 }
             }
             .onDrop(
-                of: [.argusProject, .argusCollection],
+                of: [.argusWorkspace, .argusCollection],
                 delegate: SidebarNavigationDropDelegate(
                     manager: workspaceManager, target: target, targetHeight: targetHeight, placement: $placement)
             )
@@ -221,13 +221,13 @@ private struct SidebarNavigationDropDelegate: DropDelegate {
 enum SidebarNavigationDropValidation {
     static func provider(from providers: [NSItemProvider], target: SidebarNavigationDrop) -> (NSItemProvider, String)? {
         guard providers.count == 1, let provider = providers.first else { return nil }
-        let types = [UTType.argusProject.identifier, UTType.argusCollection.identifier]
+        let types = [UTType.argusWorkspace.identifier, UTType.argusCollection.identifier]
             .filter { provider.hasItemConformingToTypeIdentifier($0) }
         guard types.count == 1, let type = types.first,
             !provider.hasItemConformingToTypeIdentifier(UTType.text.identifier)
         else { return nil }
         if type == UTType.argusCollection.identifier, case .collection = target { return (provider, type) }
-        return type == UTType.argusProject.identifier ? (provider, type) : nil
+        return type == UTType.argusWorkspace.identifier ? (provider, type) : nil
     }
 }
 
@@ -237,13 +237,13 @@ enum SidebarNavigationDropPlacement: Equatable {
     case append
 
     init(typeIdentifier: String, target: SidebarNavigationDrop, after: Bool) {
-        if typeIdentifier == UTType.argusProject.identifier {
-            // Project drops append when the destination is a section rather than another Project.
+        if typeIdentifier == UTType.argusWorkspace.identifier {
+            // Workspace drops append when the destination is a section rather than another Workspace.
             switch target {
-            case .collection, .otherProjects:
+            case .collection, .ungrouped:
                 self = .append
                 return
-            case .project:
+            case .workspace:
                 break
             }
         }

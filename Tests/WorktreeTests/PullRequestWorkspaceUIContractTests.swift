@@ -16,7 +16,7 @@ struct PullRequestWorkspaceUIContractTests {
                 ".controlSize(.small)",
                 ".fixedSize()",
                 "TextField(\"URL or number\", text: $pullRequestInput)",
-                "if branchMode != .pullRequest",
+                "if projectId == nil || branchMode != .pullRequest",
                 "workspaceManager.createWorkspace(",
                 "fromPullRequest: trimmedInput",
                 "catch {",
@@ -53,7 +53,7 @@ struct PullRequestWorkspaceUIContractTests {
         #expect(modeChange.contains("break"))
 
         let createState = try sheet.section(
-            after: "private var canCreate: Bool", before: "private var filteredAvailableBranches")
+            after: "private var canCreate: Bool", before: "// MARK: - Actions")
         #expect(createState.contains("case .pullRequest:"))
         #expect(createState.contains("pullRequestInput.trimmingCharacters"))
     }

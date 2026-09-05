@@ -109,10 +109,10 @@ struct WorkspacePresentationUIContractTests {
         let window = try SourceContract("Argus/Views/MainWindowView.swift")
         window.containsAll(
             [
-                "private struct NewWorkspaceSheetRequest: Identifiable",
-                "@State private var newWorkspaceSheetRequest: NewWorkspaceSheetRequest?",
+                "struct WorkspaceCreationRequest: Identifiable",
+                "@State private var newWorkspaceSheetRequest: WorkspaceCreationRequest?",
                 ".sheet(item: $newWorkspaceSheetRequest) { request in",
-                "NewWorkspaceSheet(projectId: request.projectId)"
+                "projectId: request.projectId, collectionId: request.collectionId,"
             ], "new workspace sheet request")
         window.excludes("showNewWorkspaceSheet = true", "presentation must not race optional content")
         window.excludes(

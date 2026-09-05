@@ -13,7 +13,7 @@ extension SidebarView {
             // Header with title and global add buttons
             SidebarHeader()
                 .windowFocusChrome()
-                .modifier(SidebarNavigationDropTarget(target: .otherProjects))
+                .modifier(SidebarNavigationDropTarget(target: .ungrouped))
 
             // Project sections
             ScrollViewReader { proxy in
@@ -22,16 +22,11 @@ extension SidebarView {
                         ForEach(workspaceManager.collections) { collection in
                             SidebarCollectionSection(collection: collection)
                         }
-                        if !workspaceManager.collections.isEmpty && !workspaceManager.ungroupedProjects.isEmpty {
-                            SidebarOtherProjectsHeader()
+                        if !workspaceManager.collections.isEmpty && !workspaceManager.ungroupedWorkspaceIds.isEmpty {
+                            SidebarUngroupedHeader()
                         }
-                        SidebarUngroupedProjects()
+                        SidebarSectionContent(collectionId: nil)
 
-                        if let catchAll = workspaceManager.catchAllProject {
-                            WorkspacesSectionHeader()
-                                .windowFocusChrome()
-                            ProjectSection(project: catchAll, showsHeader: false)
-                        }
                     }
                     .padding(.horizontal, 8)
                 }
@@ -67,7 +62,7 @@ private struct SidebarHeader: View {
 
     var body: some View {
         HStack(spacing: sidebarMetrics.isCompact ? 2 : nil) {
-            Text("Projects")
+            Text("Workspaces")
                 .font(
                     .system(
                         size: appSettings.presentationMetrics.textSize(forBaseSize: 11),
@@ -80,6 +75,11 @@ private struct SidebarHeader: View {
                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             Spacer(minLength: 0)
             Menu {
+                Button("New Workspace…") {
+                    NotificationCenter.default.post(
+                        name: .showNewWorkspaceSheet,
+                        object: WorkspaceCreationRequest(projectId: nil, collectionId: nil))
+                }
                 Button("New Project…") {
                     NotificationCenter.default.post(name: .showNewProjectSheet, object: nil)
                 }
@@ -102,78 +102,12 @@ private struct SidebarHeader: View {
             .fixedSize()
             .onHover { isAddHovered = $0 }
             .cursor(.pointingHand)
-            .help("New Project or Collection")
-            .accessibilityLabel("New Project or Collection")
+            .help("New Workspace, Project, or Collection")
+            .accessibilityLabel("New Workspace, Project, or Collection")
         }
         .padding(.horizontal, sidebarMetrics.isCompact ? 6 : 12)
         .padding(.vertical, 8)
         .padding(.top, 28)  // Space for titlebar traffic lights
-    }
-}
-
-// MARK: - Workspaces Section Header
-
-/// Top-level section header for the Catch-all Project, matching Projects.
-private struct WorkspacesSectionHeader: View {
-    @EnvironmentObject var workspaceManager: WorkspaceManager
-    @EnvironmentObject private var appSettings: AppSettings
-    @Environment(\.sidebarWidthMetrics) private var sidebarMetrics
-
-    var body: some View {
-        HStack(spacing: sidebarMetrics.isCompact ? 2 : nil) {
-            Text("Workspaces")
-                .font(
-                    .system(
-                        size: appSettings.presentationMetrics.textSize(forBaseSize: 11),
-                        weight: .semibold
-                    )
-                )
-                .foregroundColor(.secondary)
-                .textCase(.uppercase)
-                .lineLimit(1)
-                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-            Spacer(minLength: 0)
-            SidebarSectionAddButton(
-                help: "New Workspace",
-                accessibilityLabel: "New Workspace"
-            ) {
-                workspaceManager.addWorkspace()
-            }
-        }
-        .padding(.horizontal, sidebarMetrics.isCompact ? 2 : 4)
-        .padding(.top, 16)
-        .padding(.bottom, 4)
-    }
-}
-
-// MARK: - Section Add Button
-
-/// Compact plus control used by the Projects and Workspaces section headers.
-private struct SidebarSectionAddButton: View {
-    let help: String
-    let accessibilityLabel: String
-    let action: () -> Void
-    @State private var isHovered = false
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "plus")
-                .font(.system(size: 12, weight: .regular))
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
-                .frame(width: 20, height: 20)
-                .background {
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(isHovered ? ChromeColors.hoveredTabFill : Color.clear)
-                }
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .foregroundColor(.secondary)
-        .cursor(.pointingHand)
-        .help(help)
-        .accessibilityLabel(accessibilityLabel)
-        .onHover { isHovered = $0 }
     }
 }
 

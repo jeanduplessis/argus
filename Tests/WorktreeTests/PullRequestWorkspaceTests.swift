@@ -348,6 +348,8 @@ struct PullRequestWorkspaceTests {
 
     @Test
     @MainActor
+    // One workflow verifies conversion/reuse without splitting its identity and content assertions.
+    // swiftlint:disable:next function_body_length
     func managerUsesPullRequestTitleAndReusesAnExactWorkspace() async throws {
         let fixture = try PullRequestGitFixture(pushHeadBranch: true)
         defer { fixture.remove() }
@@ -374,7 +376,7 @@ struct PullRequestWorkspaceTests {
         let project = try #require(
             await manager.createProject(repositoryPath: fixture.repository.path)
         )
-        let projectWorkspaceCount = project.workspaceIds.count
+        let projectWorkspaceCount = manager.workspaceIds(for: project).count
 
         let workspace = try await manager.createWorkspace(
             fromPullRequest: "42",
@@ -386,19 +388,39 @@ struct PullRequestWorkspaceTests {
         #expect(workspace.customTitle == "Exact Pull Request title")
         #expect(workspace.panelCount == 1)
         #expect(manager.selectedWorkspaceId == workspace.id)
-        #expect(project.workspaceIds.count == projectWorkspaceCount + 1)
+        #expect(manager.workspaceIds(for: project).count == projectWorkspaceCount + 1)
         let snapshot = try sessionSnapshot(at: snapshotURL)
         #expect(snapshot.selectedWorkspaceId == workspace.id)
         #expect(snapshot.workspaces.contains { $0.id == workspace.id })
 
         manager.renameWorkspace(workspace.id, title: "User title")
+        let originalCollection = try #require(manager.createCollection(name: "Original"))
+        let requestedCollection = try #require(manager.createCollection(name: "Requested"))
+        manager.moveWorkspace(workspace.id, toCollection: originalCollection.id)
+        manager.toggleCollection(originalCollection.id)
+        let panelIds = workspace.panelOrder
         let reused = try await manager.createWorkspace(
             fromPullRequest: "42",
-            in: project.id
+            in: project.id, collectionId: requestedCollection.id
         )
+        #expect(manager.collection(containing: reused.id)?.id == originalCollection.id)
+        #expect(manager.collections.first?.isExpanded == true)
+        #expect(manager.collections.last?.workspaceIds.isEmpty == true)
+        #expect(reused.panelOrder == panelIds)
+        #expect(manager.sidebarOrderedWorkspaces.filter { $0.workspace.id == reused.id }.count == 1)
         #expect(reused.id == workspace.id)
         #expect(reused.customTitle == "User title")
-        #expect(project.workspaceIds.count == projectWorkspaceCount + 1)
+        #expect(manager.workspaceIds(for: project).count == projectWorkspaceCount + 1)
+        let removal = Task { @MainActor in manager.removeCollection(requestedCollection.id) }
+        await #expect(throws: PullRequestWorkspaceError.self) {
+            try await manager.createWorkspace(
+                fromPullRequest: "42", in: project.id,
+                collectionId: requestedCollection.id)
+        }
+        await removal.value
+        #expect(manager.collection(containing: workspace.id)?.id == originalCollection.id)
+        #expect(manager.workspaces.contains { $0 === workspace })
+        #expect(FileManager.default.fileExists(atPath: try #require(workspace.worktreePath)))
     }
 
     @Test @MainActor
@@ -600,5 +622,91 @@ private final class PullRequestGitFixture {
 
     private static func run(_ arguments: [String], in directory: URL) throws {
         _ = try TestGit.run(arguments, in: directory)
+    }
+}
+
+extension PullRequestWorkspaceTests {
+    @Test(arguments: [false, true]) @MainActor
+    // Keep preparation, peer claims, asynchronous cleanup, and the returned error in one workflow.
+    // swiftlint:disable:next function_body_length
+    func stalePullRequestCleanupRetainsPeerOrReturnsOriginalErrorAcrossReentrantCreation(adoptPeer: Bool) async throws {
+        let fixture = try PullRequestGitFixture()
+        defer { fixture.remove() }
+        let suiteName = "ArgusTests.PullRequestCleanup.\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let setup = SetupTestRunner()
+        await setup.configure(hold: true)
+        let provider = RecordingGitHubCommandRunner(
+            result: GitHubCommandResult(
+                stdout: Data(fixture.githubMetadataJSON(title: "Cleanup fixture").utf8), stderr: Data(), exitCode: 0))
+        let manager = WorkspaceManager(
+            settings: AppSettings(defaults: defaults),
+            sessionSnapshotURL: fixture.root.appendingPathComponent("session.json"),
+            environment: ["ARGUS_UNDER_TEST": "1"],
+            worktreeService: WorktreeService(worktreeBaseURL: fixture.root.appendingPathComponent("managed")),
+            pullRequestService: GitHubPullRequestService(
+                commandRunner: provider, executableURL: URL(fileURLWithPath: "/test/gh")),
+            worktreeSetupRunner: setup)
+        let project = try #require(await manager.createProject(repositoryPath: fixture.repository.path))
+        try manager.setWorktreeSetupCommand("printf explicit", for: project.id)
+        let destination = try #require(manager.createCollection(name: "Removed"))
+        let prepareGate = try BoundedGitHookGate(root: fixture.root, repository: fixture.repository, name: "pr-prepare")
+        defer { prepareGate.release() }
+        let creation = Task {
+            try await manager.createWorkspace(fromPullRequest: "42", in: project.id, collectionId: destination.id)
+        }
+        try await prepareGate.waitUntilStarted()
+        let trees = try await manager.worktreeService.listWorktrees(repositoryPath: project.repositoryPath)
+        let path = try #require(trees.first { $0.branch == "feature/exact-head" }?.path)
+        var peer: Workspace?
+        if adoptPeer {
+            peer = try #require(
+                manager.adoptOrphanedWorktree(
+                    .init(path: path, branchName: "feature/exact-head", projectId: project.id)))
+            manager.runWorktreeSetupAgain(in: peer!)
+            for _ in 0..<300 where await setup.requests.isEmpty { try await Task.sleep(for: .milliseconds(10)) }
+            #expect(await setup.requests.count == 1)
+        }
+        manager.removeCollection(destination.id)
+        let cleanupGate =
+            try adoptPeer
+            ? nil
+            : BoundedGitHookGate(
+                root: fixture.root,
+                repository: fixture.repository, name: "pr-cleanup", monitorsStatus: true)
+        defer { cleanupGate?.release() }
+        prepareGate.release()
+        if let cleanupGate {
+            try await cleanupGate.waitUntilStarted()
+            #expect(manager.worktreeDeletionRoots == [manager.canonicalPath(path)])
+            await #expect(throws: PullRequestWorkspaceError.self) {
+                try await manager.createWorkspace(fromPullRequest: "42", in: project.id)
+            }
+            #expect(manager.worktreeDeletionRoots == [manager.canonicalPath(path)])
+            #expect(await manager.addWorkspaceToProject(UUID(), branchName: "unrelated") == nil)
+            #expect(manager.lastWorkspaceCreationError == nil)
+            cleanupGate.release()
+        }
+        do {
+            _ = try await creation.value
+            Issue.record("Removed destination unexpectedly attached a Pull Request Workspace")
+        } catch let error as PullRequestWorkspaceError {
+            guard case .worktreeCreationFailed(let message) = error else {
+                Issue.record("The original destination error was replaced")
+                return
+            }
+            #expect(message.contains("Collection"))
+        }
+        #expect(manager.worktreeDeletionRoots.isEmpty)
+        #expect(!prepareGate.didTimeOut)
+        #expect(cleanupGate?.didTimeOut != true)
+        #expect(FileManager.default.fileExists(atPath: path) == adoptPeer)
+        if let peer {
+            #expect(manager.workspaces.contains { $0 === peer })
+            #expect(peer.runningSetupCount == 1)
+            #expect(await setup.stopRequests == 0)
+        }
+        #expect(await manager.stopAllWorktreeSetups())
     }
 }

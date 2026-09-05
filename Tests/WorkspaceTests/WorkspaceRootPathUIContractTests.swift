@@ -29,7 +29,13 @@ struct WorkspaceRootPathUIContractTests {
                 "TextField(\"Enter an absolute path or ~/path\", text: $path)",
                 "Button(\"Browse…\", action: browseForDirectory)",
                 "workspaceManager.setStandaloneWorkspaceRoot(workspaceId, path: trimmedPath)",
-                "Button(\"Apply\", action: apply)"
+                "Button(\"Apply\", action: apply)",
+                "workspaceManager.lastWorkspaceCreationError?.localizedDescription"
             ], "direct Workspace Root path-entry controls")
+        try SourceContract("Argus/Views/Sidebar/SidebarView+Projects.swift").containsAll(
+            [
+                "if !workspaceManager.setStandaloneWorkspaceRoot", "alert.informativeText = error.localizedDescription",
+                "alert.runModal()"
+            ], "directory-browser reservation failures use a native error alert")
     }
 }

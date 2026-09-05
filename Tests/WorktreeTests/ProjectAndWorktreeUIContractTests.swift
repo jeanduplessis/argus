@@ -37,70 +37,52 @@ struct ProjectAndWorktreeUIContractTests {
             after: "func hasDuplicateProject(repositoryRoot:",
             before: "func addWorkspaceToProject("
         )
-        #expect(duplicateCheck.contains("!$0.isCatchAll"))
+        #expect(!duplicateCheck.contains("isCatchAll"))
         #expect(duplicateCheck.contains("resolvingSymlinksInPath().path"))
     }
 
     @Test
-    func projectAndCatchAllAddActionsStayDistinct() throws {
+    func contextualCreationSeparatesRepositoryFromCollectionAndStandalone() throws {
         let sidebar = try SourceContract("Argus/Views/Sidebar/SidebarView.swift")
         sidebar.containsAll(
             [
-                ".help(\"New Project or Collection\")",
-                ".accessibilityLabel(\"New Project or Collection\")",
-                "Button(\"New Project…\")",
-                "Button(\"New Collection…\")",
-                "name: .showNewProjectSheet",
-                "name: .showCollectionSheet",
-                "help: \"New Workspace\"",
-                "accessibilityLabel: \"New Workspace\"",
-                "workspaceManager.addWorkspace()",
-                "if project.isCatchAll {",
-                "name: .showNewWorkspaceSheet",
-                "userInfo: [\"projectId\": project.id]",
-                "Button(\"Add Workspace…\")"
-            ], "Projects creation menu stays separate from Catch-all Workspace creation")
-        sidebar.excludes(
-            "New Workspace or Project",
-            "Catch-all Workspace creation must remain separate from the Projects menu"
-        )
-        sidebar.excludes(
-            "Image(systemName: \"folder.badge.plus\")",
-            "Projects keeps its plus-menu affordance"
-        )
+                "Button(\"New Workspace…\")", "Button(\"New Project…\")", "Button(\"New Collection…\")",
+                "WorkspaceCreationRequest(projectId: project.id, collectionId: collectionId)",
+                "WorkspaceCreationRequest(projectId: nil, collectionId: nil)"
+            ], "explicit creation destinations")
+        sidebar.excludes("isCatchAll", "No synthetic runtime repository")
+        let sheet = try SourceContract("Argus/Views/Dialogs/NewWorkspaceSheet.swift")
+        sheet.containsAll(
+            [
+                "Picker(\"Repository\", selection: $selection)", "Text(\"Standalone Workspace\")",
+                "ForEach(workspaceManager.projects)", "Button(\"Worktree Setup…\")"
+            ], "empty repositories stay accessible")
     }
 
     @Test
     func sidebarAddMenuUsesIconActionAffordances() throws {
-        let sidebar = try SourceContract("Argus/Views/Sidebar/SidebarView.swift")
+        let sidebar = try SourceContract("Argus/Views/Sidebar/SidebarView+Header.swift")
         let addButton = try sidebar.section(
-            after: "private struct SidebarSectionAddButton: View",
-            before: "// MARK: - ProjectSection")
-
+            after: "private struct SidebarHeader: View", before: "struct SidebarStackDiscoveryStatus")
         for expected in [
-            "@State private var isHovered = false",
-            ".frame(width: 20, height: 20)",
-            "isHovered ? ChromeColors.hoveredTabFill : Color.clear",
-            ".contentShape(Rectangle())",
-            ".cursor(.pointingHand)",
-            ".help(help)",
-            ".accessibilityLabel(accessibilityLabel)",
-            ".onHover { isHovered = $0 }"
+            "@State private var isAddHovered = false", ".frame(width: 20, height: 20)",
+            "isAddHovered ? ChromeColors.hoveredTabFill : Color.clear", ".contentShape(Rectangle())",
+            ".cursor(.pointingHand)", ".help(", ".accessibilityLabel(", ".onHover { isAddHovered = $0 }"
         ] {
             #expect(addButton.contains(expected))
         }
     }
 
     @Test
-    func catchAllProjectHasDistinctWorkspaceSectionStyling() throws {
-        try SourceContract("Argus/Views/Sidebar/SidebarView.swift").containsAll(
+    func ungroupedAndCollectionSectionsRenderWorkspaceProjectionWithoutSyntheticProject() throws {
+        let sidebar = try SourceContract("Argus/Views/Sidebar/SidebarView.swift")
+        sidebar.containsAll(
             [
-                "private struct WorkspacesSectionHeader: View",
-                "Text(\"Workspaces\")",
-                ".textCase(.uppercase)",
-                "ProjectSection(project: catchAll, showsHeader: false)",
-                "if project.isExpanded || !showsHeader"
-            ], "catch-all Workspaces section uses a Projects-style top-level header")
+                "Text(\"Workspaces\")", "SidebarSectionContent(collectionId: nil)",
+                "ForEach(workspaceManager.navigationSections.first", "SidebarWorkspaceEntry(workspace: workspace)"
+            ],
+            "repository blocks and direct Workspaces share section projection")
+        sidebar.excludes("catchAllProject", "Standalone Workspaces have no synthetic repository")
     }
 
     @Test
@@ -110,13 +92,13 @@ struct ProjectAndWorktreeUIContractTests {
             [
                 "@State private var branchFilter: String = \"\"",
                 "private var filteredAvailableBranches: [String]",
-                "localizedCaseInsensitiveContains(filter)",
-                "TextField(\"Filter branches\", text: $branchFilter)",
+                "localizedCaseInsensitiveContains(trimmedFilter)",
+                "TextField(\"Filter branches\", text: $filter)",
                 "ForEach(filteredAvailableBranches, id: \\.self)",
-                "selectedExistingBranch = branch",
+                "selection = branch",
                 "listWorkspaceBranchChoices(",
                 "repositoryPath: project.repositoryPath",
-                "defer { isLoadingBranches = false }",
+                "if projectId == project.id { isLoadingBranches = false }",
                 "errorMessage = error.localizedDescription"
             ], "existing branch picker")
 
@@ -185,7 +167,7 @@ struct ProjectAndWorktreeUIContractTests {
             [
                 "shouldConfirmWorktreeDeletionBeforeClosing(_ workspaceId: UUID) -> Bool",
                 "workspace.worktreePath != nil",
-                "!project.isCatchAll",
+                "project(for: workspaceId) != nil",
                 "onProgress: (@MainActor @Sendable (WorkspaceDeletionStage) -> Void)? = nil",
                 "try await worktreeService.removeWorktree",
                 "onProgress?(.removingWorktree)",

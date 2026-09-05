@@ -13,7 +13,7 @@ struct ProjectCollectionUITests {
         defer { fixture.cleanup() }
         let manager = fixture.manager
         let collection = try #require(manager.createCollection(name: "Client aPI with a long Collection name"))
-        manager.moveProject(fixture.project.id, toCollection: collection.id)
+        manager.moveWorkspace(fixture.child.id, toCollection: collection.id)
         let selection = manager.selectedWorkspaceId
         let header = SidebarCollectionHeader(collection: collection)
             .environmentObject(manager)
@@ -97,7 +97,7 @@ struct ProjectCollectionUITests {
         let target = TurnCompletionAttentionTarget(workspaceId: fixture.child.id, tabId: UUID())
         _ = attention.record(agentKey: "test", eventId: "complete", target: target, isViewed: false)
         let summary = SidebarCollapsedWorkspaceSummary(
-            workspaceIds: fixture.project.workspaceIds, showsProjectContext: true
+            workspaceIds: fixture.manualOrder, showsProjectContext: true
         )
         .environmentObject(manager)
         .environmentObject(manager.settings)
@@ -138,8 +138,8 @@ struct ProjectCollectionUITests {
         let collections = try SourceContract("Argus/Views/Sidebar/SidebarView+Collections.swift")
         collections.containsAll(
             [
-                "Menu(\"Move to Collection\")", "Button(\"No Collection\")", "Button(\"Move Project Up\")",
-                "Button(\"Move Project Down\")", "Button(\"Remove Collection\")", "Button(\"Rename Collection…\")",
+                "Menu(\"Move to Collection\")", "Button(\"No Collection\")", "Button(\"Remove Collection\")",
+                "Button(\"Rename Collection…\")",
                 ".cursor(.pointingHand)", ".onHover", ".focused($isFocused)", ".contentShape(Rectangle())"
             ], "explicit actions and native interaction are available without dragging")
         collections.excludes(".textCase(", "Collection names retain entered casing")
@@ -150,12 +150,12 @@ struct ProjectCollectionUITests {
     func collectionNewProjectUsesAFreshUUIDScopedSheetRequest() throws {
         let collections = try SourceContract("Argus/Views/Sidebar/SidebarView+Collections.swift")
         let firstAction = try collections.section(after: ".contextMenu {", before: "Button(\"Rename Collection…\")")
-        #expect(firstAction.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("Button(\"New Project…\")"))
+        #expect(firstAction.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("Button(\"New Workspace…\")"))
         #expect(firstAction.contains("name: .showNewProjectSheet, object: collection.id"))
         let window = try SourceContract("Argus/Views/MainWindowView.swift")
         let request = try window.section(
             after: "private struct NewProjectSheetRequest: Identifiable {",
-            before: "private struct NewWorkspaceSheetRequest")
+            before: "struct WorkspaceCreationRequest")
         #expect(request.contains("let id = UUID()"))
         #expect(request.contains("let collectionId: UUID?"))
         window.containsAll(

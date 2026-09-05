@@ -1,10 +1,4 @@
-// NewWorkspaceSheet.swift
-// Argus
-//
-// Sheet dialog for creating a new workspace within a project.
-// Supports creating new branches or checking out existing branches
-// as git worktrees.
-
+import AppKit
 import SwiftUI
 
 struct NewWorkspaceSheet: View {
@@ -14,7 +8,17 @@ struct NewWorkspaceSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     /// The project to add the workspace to (set by the caller).
-    let projectId: UUID
+    @State private var projectId: UUID?
+    let collectionId: UUID?
+    private let allowsRepositoryChoice: Bool
+    @State private var directoryPath = ""
+
+    init(projectId: UUID?, collectionId: UUID? = nil, stackParentBranch: String? = nil) {
+        _projectId = State(initialValue: projectId)
+        self.collectionId = collectionId
+        self.stackParentBranch = stackParentBranch
+        allowsRepositoryChoice = projectId == nil
+    }
     /// The recorded parent for a new branch added through a Stack Group.
     var stackParentBranch: String?
 
@@ -39,7 +43,6 @@ struct NewWorkspaceSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             VStack(spacing: 4) {
                 Text("New Workspace")
                     .font(.headline)
@@ -52,9 +55,31 @@ struct NewWorkspaceSheet: View {
             .padding(.top, 20)
             .padding(.bottom, 16)
 
-            // Optional workspace name remains a branch-source field. Pull
-            // Request titles come from GitHub and are assigned by the manager.
-            if branchMode != .pullRequest {
+            if allowsRepositoryChoice {
+                WorkspaceRepositoryPicker(selection: $projectId)
+                    .padding(.horizontal, 24)
+                    .disabled(isCreating)
+            }
+            if let collectionId, let collection = workspaceManager.collections.first(where: { $0.id == collectionId }) {
+                Text("Collection: \(collection.name)").font(.caption).foregroundStyle(.secondary)
+                    .padding(.bottom, 8)
+            }
+            if projectId == nil {
+                HStack {
+                    TextField("Working directory", text: $directoryPath).textFieldStyle(.roundedBorder)
+                    Button("Browse…") {
+                        let panel = NSOpenPanel()
+                        panel.canChooseDirectories = true
+                        panel.canChooseFiles = false
+                        panel.allowsMultipleSelection = false
+                        if panel.runModal() == .OK, let url = panel.url { directoryPath = url.path }
+                    }
+                }
+                .padding(.horizontal, 24)
+                .disabled(isCreating)
+            }
+
+            if projectId == nil || branchMode != .pullRequest {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Workspace Name")
                         .font(Self.sectionLabelFont)
@@ -68,42 +93,44 @@ struct NewWorkspaceSheet: View {
             }
 
             // Source section
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Source")
-                        .font(Self.sectionLabelFont)
-                        .foregroundColor(.secondary)
+            if projectId != nil {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Source")
+                            .font(Self.sectionLabelFont)
+                            .foregroundColor(.secondary)
 
-                    Spacer()
+                        Spacer()
 
-                    if stackParentBranch == nil {
-                        Picker("Source", selection: $branchMode) {
-                            ForEach(BranchMode.allCases, id: \.self) { mode in
-                                Text(mode.rawValue).tag(mode)
+                        if stackParentBranch == nil {
+                            Picker("Source", selection: $branchMode) {
+                                ForEach(BranchMode.allCases, id: \.self) { mode in
+                                    Text(mode.rawValue).tag(mode)
+                                }
                             }
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .controlSize(.small)
+                            .fixedSize()
+                            .disabled(isCreating)
                         }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
-                        .controlSize(.small)
-                        .fixedSize()
-                        .disabled(isCreating)
+                    }
+
+                    switch branchMode {
+                    case .new:
+                        newBranchInput
+                    case .existing:
+                        existingBranchPicker
+                    case .pullRequest:
+                        TextField("URL or number", text: $pullRequestInput)
+                            .textFieldStyle(.roundedBorder)
                     }
                 }
+                .padding(.horizontal, 24)
+                .disabled(isCreating)
 
-                switch branchMode {
-                case .new:
-                    newBranchInput
-                case .existing:
-                    existingBranchPicker
-                case .pullRequest:
-                    TextField("URL or number", text: $pullRequestInput)
-                        .textFieldStyle(.roundedBorder)
-                }
             }
-            .padding(.horizontal, 24)
-            .disabled(isCreating)
 
-            // Error message
             if let errorMessage {
                 Text(errorMessage)
                     .font(.system(size: 12))
@@ -116,7 +143,6 @@ struct NewWorkspaceSheet: View {
 
             Divider()
 
-            // Action buttons
             HStack {
                 Button("Cancel") {
                     dismiss()
@@ -143,7 +169,15 @@ struct NewWorkspaceSheet: View {
         }
         .frame(width: 400)
         .fixedSize(horizontal: false, vertical: true)
+        .onChange(of: projectId) { _, _ in
+            branchMode = .new
+            selectedExistingBranch = nil
+            availableBranches = []
+            isLoadingBranches = false
+            regenerateBranchName()
+        }
         .onAppear {
+            directoryPath = workspaceManager.settings.defaultStandaloneWorkspaceDirectory
             if newBranchName.isEmpty {
                 regenerateBranchName()
             }
@@ -203,64 +237,17 @@ extension NewWorkspaceSheet {
         }
     }
 
-    @ViewBuilder
     private var existingBranchPicker: some View {
-        if isLoadingBranches {
-            HStack(spacing: 8) {
-                ProgressView()
-                    .controlSize(.small)
-                Text("Loading branches...")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-            }
-        } else if availableBranches.isEmpty {
-            Text("No available branches")
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
-        } else {
-            TextField("Filter branches", text: $branchFilter)
-                .textFieldStyle(.roundedBorder)
-
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 2) {
-                    ForEach(filteredAvailableBranches, id: \.self) { branch in
-                        Button(
-                            action: {
-                                selectedExistingBranch = branch
-                            },
-                            label: {
-                                HStack {
-                                    Text(branch)
-                                        .lineLimit(1)
-                                        .truncationMode(.middle)
-                                    Spacer()
-                                    if selectedExistingBranch == branch {
-                                        Text("Selected")
-                                            .font(.system(size: 10, weight: .semibold))
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                                .contentShape(Rectangle())
-                            }
-                        )
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 5)
-                                .fill(selectedExistingBranch == branch ? Color.accentColor.opacity(0.16) : Color.clear)
-                        )
-                    }
-                }
-            }
-            .frame(maxHeight: 96)
-        }
+        WorkspaceBranchPicker(
+            isLoading: isLoadingBranches, branches: availableBranches,
+            filter: $branchFilter, selection: $selectedExistingBranch)
     }
 
     // MARK: - Computed
 
     private var canCreate: Bool {
         if isCreating { return false }
+        if projectId == nil { return !directoryPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         switch branchMode {
         case .new:
             let trimmed = newBranchName.trimmingCharacters(in: .whitespaces)
@@ -269,14 +256,6 @@ extension NewWorkspaceSheet {
             return selectedExistingBranch != nil
         case .pullRequest:
             return !pullRequestInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }
-    }
-
-    private var filteredAvailableBranches: [String] {
-        let filter = branchFilter.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !filter.isEmpty else { return availableBranches }
-        return availableBranches.filter { branch in
-            branch.localizedCaseInsensitiveContains(filter)
         }
     }
 
@@ -299,7 +278,7 @@ extension NewWorkspaceSheet {
                     repositoryPath: project.repositoryPath
                 ),
                 verified != candidate,
-                newBranchName == candidate
+                projectId == project.id, newBranchName == candidate
             else { return }
             newBranchName = verified
         }
@@ -309,11 +288,12 @@ extension NewWorkspaceSheet {
         guard let project = workspaceManager.projects.first(where: { $0.id == projectId }) else { return }
         isLoadingBranches = true
         Task {
-            defer { isLoadingBranches = false }
+            defer { if projectId == project.id { isLoadingBranches = false } }
             do {
                 let branches = try await workspaceManager.worktreeService.listWorkspaceBranchChoices(
                     repositoryPath: project.repositoryPath
                 )
+                guard projectId == project.id else { return }
                 availableBranches = branches
                 if let selectedExistingBranch,
                     !branches.contains(selectedExistingBranch)
@@ -321,6 +301,7 @@ extension NewWorkspaceSheet {
                     self.selectedExistingBranch = nil
                 }
             } catch {
+                guard projectId == project.id else { return }
                 availableBranches = []
                 errorMessage = error.localizedDescription
             }
@@ -328,6 +309,24 @@ extension NewWorkspaceSheet {
     }
 
     private func createWorkspace() {
+        if projectId == nil {
+            var isDirectory: ObjCBool = false
+            let path = (directoryPath as NSString).expandingTildeInPath
+            guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue else {
+                errorMessage = "Choose an existing directory."
+                return
+            }
+            guard
+                workspaceManager.addWorkspace(
+                    workingDirectory: path, collectionId: collectionId, customTitle: workspaceName) != nil
+            else {
+                errorMessage =
+                    workspaceManager.lastWorkspaceCreationError?.localizedDescription ?? "Unable to create Workspace."
+                return
+            }
+            dismiss()
+            return
+        }
         guard branchMode != .existing || selectedExistingBranch != nil else { return }
         isCreating = true
         errorMessage = nil
@@ -342,11 +341,12 @@ extension NewWorkspaceSheet {
     }
 
     private func createPullRequestWorkspace() async {
+        guard let projectId else { return }
         let trimmedInput = pullRequestInput.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
             _ = try await workspaceManager.createWorkspace(
                 fromPullRequest: trimmedInput,
-                in: projectId
+                in: projectId, collectionId: collectionId
             )
             dismiss()
         } catch {
@@ -355,14 +355,14 @@ extension NewWorkspaceSheet {
     }
 
     private func createBranchWorkspace() async {
-        guard let branchSelection = branchSelection else { return }
+        guard let projectId, let branchSelection = branchSelection else { return }
         let trimmedName = workspaceName.trimmingCharacters(in: .whitespacesAndNewlines)
         let result = await workspaceManager.addWorkspaceToProject(
             projectId,
             branchName: branchSelection.branchName,
             createNewBranch: branchSelection.createNewBranch,
             customTitle: trimmedName.isEmpty ? nil : trimmedName,
-            parentBranch: stackParentBranch
+            parentBranch: stackParentBranch, collectionId: collectionId
         )
 
         if result != nil {

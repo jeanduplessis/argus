@@ -189,7 +189,7 @@ extension SidebarWorkspaceRow {
     private var showsPullRequestStatus: Bool {
         appSettings.showPullRequestStatus && workspace.workspaceType == .worktree
             && workspace.worktreePath?.isEmpty == false
-            && workspaceManager.project(for: workspace.id)?.isCatchAll == false
+            && workspaceManager.project(for: workspace.id) != nil
     }
 
     private var pullRequestState: WorkspacePullRequestState {

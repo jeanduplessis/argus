@@ -10,11 +10,11 @@ struct WorkspaceStackUIContractTests {
         let projects = try SourceContract("Argus/Views/Sidebar/SidebarView+Projects.swift")
         projects.containsAll(
             [
-                "ForEach(workspaceManager.sidebarItems(for: project))",
+                "ForEach(items)",
                 "case .workspace(let workspaceId):",
                 "case .stack(let group):",
                 ".id(group.id)",
-                "if project.isExpanded || !showsHeader",
+                "if disclosure.isExpanded",
                 "shortcutDigit: workspaceManager.workspaceShortcutDigit(for: workspace.id)",
                 ".id(workspace.id)"
             ], "Project sections use the same projection as Workspace navigation")
@@ -26,7 +26,7 @@ struct WorkspaceStackUIContractTests {
                 "SidebarStackReferenceRow(row: row)"
             ], "only open Workspaces receive selectable rows and shortcut numbers")
         try SourceContract("Argus/Views/Sidebar/SidebarView+Header.swift").contains(
-            "ProjectSection(project: catchAll, showsHeader: false)", "Catch-all Project stays headerless")
+            "SidebarSectionContent(collectionId: nil)", "Ungrouped content uses the same projection")
     }
 
     @Test
@@ -59,8 +59,11 @@ struct WorkspaceStackUIContractTests {
     func groupHeadersDiscloseWithoutSelectingOrClosingWorkspaces() throws {
         let stacks = try SourceContract("Argus/Views/Sidebar/SidebarView+Stacks.swift")
         let section = try stacks.section(after: "func stackSection(", before: "private func stackRows(")
-        #expect(section.contains("project.collapsedStackIds.contains(group.id)"))
-        #expect(section.contains("workspaceManager.toggleWorkspaceStack(group.id, in: project.id)"))
+        #expect(section.contains("workspaceManager.repositoryDisclosure(for: project.id, in: collectionId)"))
+        #expect(section.contains(".collapsedStackIds.contains(group.id)"))
+        #expect(
+            section.contains(
+                "workspaceManager.toggleWorkspaceStack(group.id, in: project.id, collectionId: collectionId)"))
         #expect(!section.contains("selectWorkspace("))
         #expect(!section.contains("requestCloseWorkspace("))
         #expect(!section.contains(".focus()"))
@@ -158,7 +161,7 @@ struct WorkspaceStackUIContractTests {
             #expect(!summary.contains(fragment))
         }
         try SourceContract("Argus/Views/Sidebar/SidebarView+Projects.swift").contains(
-            "SidebarCollapsedWorkspaceSummary(workspaceIds: project.workspaceIds)",
+            "SidebarCollapsedWorkspaceSummary(workspaceIds: items.flatMap(\\.workspaceIds))",
             "collapsed Projects summarize hidden Workspaces")
         try SourceContract("Argus/Views/Sidebar/SidebarView+Stacks.swift").contains(
             "SidebarCollapsedWorkspaceSummary(workspaceIds: group.workspaceIds)",
@@ -176,19 +179,16 @@ struct WorkspaceStackUIContractTests {
                 "workspaceManager.moveWorkspace(in: project.id, moving: workspaceId, offset: 1)",
                 ".disabled(!workspaceManager.canMoveWorkspace(in: project.id, moving: workspaceId, offset: -1))",
                 ".disabled(!workspaceManager.canMoveWorkspace(in: project.id, moving: workspaceId, offset: 1))",
-                ".modifier(SidebarWorkspaceReordering(projectId: project.id, workspaceId: workspace.id))",
+                ".modifier(SidebarNavigationDropTarget(target: .workspace(workspace.id)))",
                 "Button(\"Rename…\")", "Button(\"Change Working Directory…\")", "Button(\"Enter Path Directly…\")",
                 "Button(\"Copy Path\")", "workspaceManager.requestCloseWorkspace(workspace.id)"
             ], "member actions preserve Workspace scope while movement delegates block semantics")
-        let drop = try projects.section(
-            after: "private struct SidebarWorkspaceDropDelegate: DropDelegate {", before: "\n}\n")
-        #expect(drop.contains("return workspaceManager.reorderWorkspace("))
-        #expect(!drop.contains("return true"))
-        try SourceContract("Argus/Views/Sidebar/SidebarView+Stacks.swift").containsAll(
-            [
-                ".modifier(SidebarWorkspaceReordering(projectId: project.id, workspaceId: workspaceId))",
-                "workspaceMoveActions(for: workspaceId, isStack: true)"
-            ], "Stack Group headers share the same block drag and move actions")
+        let dragging = try SourceContract("Argus/Views/Sidebar/SidebarNavigationDragging.swift")
+        dragging.contains(
+            "navigationDropContext(for: context.target) == context", "async drop destination is revalidated")
+        dragging.contains("return moveWorkspace(source.workspaceId", "drops change only one Workspace placement")
+        try SourceContract("Argus/Views/Sidebar/SidebarView+Stacks.swift").contains(
+            "workspaceMoveActions(for: workspaceId, isStack: true)", "Stack headers retain local block move actions")
     }
 
     @Test
@@ -210,7 +210,7 @@ struct WorkspaceStackUIContractTests {
         #expect(!discovery.contains(".onAppear"))
         try SourceContract("Argus/Views/Sidebar/SidebarView+Projects.swift").containsAll(
             [
-                "if !project.isCatchAll {", "SidebarStackDiscoveryStatus(projectId: project.id)",
+                "SidebarStackDiscoveryStatus(projectId: project.id)",
                 "Button(\"Refresh Stacks\")", "workspaceManager.refreshWorkspaceStacks(in: project.id)",
                 ".disabled(workspaceManager.refreshingWorkspaceStackProjectIds.contains(project.id))"
             ], "Named Projects have an explicit refresh action without duplicate discovery requests")
@@ -279,16 +279,15 @@ extension WorkspaceStackUIContractTests {
                 "if !sidebarMetrics.isCompact || hasStackDiscoveryStatus",
                 "if !sidebarMetrics.isCompact || !hasStackDiscoveryStatus",
                 "SidebarStackDiscoveryStatus(projectId: project.id)", "addWorkspaceButton",
-                ".frame(width: 20, height: 20)", "Button(\"Add Workspace…\")", "Button(\"Refresh Stacks\")"
+                ".frame(width: 20, height: 20)", "Button(\"New Workspace…\")", "Button(\"Refresh Stacks\")"
             ], "compact headers reserve one action slot and keep both operations in the context menu")
         let disclosure = try projects.section(
             after: "private var disclosureButton: some View {", before: "\n    private var")
-        let cancellation = try #require(disclosure.range(of: "cancelPendingWorkspaceStackReveal(in: project.id)"))
-        let toggle = try #require(disclosure.range(of: "project.isExpanded.toggle()"))
-        #expect(cancellation.upperBound < toggle.lowerBound)
-        let between = disclosure[cancellation.upperBound..<toggle.lowerBound]
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        #expect(between.isEmpty)
+        #expect(disclosure.contains("workspaceManager.toggleRepository(project.id, in: collectionId)"))
+        let manager = try SourceContract("Argus/Services/WorkspaceManager+Collections.swift")
+        let toggle = try manager.section(after: "func toggleRepository(", before: "var canCreateCollection")
+        #expect(toggle.contains("pendingWorkspaceStackReveal = nil"))
+        #expect(toggle.contains("$0.isExpanded.toggle()"))
     }
 
     @Test

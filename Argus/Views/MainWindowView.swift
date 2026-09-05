@@ -11,10 +11,11 @@ private struct NewProjectSheetRequest: Identifiable {
     let collectionId: UUID?
 }
 
-private struct NewWorkspaceSheetRequest: Identifiable {
+struct WorkspaceCreationRequest: Identifiable {
     let id = UUID()
-    let projectId: UUID
-    let stackParentBranch: String?
+    var projectId: UUID?
+    var collectionId: UUID?
+    var stackParentBranch: String?
 }
 
 extension WorkspaceDeletionStage {
@@ -113,7 +114,7 @@ struct MainWindowView: View {  // swiftlint:disable:this type_body_length
 
     @State private var newProjectSheetRequest: NewProjectSheetRequest?
     @State private var collectionSheetRequest: CollectionSheetRequest?
-    @State private var newWorkspaceSheetRequest: NewWorkspaceSheetRequest?
+    @State private var newWorkspaceSheetRequest: WorkspaceCreationRequest?
     @State private var changeWorkspaceRootSheetRequest: ChangeWorkspaceRootSheetRequest?
     @State private var showOrphanedWorktreesSheet = false
     @State private var orphanedWorktrees: [OrphanedWorktreeInfo] = []
@@ -259,8 +260,11 @@ struct MainWindowView: View {  // swiftlint:disable:this type_body_length
             }
             // Sheet: New Workspace
             .sheet(item: $newWorkspaceSheetRequest) { request in
-                NewWorkspaceSheet(projectId: request.projectId, stackParentBranch: request.stackParentBranch)
-                    .environmentObject(workspaceManager)
+                NewWorkspaceSheet(
+                    projectId: request.projectId, collectionId: request.collectionId,
+                    stackParentBranch: request.stackParentBranch
+                )
+                .environmentObject(workspaceManager)
             }
             .changeWorkspaceRootSheet(
                 request: $changeWorkspaceRootSheetRequest,
@@ -311,11 +315,12 @@ struct MainWindowView: View {  // swiftlint:disable:this type_body_length
                 newProjectSheetRequest = NewProjectSheetRequest(collectionId: notification.object as? UUID)
             }
             .onReceive(NotificationCenter.default.publisher(for: .showNewWorkspaceSheet)) { notification in
-                if let projectId = notification.userInfo?["projectId"] as? UUID {
-                    let parentBranch = notification.userInfo?["parentBranch"] as? String
-                    newWorkspaceSheetRequest = NewWorkspaceSheetRequest(
-                        projectId: projectId, stackParentBranch: parentBranch)
-                }
+                newWorkspaceSheetRequest =
+                    notification.object as? WorkspaceCreationRequest
+                    ?? WorkspaceCreationRequest(
+                        projectId: notification.userInfo?["projectId"] as? UUID,
+                        collectionId: nil, stackParentBranch: notification.userInfo?["parentBranch"] as? String)
+
             }
             .onReceive(NotificationCenter.default.publisher(for: .showRenameProjectSheet)) { notification in
                 if let projectId = notification.userInfo?["projectId"] as? UUID,

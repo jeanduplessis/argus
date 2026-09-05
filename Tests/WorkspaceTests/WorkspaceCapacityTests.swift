@@ -33,7 +33,7 @@ struct WorkspaceCapacityTests {
         )
 
         #expect(project == nil)
-        #expect(manager.collections.allSatisfy { $0.projectIds.isEmpty })
+        #expect(manager.collections.allSatisfy { $0.workspaceIds.isEmpty })
         #expect(manager.workspaces.count == WorkspaceManager.maxWorkspaces)
         let persisted = try JSONDecoder().decode(
             ArgusSessionSnapshot.self,

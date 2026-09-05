@@ -205,10 +205,10 @@ extension WorkspaceStackObservationTests {
         let manager = fixture.manager
         let project = fixture.project
         let group = try #require(manager.stackGroup(for: fixture.child.id, in: project.id))
-        project.collapsedStackIds = [group.id]
-        project.isExpanded = false
+        fixture.collapsedStackIds = [group.id]
+        fixture.isExpanded = false
         fixture.child.customTitle = "Keep this title"
-        let order = project.workspaceIds
+        let order = fixture.manualOrder
         let selection = manager.selectedWorkspaceId
         let revision = manager.workspaceRevealRevision
         await reader.startAndLoad(fixture)
@@ -238,9 +238,9 @@ extension WorkspaceStackObservationTests {
         reader.complete(4, with: .success(fixture.snapshot))
         await waitForStackState { manager.workspaceStackErrors[project.id] == nil }
         #expect(manager.stackGroup(for: fixture.child.id, in: project.id) == group)
-        #expect(project.workspaceIds == order)
-        #expect(project.collapsedStackIds == [group.id])
-        #expect(!project.isExpanded)
+        #expect(fixture.manualOrder == order)
+        #expect(fixture.collapsedStackIds == [group.id])
+        #expect(!fixture.isExpanded)
         #expect(manager.selectedWorkspaceId == selection)
         #expect(manager.workspaceRevealRevision == revision)
     }
@@ -270,7 +270,7 @@ extension WorkspaceStackObservationTests {
         await waitForStackState { reader.requests.count == 4 }
         reader.complete(3, with: .success(fixture.snapshotIncludingGap))
         await waitForStackState { !manager.refreshingWorkspaceStackProjectIds.contains(fixture.project.id) }
-        #expect(fixture.project.collapsedStackIds == [fixture.stackId])
+        #expect(fixture.collapsedStackIds == [fixture.stackId])
         #expect(manager.workspaceRevealRevision == revision)
     }
 }

@@ -44,13 +44,13 @@ struct WorkspaceUIContractTests {
             "destination <= panelOrder.count",
             "panel reorder must accept the end insertion index"
         )
-        try SourceContract("Argus/Views/Sidebar/SidebarView.swift").containsAll(
+        try SourceContract("Argus/Views/Sidebar/SidebarNavigationDragging.swift").containsAll(
             [
-                "SidebarWorkspaceDropDelegate", ".onDrop"
+                "SidebarNavigationDropDelegate", ".onDrop"
             ], "workspace drag and drop")
         try SourceContract("Argus/Services/WorkspaceManager.swift").containsAll(
             [
-                "func reorderWorkspace(", "in projectId: UUID", "project.moveWorkspace"
+                "func reorderWorkspace(", "in projectId: UUID?", "setManualWorkspaceIds"
             ], "project-scoped workspace reorder")
     }
 

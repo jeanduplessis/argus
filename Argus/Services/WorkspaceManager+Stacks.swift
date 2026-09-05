@@ -6,23 +6,25 @@ extension WorkspaceManager {
         let workspaceId: UUID
         let path: String
         let revision: UInt64
+        let collectionId: UUID?
     }
 
-    func sidebarItems(for project: Project) -> [WorkspaceSidebarItem] {
-        let inputs = project.workspaceIds.compactMap { workspaceId -> WorkspaceStackWorkspace? in
+    func sidebarItems(for project: Project, in collectionId: UUID? = nil) -> [WorkspaceSidebarItem] {
+        let inputs = workspaceIds(for: project).compactMap { workspaceId -> WorkspaceStackWorkspace? in
             guard let workspace = workspaces.first(where: { $0.id == workspaceId }) else { return nil }
             return WorkspaceStackWorkspace(id: workspaceId, path: workspaceStackPath(for: workspace, in: project))
         }
-        let snapshot = project.isCatchAll ? nil : workspaceStackSnapshots[project.id]
-        return WorkspaceStackLayout.items(workspaces: inputs, snapshot: snapshot, mainBranch: project.mainBranch)
+        let byId = Dictionary(uniqueKeysWithValues: inputs.map { ($0.id, $0) })
+        let local = manualWorkspaceIds(in: collectionId).compactMap { byId[$0] }
+        return WorkspaceStackLayout.items(
+            workspaces: local, snapshot: workspaceStackSnapshots[project.id],
+            mainBranch: project.mainBranch, repositoryWorkspaces: inputs)
     }
 
     func stackGroup(for workspaceId: UUID, in projectId: UUID) -> WorkspaceStackGroup? {
         guard let project = projects.first(where: { $0.id == projectId }) else { return nil }
-        for item in sidebarItems(for: project) {
-            if case .stack(let group) = item, group.workspaceIds.contains(workspaceId) {
-                return group
-            }
+        for item in sidebarItems(for: project, in: collection(containing: workspaceId)?.id) {
+            if case .stack(let group) = item, group.workspaceIds.contains(workspaceId) { return group }
         }
         return nil
     }
@@ -42,89 +44,73 @@ extension WorkspaceManager {
             workspaceStackSnapshots[project.id]?.worktrees.contains(where: { $0.path == path }) != true
         else { return }
         pendingWorkspaceStackReveal = PendingWorkspaceStackReveal(
-            project: project, workspaceId: workspace.id, path: path, revision: workspaceRevealRevision)
+            project: project, workspaceId: workspace.id, path: path, revision: workspaceRevealRevision,
+            collectionId: collection(containing: workspace.id)?.id)
         refreshWorkspaceStacks(in: project.id)
     }
 
-    func toggleWorkspaceStack(_ stackId: String, in projectId: UUID) {
-        cancelPendingWorkspaceStackReveal(in: projectId)
-        guard let project = projects.first(where: { $0.id == projectId }),
-            sidebarItems(for: project).contains(where: {
-                if case .stack(let group) = $0 { return group.id == stackId }
-                return false
-            })
-        else { return }
-        if !project.collapsedStackIds.insert(stackId).inserted {
-            project.collapsedStackIds.remove(stackId)
+    func toggleWorkspaceStack(_ stackId: String, in projectId: UUID, collectionId: UUID? = nil) {
+        pendingWorkspaceStackReveal = nil
+        updateRepositoryDisclosure(for: projectId, in: collectionId) { disclosure in
+            if !disclosure.collapsedStackIds.insert(stackId).inserted { disclosure.collapsedStackIds.remove(stackId) }
         }
         saveSession()
     }
 
-    @discardableResult
-    func reorderWorkspace(
-        in projectId: UUID,
-        moving workspaceId: UUID,
-        before targetWorkspaceId: UUID
-    ) -> Bool {
-        guard let project = projects.first(where: { $0.id == projectId }) else { return false }
-        let items = sidebarItems(for: project)
-        guard let source = items.firstIndex(where: { $0.workspaceIds.contains(workspaceId) }),
-            let target = items.firstIndex(where: { $0.workspaceIds.contains(targetWorkspaceId) }),
-            source != target
-        else { return false }
-        return moveSidebarItem(in: project, items: items, from: source, to: source < target ? target - 1 : target)
-    }
-
-    func canMoveWorkspace(in projectId: UUID, moving workspaceId: UUID, offset: Int) -> Bool {
-        guard offset == -1 || offset == 1,
-            let project = projects.first(where: { $0.id == projectId })
-        else { return false }
-        let items = sidebarItems(for: project)
+    func canMoveWorkspace(in projectId: UUID?, moving workspaceId: UUID, offset: Int) -> Bool {
+        guard offset == -1 || offset == 1 else { return false }
+        let sectionId = collection(containing: workspaceId)?.id
+        let items = movableItems(projectId: projectId, in: sectionId)
         guard let source = items.firstIndex(where: { $0.workspaceIds.contains(workspaceId) }) else { return false }
         return items.indices.contains(source + offset)
     }
 
     @discardableResult
-    func moveWorkspace(in projectId: UUID, moving workspaceId: UUID, offset: Int) -> Bool {
-        guard offset == -1 || offset == 1,
-            let project = projects.first(where: { $0.id == projectId })
-        else { return false }
-        let items = sidebarItems(for: project)
-        guard let source = items.firstIndex(where: { $0.workspaceIds.contains(workspaceId) }),
-            items.indices.contains(source + offset)
-        else { return false }
-        return moveSidebarItem(in: project, items: items, from: source, to: source + offset)
+    func moveWorkspace(in projectId: UUID?, moving workspaceId: UUID, offset: Int) -> Bool {
+        guard canMoveWorkspace(in: projectId, moving: workspaceId, offset: offset) else { return false }
+        let sectionId = collection(containing: workspaceId)?.id
+        var items = movableItems(projectId: projectId, in: sectionId)
+        guard let source = items.firstIndex(where: { $0.workspaceIds.contains(workspaceId) }) else { return false }
+        return reorderSidebarItems(items, from: source, to: source + offset, in: sectionId)
     }
 
-    private func moveSidebarItem(
-        in project: Project,
-        items: [WorkspaceSidebarItem],
-        from source: Int,
-        to destination: Int
+    @discardableResult
+    func reorderWorkspace(in projectId: UUID?, moving workspaceId: UUID, before targetWorkspaceId: UUID) -> Bool {
+        let sectionId = collection(containing: workspaceId)?.id
+        guard collection(containing: targetWorkspaceId)?.id == sectionId,
+            project(for: workspaceId)?.id == projectId, project(for: targetWorkspaceId)?.id == projectId
+        else { return false }
+        let items = movableItems(projectId: projectId, in: sectionId)
+        guard let source = items.firstIndex(where: { $0.workspaceIds.contains(workspaceId) }),
+            let target = items.firstIndex(where: { $0.workspaceIds.contains(targetWorkspaceId) }), source != target
+        else { return false }
+        return reorderSidebarItems(items, from: source, to: source < target ? target - 1 : target, in: sectionId)
+    }
+
+    private func reorderSidebarItems(
+        _ original: [WorkspaceSidebarItem], from source: Int, to destination: Int,
+        in sectionId: UUID?
     ) -> Bool {
         guard source != destination else { return false }
-        if items.allSatisfy({ $0.workspaceIds.count == 1 }),
-            items.flatMap(\.workspaceIds) == project.workspaceIds
-        {
-            project.moveWorkspace(from: source, to: destination)
-        } else {
-            var reordered = items
-            reordered.insert(reordered.remove(at: source), at: destination)
-            project.workspaceIds = reordered.flatMap(\.workspaceIds)
-        }
-        syncFlatWorkspaceOrderToSidebarOrder()
+        var items = original
+        items.insert(items.remove(at: source), at: destination)
+        // Only reorder slots occupied by this repository. Keep raw manual order
+        // within each Stack, rather than persisting the discovered parent order.
+        let manual = manualWorkspaceIds(in: sectionId)
+        let reordered = items.flatMap { item in manual.filter { item.workspaceIds.contains($0) } }
+        let movedIds = Set(reordered)
+        var iterator = reordered.makeIterator()
+        setManualWorkspaceIds(manual.map { movedIds.contains($0) ? iterator.next()! : $0 }, in: sectionId)
+        pendingWorkspaceStackReveal = nil
         saveSession()
         return true
     }
 
-    private func syncFlatWorkspaceOrderToSidebarOrder() {
-        let orderedIds = sidebarOrderedWorkspaces.map(\.workspace.id)
-        let indexById = Dictionary(
-            uniqueKeysWithValues: orderedIds.enumerated().map { ($0.element, $0.offset) }
-        )
-        workspaces.sort { lhs, rhs in
-            (indexById[lhs.id] ?? Int.max) < (indexById[rhs.id] ?? Int.max)
+    private func movableItems(projectId: UUID?, in collectionId: UUID?) -> [WorkspaceSidebarItem] {
+        if let project = projects.first(where: { $0.id == projectId }) {
+            return sidebarItems(for: project, in: collectionId)
         }
+        return manualWorkspaceIds(in: collectionId).map { .workspace($0) }
     }
 
     func startWorkspaceStackObservations() {
@@ -202,7 +188,7 @@ extension WorkspaceManager {
         case .success(let snapshot):
             workspaceStackSnapshots[project.id] = snapshot
             workspaceStackErrors[project.id] = snapshot.issue
-            for workspace in workspaces where project.containsWorkspace(workspace.id) {
+            for workspace in workspaces where workspace.projectId == project.id {
                 guard let path = workspaceStackPath(for: workspace, in: project),
                     let worktree = snapshot.worktrees.first(where: { $0.path == path })
                 else { continue }
@@ -222,8 +208,9 @@ extension WorkspaceManager {
         guard let pending = pendingWorkspaceStackReveal, pending.project === project else { return }
         guard selectedWorkspaceId == pending.workspaceId,
             workspaceRevealRevision == pending.revision,
-            project.isExpanded,
-            collection(containing: project.id)?.isExpanded != false,
+            collection(containing: pending.workspaceId)?.id == pending.collectionId,
+            repositoryDisclosure(for: project.id, in: pending.collectionId).isExpanded,
+            collection(containing: pending.workspaceId)?.isExpanded != false,
             self.project(for: pending.workspaceId) === project,
             let workspace = workspaces.first(where: { $0.id == pending.workspaceId }),
             workspace.projectId == project.id,
@@ -235,12 +222,11 @@ extension WorkspaceManager {
         guard snapshot.worktrees.contains(where: { $0.path == pending.path }) else { return }
         pendingWorkspaceStackReveal = nil
         guard let group = stackGroup(for: workspace.id, in: project.id) else { return }
-        project.collapsedStackIds.remove(group.id)
+        updateRepositoryDisclosure(for: project.id, in: pending.collectionId) { $0.collapsedStackIds.remove(group.id) }
         workspaceRevealRevision &+= 1
     }
 
     private func workspaceStackPath(for workspace: Workspace, in project: Project) -> String? {
-        guard !project.isCatchAll else { return nil }
         let path: String?
         switch workspace.workspaceType {
         case .mainCheckout:

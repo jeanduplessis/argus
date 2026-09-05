@@ -78,7 +78,7 @@ struct SessionReconciliationTests {
 
     @Test
     @MainActor
-    func restoreValidationAllowsTheMaximumNamedProjectsPlusCatchAll() {
+    func restoreValidationRetainsTheLegacyProjectRegistryBound() {
         let workspace = workspace(
             id: UUID(),
             projectId: nil,
@@ -127,6 +127,7 @@ struct SessionReconciliationTests {
 
     private func makeSnapshot(ids: ReconciliationIDs) -> ArgusSessionSnapshot {
         ArgusSessionSnapshot(
+            schemaVersion: 1,
             selectedWorkspaceId: ids.invalidProjectWorkspace,
             projects: makeProjects(ids: ids),
             workspaces: makeWorkspaces(ids: ids)
@@ -196,40 +197,18 @@ struct SessionReconciliationTests {
         _ reconciled: ArgusSessionSnapshot,
         ids: ReconciliationIDs
     ) {
-        let catchAllProjects = reconciled.projects.filter(\.isCatchAll)
-        assertEqual(catchAllProjects.count, 1, "restore has exactly one catch-all")
-        assertEqual(catchAllProjects[0].id, ids.catchAll, "first catch-all identity is preserved")
-
-        let restoredProject = reconciled.projects.first { $0.id == ids.project }!
-        assertEqual(
-            restoredProject.workspaceIds, [ids.validWorkspace],
-            "stale refs are removed and valid order is preserved")
-
-        let restoredCatchAll = catchAllProjects[0]
-        assertEqual(
-            restoredCatchAll.workspaceIds,
-            [ids.invalidProjectWorkspace, ids.missingProjectWorkspace],
-            "invalid or missing workspace project IDs are attached to catch-all"
-        )
-
-        assertEqual(
-            reconciled.workspaces.first { $0.id == ids.invalidProjectWorkspace }?.projectId,
-            ids.catchAll,
-            "invalid project ID is rewritten to catch-all"
-        )
-        assertEqual(
-            reconciled.workspaces.first { $0.id == ids.missingProjectWorkspace }?.projectId,
-            ids.catchAll,
-            "missing project ID is rewritten to catch-all"
-        )
-
+        #expect(!reconciled.projects.contains { $0.isCatchAll })
+        #expect(reconciled.projects.map(\.id) == [ids.project])
+        #expect(
+            reconciled.ungroupedWorkspaceIds == [
+                ids.validWorkspace, ids.invalidProjectWorkspace, ids.missingProjectWorkspace
+            ])
+        #expect(reconciled.workspaces.first { $0.id == ids.invalidProjectWorkspace }?.projectId == nil)
+        #expect(reconciled.workspaces.first { $0.id == ids.missingProjectWorkspace }?.projectId == nil)
+        #expect(reconciled.workspaces.first { $0.id == ids.validWorkspace }?.projectId == ids.project)
         let rereconciled = reconciled.reconciledForRestore()
-        assertEqual(
-            rereconciled.projects.map(\.workspaceIds), reconciled.projects.map(\.workspaceIds),
-            "reconciliation is idempotent for project membership")
-        assertEqual(
-            rereconciled.workspaces.map(\.projectId), reconciled.workspaces.map(\.projectId),
-            "reconciliation is idempotent for workspace membership")
+        #expect(rereconciled.ungroupedWorkspaceIds == reconciled.ungroupedWorkspaceIds)
+        #expect(rereconciled.workspaces.map(\.projectId) == reconciled.workspaces.map(\.projectId))
     }
 
     private func workspace(

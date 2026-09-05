@@ -132,7 +132,7 @@ struct PullRequestStatusUIContractTests {
         #expect(!menu.contains("openPullRequest"))
         let project = try SourceContract("Argus/Views/Sidebar/SidebarView+Projects.swift")
         let gate = try project.section(after: "if appSettings.showPullRequestStatus", before: "Button(\"Copy Path\")")
-        #expect(gate.contains("!project.isCatchAll"))
+        #expect(gate.contains("workspace.projectId != nil"))
         #expect(gate.contains("workspace.workspaceType == .worktree"))
         #expect(gate.contains("PullRequestStatusMenuItems(workspaceID: workspace.id)"))
         #expect(!gate.contains(".status"))

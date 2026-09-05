@@ -6,8 +6,7 @@ extension WorkspaceManager {
         workspaces.compactMap { workspace in
             guard workspace.workspaceType == .worktree,
                 let projectId = workspace.projectId,
-                let project = projects.first(where: { $0.id == projectId && !$0.isCatchAll }),
-                project.workspaceIds.contains(workspace.id),
+                let project = projects.first(where: { $0.id == projectId }),
                 let path = workspace.worktreePath, !path.isEmpty
             else { return nil }
             return WorkspacePullRequestTarget(

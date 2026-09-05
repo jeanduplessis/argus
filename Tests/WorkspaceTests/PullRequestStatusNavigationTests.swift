@@ -18,7 +18,7 @@ struct PullRequestStatusNavigationTests {
         let lastTab = source.openFilePanel(rootPath: source.currentDirectory, relativePath: "unopened.txt")
         source.selectPanel(focusedPane.id)
         if sourceIsSelected { fixture.manager.selectWorkspace(source.id) }
-        fixture.project.isExpanded = false
+        fixture.manager.updateRepositoryDisclosure(for: fixture.project.id, in: nil) { $0.isExpanded = false }
         let selectedWorkspaceID = fixture.manager.selectedWorkspaceId
         let contextRevision = fixture.manager.workspaceContextRevision
         let layouts = source.tabLayouts
@@ -171,7 +171,7 @@ struct PullRequestStatusNavigationTests {
     }
 
     @Test(arguments: [
-        "main-checkout", "standalone", "catch-all", "unassigned", "missing-project", "missing-membership",
+        "main-checkout", "standalone", "unregistered", "unassigned", "missing-project", "cleared-association",
         "missing-path", "empty-path", "removed-workspace", "removed-project"
     ])
     func ineligibleOrRemovedWorkspacesCannotBeTargetsOrCallOpener(reason: String) throws {
@@ -187,12 +187,10 @@ struct PullRequestStatusNavigationTests {
         switch reason {
         case "main-checkout", "standalone":
             source.workspaceType = reason == "main-checkout" ? .mainCheckout : .external
-        case "catch-all":
-            source.projectId = fixture.manager.catchAllProject.id
-            fixture.manager.catchAllProject.addWorkspace(source.id)
+        case "unregistered": source.projectId = UUID()
         case "unassigned": source.projectId = nil
         case "missing-project": source.projectId = UUID()
-        case "missing-membership": fixture.project.removeWorkspace(source.id)
+        case "cleared-association": source.projectId = nil
         case "missing-path": source.worktreePath = nil
         case "empty-path": source.worktreePath = ""
         case "removed-workspace": fixture.manager.removeWorkspace(source.id)
@@ -286,13 +284,15 @@ extension PullRequestStatusNavigationTests {
             "id", "projectId", "branchName", "workspaceType", "worktreePath", "title", "customTitle",
             "currentDirectory", "panelCount", "terminalDirectories", "terminalCustomTitles"
         ]
-        #expect(Set(root.keys) == ["schemaVersion", "selectedWorkspaceId", "projects", "workspaces"])
+        #expect(
+            Set(root.keys) == [
+                "schemaVersion", "selectedWorkspaceId", "projects", "workspaces",
+                "ungroupedWorkspaceIds", "ungroupedRepositoryDisclosure"
+            ])
         #expect(Set(workspace.keys) == workspaceFields)
         #expect(
             Set(project.keys) == [
-                "id", "repositoryPath", "isCatchAll", "displayName", "mainBranch", "workspaceIds", "isExpanded",
-                "color",
-                "collapsedStackIds"
+                "id", "repositoryPath", "displayName", "mainBranch", "color"
             ])
         let codingKeys = try SourceContract("Argus/Models/SessionSnapshot.swift").section(
             after: "private enum CodingKeys: String, CodingKey", before: "init(from decoder: Decoder)")
@@ -343,7 +343,7 @@ private struct PullRequestNavigationFixture {
                 id: id, projectId: project.id, branchName: "feature/status", workspaceType: .worktree,
                 worktreePath: path, title: "Source", customTitle: "Source Workspace", currentDirectory: path,
                 panelCount: 0))
-        project.addWorkspace(id)
+        manager.appendPlacement(id, to: nil)
         manager.workspaces.append(workspace)
         return workspace
     }

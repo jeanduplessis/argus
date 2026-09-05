@@ -107,7 +107,9 @@ struct ChangeWorkspaceRootSheet: View {
         }
 
         guard workspaceManager.setStandaloneWorkspaceRoot(workspaceId, path: trimmedPath) else {
-            errorMessage = "That path is not an existing directory."
+            errorMessage =
+                workspaceManager.lastWorkspaceCreationError?.localizedDescription
+                ?? "That path is not an existing directory."
             return
         }
 

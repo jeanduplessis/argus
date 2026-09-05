@@ -1,14 +1,12 @@
 // SidebarView.swift
 // Argus
 //
-// Left sidebar showing the two-level project hierarchy (Phase 2).
-// Projects appear as collapsible headers; workspaces are children.
-// The catch-all project shows standalone workspaces under "Workspaces".
+// Workspace navigation with flat Collections and section-local repository/Stack blocks.
 
 import AppKit
 import SwiftUI
 
-// Source membership is explicit in project.pbxproj, which this refactor must not modify.
+// Source membership is explicit in project.pbxproj.
 
 // MARK: - Command Shortcut Overlay
 

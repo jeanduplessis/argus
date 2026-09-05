@@ -352,7 +352,7 @@ struct RunningProcessConfirmationTests {
         )
         let namedTerminal = try #require(namedWorkspace.activePanelId)
         setNeedsConfirmQuit(true, on: namedTerminal, in: namedWorkspace)
-        project.addWorkspace(namedWorkspace.id)
+        manager.ungroupedWorkspaceIds.insert(namedWorkspace.id, at: 0)
         manager.workspaces.append(namedWorkspace)
         manager.projects.insert(project, at: 0)
 

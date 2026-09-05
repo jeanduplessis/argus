@@ -1,5 +1,4 @@
 // Project and Workspace menus share their close/configuration presentation in this file.
-// swiftlint:disable file_length
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
@@ -10,23 +9,25 @@ import UniformTypeIdentifiers
 /// workspace rows.
 struct ProjectSection: View {
     @ObservedObject var project: Project
-    var showsHeader: Bool = true
+    var collectionId: UUID?
+    var items: [WorkspaceSidebarItem]
     @EnvironmentObject var workspaceManager: WorkspaceManager
     @EnvironmentObject private var appSettings: AppSettings
     @EnvironmentObject private var pullRequestStatusModel: WorkspacePullRequestStatusModel
 
+    private var disclosure: RepositoryDisclosure {
+        workspaceManager.repositoryDisclosure(for: project.id, in: collectionId)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            if showsHeader {
-                ProjectHeaderRow(project: project)
-                    .windowFocusChrome()
-                    .modifier(SidebarNavigationDropTarget(target: .project(project.id)))
-                    .onDrag { workspaceManager.projectDrag(project.id).itemProvider }
-                    .padding(.top, 4)
-            }
+            ProjectHeaderRow(project: project, collectionId: collectionId)
+                .windowFocusChrome()
+                .modifier(SidebarNavigationDropTarget(target: collectionId.map { .collection($0) } ?? .ungrouped))
+                .padding(.top, 4)
 
-            if project.isExpanded || !showsHeader {
-                ForEach(workspaceManager.sidebarItems(for: project)) { item in
+            if disclosure.isExpanded {
+                ForEach(items) { item in
                     switch item {
                     case .workspace(let workspaceId):
                         workspaceRow(workspaceId)
@@ -36,34 +37,50 @@ struct ProjectSection: View {
                     }
                 }
             } else {
-                SidebarCollapsedWorkspaceSummary(workspaceIds: project.workspaceIds)
+                SidebarCollapsedWorkspaceSummary(workspaceIds: items.flatMap(\.workspaceIds))
             }
         }
-        .onChange(of: project.isExpanded) { _, isExpanded in
+        .onChange(of: disclosure.isExpanded) { _, isExpanded in
             if isExpanded { pullRequestStatusModel.refreshProject(projectID: project.id) }
         }
     }
 
     @ViewBuilder
     func workspaceRow(_ workspaceId: UUID, stackRelationship: WorkspaceStackRow? = nil) -> some View {
-        if let workspace = workspaceManager.workspaces.first(where: { $0.id == workspaceId }),
-            let globalIndex = workspaceManager.globalSidebarIndex(for: workspace.id)
-        {
-            SidebarWorkspaceRow(
-                workspace: workspace,
-                globalIndex: globalIndex,
-                shortcutDigit: workspaceManager.workspaceShortcutDigit(for: workspace.id),
-                isSelected: workspace.id == workspaceManager.selectedWorkspaceId,
-                onSelect: { workspaceManager.selectWorkspace(workspace.id) },
-                stackRelationship: stackRelationship,
-                showsStackGutter: stackRelationship != nil
-            )
-            .modifier(SidebarWorkspaceReordering(projectId: project.id, workspaceId: workspace.id))
-            .contextMenu {
-                workspaceContextMenu(for: workspace, isStack: stackRelationship != nil)
-            }
-            .id(workspace.id)
+        if let workspace = workspaceManager.workspaces.first(where: { $0.id == workspaceId }) {
+            SidebarWorkspaceEntry(workspace: workspace, stackRelationship: stackRelationship)
         }
+    }
+
+    func workspaceMoveActions(for workspaceId: UUID, isStack: Bool) -> some View {
+        Group {
+            Button("Move Stack Up") { workspaceManager.moveWorkspace(in: project.id, moving: workspaceId, offset: -1) }
+                .disabled(!workspaceManager.canMoveWorkspace(in: project.id, moving: workspaceId, offset: -1))
+            Button("Move Stack Down") { workspaceManager.moveWorkspace(in: project.id, moving: workspaceId, offset: 1) }
+                .disabled(!workspaceManager.canMoveWorkspace(in: project.id, moving: workspaceId, offset: 1))
+        }
+    }
+}
+
+struct SidebarWorkspaceEntry: View {
+    @ObservedObject var workspace: Workspace
+    var stackRelationship: WorkspaceStackRow?
+    @EnvironmentObject var workspaceManager: WorkspaceManager
+    @EnvironmentObject private var appSettings: AppSettings
+
+    var body: some View {
+        SidebarWorkspaceRow(
+            workspace: workspace,
+            globalIndex: workspaceManager.globalSidebarIndex(for: workspace.id) ?? 1,
+            shortcutDigit: workspaceManager.workspaceShortcutDigit(for: workspace.id),
+            isSelected: workspace.id == workspaceManager.selectedWorkspaceId,
+            onSelect: { workspaceManager.selectWorkspace(workspace.id) },
+            stackRelationship: stackRelationship, showsStackGutter: stackRelationship != nil
+        )
+        .onDrag { workspaceManager.workspaceDrag(workspace.id).itemProvider }
+        .modifier(SidebarNavigationDropTarget(target: .workspace(workspace.id)))
+        .contextMenu { workspaceContextMenu(for: workspace, isStack: stackRelationship != nil) }
+        .id(workspace.id)
     }
 
     @ViewBuilder
@@ -87,6 +104,7 @@ struct ProjectSection: View {
                 )
             }
         }
+        WorkspaceCollectionMenu(workspaceId: workspace.id)
         workspaceMoveActions(for: workspace.id, isStack: isStack)
         if workspaceManager.setupPanel(in: workspace) != nil || workspaceManager.canRunWorktreeSetup(in: workspace) {
             Divider()
@@ -94,7 +112,7 @@ struct ProjectSection: View {
             Button("Run Setup Again") { workspaceManager.runWorktreeSetupAgain(in: workspace) }
                 .disabled(!workspaceManager.canRunWorktreeSetup(in: workspace) || workspace.runningSetupCount > 0)
         }
-        if appSettings.showPullRequestStatus, !project.isCatchAll,
+        if appSettings.showPullRequestStatus, workspace.projectId != nil,
             workspace.workspaceType == .worktree, workspace.worktreePath?.isEmpty == false
         {
             Divider()
@@ -114,13 +132,19 @@ struct ProjectSection: View {
     @ViewBuilder
     func workspaceMoveActions(for workspaceId: UUID, isStack: Bool) -> some View {
         Button(isStack ? "Move Stack Up" : "Move Up") {
-            workspaceManager.moveWorkspace(in: project.id, moving: workspaceId, offset: -1)
+            workspaceManager.moveWorkspace(
+                in: workspaceManager.project(for: workspaceId)?.id, moving: workspaceId, offset: -1)
         }
-        .disabled(!workspaceManager.canMoveWorkspace(in: project.id, moving: workspaceId, offset: -1))
+        .disabled(
+            !workspaceManager.canMoveWorkspace(
+                in: workspaceManager.project(for: workspaceId)?.id, moving: workspaceId, offset: -1))
         Button(isStack ? "Move Stack Down" : "Move Down") {
-            workspaceManager.moveWorkspace(in: project.id, moving: workspaceId, offset: 1)
+            workspaceManager.moveWorkspace(
+                in: workspaceManager.project(for: workspaceId)?.id, moving: workspaceId, offset: 1)
         }
-        .disabled(!workspaceManager.canMoveWorkspace(in: project.id, moving: workspaceId, offset: 1))
+        .disabled(
+            !workspaceManager.canMoveWorkspace(
+                in: workspaceManager.project(for: workspaceId)?.id, moving: workspaceId, offset: 1))
     }
 
     private func copyPath(_ path: String?) {
@@ -138,52 +162,15 @@ struct ProjectSection: View {
         panel.directoryURL = URL(fileURLWithPath: workspace.currentDirectory)
         panel.message = "Select the working directory for \(workspace.displayTitle)"
         guard panel.runModal() == .OK, let directoryURL = panel.url else { return }
-        workspaceManager.setStandaloneWorkspaceRoot(workspace.id, directoryURL: directoryURL)
-    }
-}
-
-// MARK: - Workspace Drag and Drop
-
-struct SidebarWorkspaceReordering: ViewModifier {
-    @EnvironmentObject var workspaceManager: WorkspaceManager
-    let projectId: UUID
-    let workspaceId: UUID
-
-    func body(content: Content) -> some View {
-        content
-            .onDrag {
-                SidebarWorkspaceDragState.draggedWorkspaceId = workspaceId
-                return NSItemProvider(object: workspaceId.uuidString as NSString)
-            }
-            .onDrop(
-                of: [UTType.text],
-                delegate: SidebarWorkspaceDropDelegate(
-                    workspaceManager: workspaceManager,
-                    projectId: projectId,
-                    targetWorkspaceId: workspaceId
-                )
-            )
-    }
-}
-
-@MainActor
-private enum SidebarWorkspaceDragState {
-    static var draggedWorkspaceId: UUID?
-}
-
-private struct SidebarWorkspaceDropDelegate: DropDelegate {
-    let workspaceManager: WorkspaceManager
-    let projectId: UUID
-    let targetWorkspaceId: UUID
-
-    func performDrop(info: DropInfo) -> Bool {
-        guard let draggedWorkspaceId = SidebarWorkspaceDragState.draggedWorkspaceId else { return false }
-        defer { SidebarWorkspaceDragState.draggedWorkspaceId = nil }
-        return workspaceManager.reorderWorkspace(
-            in: projectId,
-            moving: draggedWorkspaceId,
-            before: targetWorkspaceId
-        )
+        if !workspaceManager.setStandaloneWorkspaceRoot(workspace.id, directoryURL: directoryURL),
+            let error = workspaceManager.lastWorkspaceCreationError
+        {
+            let alert = NSAlert()
+            alert.messageText = "Could Not Change Working Directory"
+            alert.informativeText = error.localizedDescription
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
     }
 }
 
@@ -193,6 +180,7 @@ private struct SidebarWorkspaceDropDelegate: DropDelegate {
 /// and provides a context menu for project operations.
 private struct ProjectHeaderRow: View {
     @ObservedObject var project: Project
+    let collectionId: UUID?
     @EnvironmentObject var workspaceManager: WorkspaceManager
     @EnvironmentObject private var appSettings: AppSettings
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -200,9 +188,7 @@ private struct ProjectHeaderRow: View {
     @Environment(\.sidebarCollectionContentInset) private var collectionContentInset
     @State private var isHovered = false
     @State private var isAddHovered = false
-    @State private var isRemovingProject = false
     @State private var showsWorktreeSetup = false
-    @State private var removalError: String?
     @FocusState private var focusedControl: FocusedControl?
 
     private enum FocusedControl: Hashable {
@@ -210,10 +196,12 @@ private struct ProjectHeaderRow: View {
         case add
     }
 
-    private var childWorkspaces: [Workspace] {
-        project.workspaceIds.compactMap { workspaceId in
-            workspaceManager.workspaces.first { $0.id == workspaceId }
-        }
+    private var disclosure: RepositoryDisclosure {
+        workspaceManager.repositoryDisclosure(for: project.id, in: collectionId)
+    }
+
+    private var creationRequest: WorkspaceCreationRequest {
+        WorkspaceCreationRequest(projectId: project.id, collectionId: collectionId)
     }
 
     private var showsAddAction: Bool {
@@ -221,18 +209,15 @@ private struct ProjectHeaderRow: View {
     }
 
     private var hasStackDiscoveryStatus: Bool {
-        !project.isCatchAll
-            && (workspaceManager.refreshingWorkspaceStackProjectIds.contains(project.id)
-                || workspaceManager.workspaceStackErrors[project.id] != nil)
+        (workspaceManager.refreshingWorkspaceStackProjectIds.contains(project.id)
+            || workspaceManager.workspaceStackErrors[project.id] != nil)
     }
 
     var body: some View {
         HStack(spacing: sidebarMetrics.headerSpacing) {
             disclosureButton
-            if !project.isCatchAll {
-                if !sidebarMetrics.isCompact || hasStackDiscoveryStatus {
-                    SidebarStackDiscoveryStatus(projectId: project.id)
-                }
+            if !sidebarMetrics.isCompact || hasStackDiscoveryStatus {
+                SidebarStackDiscoveryStatus(projectId: project.id)
             }
             if !sidebarMetrics.isCompact || !hasStackDiscoveryStatus {
                 addWorkspaceButton
@@ -250,58 +235,28 @@ private struct ProjectHeaderRow: View {
             isHovered = hovering
         }
         .contextMenu {
-            if project.isCatchAll {
-                Button("Add Workspace…") {
-                    workspaceManager.addWorkspace()
-                }
-            } else {
-                Button("Rename…") {
-                    NotificationCenter.default.post(
-                        name: .showRenameProjectSheet,
-                        object: nil,
-                        userInfo: ["projectId": project.id]
-                    )
-                }
-                Button("Add Workspace…") {
-                    NotificationCenter.default.post(
-                        name: .showNewWorkspaceSheet,
-                        object: nil,
-                        userInfo: ["projectId": project.id]
-                    )
-                }
-                Button("Worktree Setup…") { showsWorktreeSetup = true }
-                ProjectCollectionMenu(projectId: project.id)
-                Button("Refresh Stacks") {
-                    workspaceManager.refreshWorkspaceStacks(in: project.id)
-                }
-                .disabled(workspaceManager.refreshingWorkspaceStackProjectIds.contains(project.id))
-                Divider()
-                Button("Remove Project") {
-                    confirmProjectRemoval()
-                }
-                .disabled(isRemovingProject)
+            Button("New Workspace…") {
+                NotificationCenter.default.post(name: .showNewWorkspaceSheet, object: creationRequest)
             }
+            Button("Rename Repository…") {
+                NotificationCenter.default.post(
+                    name: .showRenameProjectSheet, object: nil,
+                    userInfo: ["projectId": project.id])
+            }
+            Button("Worktree Setup…") { showsWorktreeSetup = true }
+            Button("Refresh Stacks") { workspaceManager.refreshWorkspaceStacks(in: project.id) }
+                .disabled(workspaceManager.refreshingWorkspaceStackProjectIds.contains(project.id))
         }
         .sheet(isPresented: $showsWorktreeSetup) {
             WorktreeSetupSheet(project: project).environmentObject(workspaceManager)
         }
-        .alert(
-            "Could not remove Project",
-            isPresented: Binding(
-                get: { removalError != nil }, set: { if !$0 { removalError = nil } }
-            )
-        ) {
-            Button("OK") { removalError = nil }
-        } message: {
-            Text(removalError ?? "")
-        }
+
     }
 
     private var disclosureButton: some View {
         Button {
             withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.15)) {
-                workspaceManager.cancelPendingWorkspaceStackReveal(in: project.id)
-                project.isExpanded.toggle()
+                workspaceManager.toggleRepository(project.id, in: collectionId)
             }
         } label: {
             HStack(spacing: sidebarMetrics.headerSpacing) {
@@ -309,8 +264,8 @@ private struct ProjectHeaderRow: View {
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
-                    .rotationEffect(.degrees(project.isExpanded ? 90 : 0))
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: project.isExpanded)
+                    .rotationEffect(.degrees(disclosure.isExpanded ? 90 : 0))
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: disclosure.isExpanded)
                     .frame(width: sidebarMetrics.disclosureWidth)
 
                 if let color = project.color {
@@ -327,7 +282,6 @@ private struct ProjectHeaderRow: View {
                         )
                     )
                     .foregroundColor(.secondary)
-                    .textCase(project.isCatchAll ? .uppercase : nil)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
@@ -343,21 +297,13 @@ private struct ProjectHeaderRow: View {
         .focused($focusedControl, equals: .disclosure)
         .cursor(.pointingHand)
         .accessibilityLabel("\(project.displayName), Project")
-        .accessibilityValue(project.isExpanded ? "Expanded" : "Collapsed")
-        .help("\(project.isExpanded ? "Collapse" : "Expand") \(project.displayName) Project")
+        .accessibilityValue(disclosure.isExpanded ? "Expanded" : "Collapsed")
+        .help("\(disclosure.isExpanded ? "Collapse" : "Expand") \(project.displayName) Project")
     }
 
     private var addWorkspaceButton: some View {
         Button {
-            if project.isCatchAll {
-                workspaceManager.addWorkspace()
-            } else {
-                NotificationCenter.default.post(
-                    name: .showNewWorkspaceSheet,
-                    object: nil,
-                    userInfo: ["projectId": project.id]
-                )
-            }
+            NotificationCenter.default.post(name: .showNewWorkspaceSheet, object: creationRequest)
         } label: {
             Image(systemName: "plus")
                 .font(.system(size: 12, weight: .regular))
@@ -382,38 +328,4 @@ private struct ProjectHeaderRow: View {
         .accessibilityLabel("Add Workspace to \(project.displayName)")
     }
 
-    private func confirmProjectRemoval() {
-        guard !isRemovingProject else { return }
-
-        guard
-            confirmDestructiveAction(
-                title: "Remove Project \"\(project.displayName)\"?",
-                message: projectRemovalMessage,
-                confirmTitle: "Remove Project"
-            )
-        else { return }
-
-        isRemovingProject = true
-        Task {
-            await workspaceManager.removeProject(project.id)
-            isRemovingProject = false
-            if workspaceManager.projects.contains(where: { $0.id == project.id }) {
-                removalError =
-                    workspaceManager.lastWorkspaceDeletionError?.localizedDescription
-                    ?? "The Project could not be removed."
-            }
-        }
-    }
-
-    private var projectRemovalMessage: String {
-        let workspaceCount = childWorkspaces.count
-        let worktreeCount = childWorkspaces.filter { $0.worktreePath != nil }.count
-        let workspaceLabel = workspaceCount == 1 ? "Workspace" : "Workspaces"
-        let worktreeLabel = worktreeCount == 1 ? "worktree" : "worktrees"
-        return "This permanently removes \(workspaceCount) \(workspaceLabel) from Argus "
-            + "and deletes \(worktreeCount) associated \(worktreeLabel) from disk. "
-            + (childWorkspaces.contains(where: { $0.runningProcessCount + $0.runningSetupCount > 0 })
-                ? "Running terminal and Worktree Setup processes will be terminated. " : "")
-            + "This cannot be undone."
-    }
 }

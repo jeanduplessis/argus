@@ -78,7 +78,8 @@ ArgusCLI/
 
 ## Key Domain Concepts
 
-- **Project** — UUID-keyed collection of workspaces tied to a git repo. One catch-all project (non-removable) holds unassigned workspaces.
+- **Project** — Shared UUID-keyed repository identity and configuration; `Workspace.projectId` is the optional association. There is no runtime Catch-all Project.
+- **Collection** — Flat, non-owning organizer of ordered Workspace IDs, independent of repository association. Ungrouped Workspace IDs complete placement.
 - **Workspace** — User work context with one Workspace Root and ordered Top-level Tabs. A Standalone Workspace need not be a git repository.
 - **Panel** — Content model for Terminal, Browser, File, or Git Preview content. Only Terminal Panels own a Surface ID.
 - **Worktrees** stored at `~/.argus/worktrees/<project-uuid>/<branch-slug>/`

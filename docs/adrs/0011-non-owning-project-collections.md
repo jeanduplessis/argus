@@ -1,6 +1,6 @@
 # ADR 0011: Non-owning Project Collections
 
-- Status: Accepted
+- Status: Superseded by [ADR 0013](0013-workspace-centric-collections.md)
 - Date: 2026-09-02
 
 ## Context

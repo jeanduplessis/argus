@@ -15,6 +15,7 @@ struct WorkspaceStackRow: Equatable, Identifiable, Sendable {
     let workspaceId: UUID?
     var lane: Int = 0
     var issue: String?
+    var workspaceIsElsewhere = false
 
     var id: String { branch }
 }
@@ -57,12 +58,20 @@ enum WorkspaceStackLayout {
     static func items(
         workspaces: [WorkspaceStackWorkspace],
         snapshot: WorkspaceStackSnapshot?,
-        mainBranch: String? = nil
+        mainBranch: String? = nil,
+        repositoryWorkspaces: [WorkspaceStackWorkspace]? = nil
     ) -> [WorkspaceSidebarItem] {
         var seen = Set<UUID>()
         let ordered = workspaces.filter { seen.insert($0.id).inserted }
         guard let snapshot else { return ordered.map { .workspace($0.id) } }
-        let bindings = branchBindings(workspaces: workspaces, worktrees: snapshot.worktrees)
+        let repositoryWorkspaces = repositoryWorkspaces ?? workspaces
+        let repositoryBindings = branchBindings(workspaces: repositoryWorkspaces, worktrees: snapshot.worktrees)
+        let localIds = Set(ordered.map(\.id))
+        let bindings = repositoryBindings.filter { localIds.contains($0.value) }
+        let repositoryPositions = Dictionary(
+            repositoryWorkspaces.enumerated().map {
+                ($0.element.id, $0.offset)
+            }, uniquingKeysWith: min)
         let positions = Dictionary(uniqueKeysWithValues: ordered.enumerated().map { ($0.element.id, $0.offset) })
         let parents = snapshot.parents
         var dependents: [String: [String]] = [:]
@@ -78,9 +87,13 @@ enum WorkspaceStackLayout {
         var groupedWorkspaceIds = Set<UUID>()
         for root in roots {
             guard
+                group(
+                    root: root, snapshot: snapshot, dependents: dependents,
+                    bindings: repositoryBindings, positions: repositoryPositions) != nil,
                 let group = group(
                     root: root, snapshot: snapshot, dependents: dependents,
-                    bindings: bindings, positions: positions
+                    bindings: bindings, positions: positions, minimumMembers: 1,
+                    repositoryBindings: repositoryBindings
                 ), let position = group.workspaceIds.compactMap({ positions[$0] }).min()
             else { continue }
             groupsByPosition[position] = group
@@ -122,13 +135,15 @@ enum WorkspaceStackLayout {
         snapshot: WorkspaceStackSnapshot,
         dependents: [String: [String]],
         bindings: [String: UUID],
-        positions: [UUID: Int]
+        positions: [UUID: Int],
+        minimumMembers: Int = 2,
+        repositoryBindings: [String: UUID] = [:]
     ) -> WorkspaceStackGroup? {
         let parents = snapshot.parents
         let subtreePositions = subtreePositions(
             root: root, parents: parents, dependents: dependents, bindings: bindings, positions: positions
         )
-        guard subtreePositions.keys.filter({ bindings[$0] != nil }).count >= 2 else { return nil }
+        guard subtreePositions.keys.filter({ bindings[$0] != nil }).count >= minimumMembers else { return nil }
         var orderedDependents: [String: [String]] = [:]
         for branch in subtreePositions.keys {
             orderedDependents[branch] = (dependents[branch] ?? []).sorted {
@@ -141,7 +156,7 @@ enum WorkspaceStackLayout {
             (orderedDependents[branch] ?? []).filter { subtreePositions[$0] != nil }
         }
         var start = root
-        while bindings[start] == nil {
+        while bindings[start] == nil && repositoryBindings[start] == nil {
             let children = visibleDependents(of: start)
             guard children.count == 1, let child = children.first, bindings[child] == nil else { break }
             start = child
@@ -154,7 +169,8 @@ enum WorkspaceStackLayout {
                 WorkspaceStackRow(
                     branch: branch, parentBranch: parents[branch],
                     dependentBranches: orderedDependents[branch] ?? [],
-                    workspaceId: bindings[branch], lane: lane, issue: snapshot.conflicts[branch]
+                    workspaceId: bindings[branch], lane: lane, issue: snapshot.conflicts[branch],
+                    workspaceIsElsewhere: bindings[branch] == nil && repositoryBindings[branch] != nil
                 ))
             let children = visibleDependents(of: branch)
             let childLane = lane + (children.count > 1 ? 1 : 0)

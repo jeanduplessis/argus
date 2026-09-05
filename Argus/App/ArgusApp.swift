@@ -87,8 +87,10 @@ struct ArgusApp: App {
                 }
                 .disabled(!workspaceManager.canCreateCollection)
 
-                Button("New Workspace") {
-                    workspaceManager.addWorkspace()
+                Button("New Workspace…") {
+                    NotificationCenter.default.post(
+                        name: .showNewWorkspaceSheet,
+                        object: WorkspaceCreationRequest(projectId: nil, collectionId: nil))
                 }
                 .keyboardShortcut("n", modifiers: [.command])
 

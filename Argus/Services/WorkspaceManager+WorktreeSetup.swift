@@ -19,7 +19,7 @@ extension WorkspaceManager {
 
     func setWorktreeSetupCommand(_ command: String, for projectID: UUID) throws {
         let value = try WorktreeSetupCommand.validated(command)
-        guard let project = projects.first(where: { $0.id == projectID }), !project.isCatchAll else {
+        guard let project = projects.first(where: { $0.id == projectID }) else {
             throw WorktreeSetupConfigurationError.projectUnavailable
         }
         objectWillChange.send()
@@ -120,7 +120,7 @@ extension WorkspaceManager {
 
     func setupOwner(for workspace: Workspace) -> WorktreeSetupOwner? {
         guard workspaces.contains(where: { $0 === workspace }), workspace.workspaceType == .worktree,
-            let project = project(for: workspace.id), !project.isCatchAll, workspace.projectId == project.id,
+            let project = project(for: workspace.id), workspace.projectId == project.id,
             let path = workspace.worktreePath
         else { return nil }
         let root = canonicalPath(path)
@@ -171,6 +171,61 @@ extension WorkspaceManager {
         }
         worktreeDeletionRoots.formUnion(roots)
         return roots
+    }
+
+    /// A failed creation owns cleanup only while its new root remains unclaimed.
+    /// Reservation and claim checks are MainActor-atomic; never stop a peer as cleanup.
+    func cleanupUnattachedWorktree(path: String, repositoryPath: String, reusedExistingWorktree: Bool) async {
+        let root = canonicalPath(path)
+        guard !reusedExistingWorktree, !worktreeDeletionRoots.contains(root),
+            !workspaces.contains(where: { workspace in
+                let setup = setupPanel(in: workspace)
+                return canonicalPath(workspace.currentDirectory) == root
+                    || workspace.worktreePath.map(canonicalPath) == root
+                    || (setup?.owner?.rootPath == root
+                        && (setup?.isRunning == true || setup?.terminationConfirmed == false))
+                    || (workspace.workspaceType == .mainCheckout
+                        && project(for: workspace.id).map {
+                            canonicalPath($0.repositoryPath) == root
+                        } == true)
+            }),
+            let roots = acquireWorktreeDeletionRoots([root], closingWorkspaceIDs: [])
+        else { return }
+        defer { worktreeDeletionRoots.subtract(roots) }
+        // Unforced removal retains edits; failure leaves the normal orphan recovery path.
+        try? await worktreeService.removeWorktree(repositoryPath: repositoryPath, worktreePath: root)
+    }
+
+    func canClaimWorkspaceRoot(_ path: String) -> Bool {
+        guard !worktreeDeletionRoots.contains(canonicalPath(path)) else {
+            lastWorkspaceCreationError = .worktreeCreationFailed(
+                "This directory is being deleted. Wait for deletion to finish before opening a Workspace here.")
+            return false
+        }
+        return true
+    }
+
+    func automaticFallbackDirectory(excluding roots: Set<String> = []) -> String? {
+        let reserved = worktreeDeletionRoots.union(roots)
+        let preferred = settings.defaultStandaloneWorkspaceDirectory
+        if !reserved.contains(canonicalPath(preferred)) { return preferred }
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        var isDirectory: ObjCBool = false
+        guard !reserved.contains(canonicalPath(home)),
+            FileManager.default.fileExists(atPath: home, isDirectory: &isDirectory), isDirectory.boolValue
+        else { return nil }
+        return home
+    }
+
+    func canRemoveWorkspaces(_ ids: Set<UUID>, deletingRoots: Set<String> = []) -> Bool {
+        guard workspaces.allSatisfy({ ids.contains($0.id) }),
+            automaticFallbackDirectory(excluding: deletingRoots) == nil
+        else { return true }
+        lastWorkspaceDeletionError = .worktreeRemovalFailed(
+            "The last Workspace must remain open because its default directory and home directory are unavailable "
+                + "for a replacement. Wait for deletion to finish before retrying."
+        )
+        return false
     }
 
     /// The caller holds the close gate through deletion/state removal, preventing a new retry.

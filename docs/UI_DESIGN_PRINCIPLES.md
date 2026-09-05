@@ -40,7 +40,7 @@ Choose a surface based on the user's task, not implementation convenience.
 | Surface | Purpose | Examples |
 | --- | --- | --- |
 | Center workspace tab | Content the user reads, operates on, or returns to | Terminal, browser, file, diff, blame |
-| Left sidebar | Project and workspace navigation | Projects, workspaces, active workspace |
+| Left sidebar | Workspace navigation with optional Collection placement and derived repository/Stack blocks | Collections, repositories, Selected Workspace |
 | Right sidebar | Contextual navigation, status, and compact actions | Files, Changes, git operations |
 | Native Settings | Global application configuration | General, Appearance, Terminal, Files & Changes, Browser |
 | Sheet | Short, bounded workflow requiring completion or cancellation | Create, rename, adopt |
@@ -265,7 +265,7 @@ hover/focus treatment remains appropriate. The rule MUST give way before the
 name truncates and disappear below 160 points. Use the application's text and
 density metrics, with more space before the header than below it.
 
-With Collections present, Named Project content MUST have one 8-point leading
+With Collections present, section content MUST have one 8-point leading
 inset at normal widths and no additional inset below 160 points. This inset MUST
 remain inside full-width Workspace selection fills and hit regions. It MUST NOT
 change Stack gutter/connector geometry, icon/process slots, or introduce
@@ -273,6 +273,30 @@ recursive indentation. Collection disclosure MUST only expand/collapse. A
 collapsed Collection MUST retain readable Selected Workspace context as
 Project / Workspace and undimmed Turn Completion Attention without acknowledging
 it. Explicit selection MUST reveal every ancestor, including same-ID reselection.
+
+Repository and Stack headings MUST describe only their section's Workspaces.
+Disclosure and hidden selection/attention summaries MUST be independent for each
+section + repository + optional Stack identity. No local heading may authorize
+global repository removal. Remove Collection only ungroups members. Workspace
+menus and typed drag/drop MUST move an individual Workspace across sections,
+including one member of a Stack, without changing repository association.
+
+New Workspace requests MUST carry Collection destination separately from the
+repository and explicit Stack parent. Collection creation supports Standalone
+and registered-repository choices; global requests start ungrouped and cancel
+must discard destination context. The repository picker MUST retain access to
+configuration and creation for repositories with no open Workspaces, without
+placeholder content. Empty repository removal MUST name its configuration-only
+scope and never delete files. A removed destination must display an error rather
+than silently redirect attachment. Exact Pull Request reuse reveals existing
+placement without moving or duplicating content.
+
+A repository-wide qualifying Stack MUST retain a section-local header even with
+one local member. Other-section branches may be nonselectable references, labeled
+as elsewhere rather than falsely claiming their Workspace is not open. New
+Workspace in Stack uses the last real local member in displayed order as the
+explicit parent, shown in the sheet. Same-section Stack block movement may remain
+metadata constrained; cross-Collection placement is always individual.
 
 In the left sidebar, Stack Groups MUST use shallow collapsible headers and
 fixed-inset Workspace rows rather than recursively nesting Workspaces. A

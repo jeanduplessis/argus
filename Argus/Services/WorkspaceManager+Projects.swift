@@ -29,14 +29,14 @@ extension WorkspaceManager {
         guard collectionId == nil || collectionIndex != nil,
             workspaces.count < Self.maxWorkspaces,
             namedProjects.count < Self.maxWorkspaces,
-            !hasDuplicateProject(repositoryRoot: repositoryRoot)
+            !hasDuplicateProject(repositoryRoot: repositoryRoot), canClaimWorkspaceRoot(repositoryRoot)
         else { return nil }
         let project = Project(
             repositoryPath: repositoryRoot,
             displayName: displayName,
             mainBranch: mainBranch
         )
-        projects.insert(project, at: max(projects.count - 1, 0))
+        projects.append(project)
         let workspace = Workspace(
             title: checkoutBranch,
             workingDirectory: repositoryRoot,
@@ -45,10 +45,7 @@ extension WorkspaceManager {
             workspaceType: .mainCheckout
         )
         workspaces.append(workspace)
-        project.addWorkspace(workspace.id)
-        if let collectionIndex {
-            collections[collectionIndex].projectIds.append(project.id)
-        }
+        appendPlacement(workspace.id, to: collectionId)
         selectWorkspace(workspace.id)
         saveSession()
         return project
@@ -56,17 +53,17 @@ extension WorkspaceManager {
 
     func removeProject(_ projectId: UUID) async {
         guard let project = projects.first(where: { $0.id == projectId }),
-            !project.isCatchAll
+            !closingSetupProjectIDs.contains(projectId)
         else { return }
-        guard !closingSetupProjectIDs.contains(projectId) else { return }
+        lastWorkspaceDeletionError = nil
         closingSetupProjectIDs.insert(projectId)
         defer { closingSetupProjectIDs.remove(projectId) }
-        let closingIDs = Set(project.workspaceIds)
+        let closingIDs = Set(workspaceIds(for: project))
         guard closingSetupWorkspaceIDs.isDisjoint(with: closingIDs) else { return }
-        let removalTargets = project.workspaceIds.compactMap { workspaceID in
+        let removalTargets = workspaceIds(for: project).compactMap { workspaceID in
             workspaces.first { $0.id == workspaceID }.map { ($0, $0.worktreePath.map(canonicalPath)) }
         }
-        guard
+        guard canRemoveWorkspaces(closingIDs, deletingRoots: Set(removalTargets.compactMap { $0.1 })),
             let deletionRoots = acquireWorktreeDeletionRoots(
                 removalTargets.compactMap { $0.1 }, closingWorkspaceIDs: closingIDs
             )
@@ -74,18 +71,21 @@ extension WorkspaceManager {
         defer { worktreeDeletionRoots.subtract(deletionRoots) }
         closingSetupWorkspaceIDs.formUnion(closingIDs)
         defer { closingSetupWorkspaceIDs.subtract(closingIDs) }
-        guard await stopWorktreeSetups(in: closingIDs) else { return }
+        guard await stopWorktreeSetups(in: closingIDs), canRemoveWorkspaces(closingIDs) else { return }
         cancelPendingWorkspaceStackReveal(in: projectId)
-        for (workspace, worktreePath) in removalTargets {
+        for worktreePath in deletionRoots.sorted() {
+            do {
+                try await worktreeService.removeWorktree(
+                    repositoryPath: project.repositoryPath, worktreePath: worktreePath, force: true)
+            } catch {
+                lastWorkspaceDeletionError = .worktreeRemovalFailed(error.localizedDescription)
+                return
+            }
+        }
+        guard canRemoveWorkspaces(closingIDs) else { return }
+        for (workspace, _) in removalTargets {
             agentStatusRuntime?.removeStatuses(forWorkspace: workspace.id)
             turnCompletionRuntime?.removeAttention(forWorkspace: workspace.id)
-            if let worktreePath {
-                try? await worktreeService.removeWorktree(
-                    repositoryPath: project.repositoryPath,
-                    worktreePath: worktreePath,
-                    force: true
-                )
-            }
             for panelId in workspace.panelOrder {
                 workspace.closeTab(panelId)
             }
@@ -94,13 +94,26 @@ extension WorkspaceManager {
         let previousOrder = sidebarOrderedWorkspaces.map(\.workspace.id)
         workspaces.removeAll { closingIDs.contains($0.id) }
         projects.removeAll { $0.id == projectId }
-        for index in collections.indices { collections[index].projectIds.removeAll { $0 == projectId } }
+        for workspaceId in closingIDs { removePlacement(workspaceId) }
         restoreSelectionAfterRemovingWorkspaces(closingIDs, previousOrder: previousOrder)
     }
 
+    @discardableResult
+    func removeEmptyProject(_ projectId: UUID) -> Bool {
+        guard let project = projects.first(where: { $0.id == projectId }), workspaceIds(for: project).isEmpty,
+            !closingSetupProjectIDs.contains(projectId)
+        else { return false }
+        projects.removeAll { $0.id == projectId }
+        ungroupedRepositoryDisclosure.removeAll { $0.projectId == projectId }
+        for index in collections.indices {
+            collections[index].repositoryDisclosure.removeAll { $0.projectId == projectId }
+        }
+        saveSession()
+        return true
+    }
+
     func renameProject(_ projectId: UUID, name: String) {
-        guard let project = projects.first(where: { $0.id == projectId }),
-            !project.isCatchAll
+        guard let project = projects.first(where: { $0.id == projectId })
         else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty {
@@ -110,18 +123,20 @@ extension WorkspaceManager {
     }
 
     func project(for workspaceId: UUID) -> Project? {
-        projects.first { $0.containsWorkspace(workspaceId) }
+        guard let projectId = workspaces.first(where: { $0.id == workspaceId })?.projectId else { return nil }
+        return projects.first { $0.id == projectId }
     }
 
     var namedProjects: [Project] {
-        projects.filter { !$0.isCatchAll }
+        projects
     }
 
     @discardableResult
-    func adoptOrphanedWorktree(_ orphan: OrphanedWorktreeInfo) -> Workspace? {
-        guard workspaces.count < Self.maxWorkspaces,
+    func adoptOrphanedWorktree(_ orphan: OrphanedWorktreeInfo, collectionId: UUID? = nil) -> Workspace? {
+        guard validateCreationDestination(collectionId), workspaces.count < Self.maxWorkspaces,
             let project = projects.first(where: { $0.id == orphan.projectId }),
-            !project.isCatchAll, !closingSetupProjectIDs.contains(project.id), !isStoppingAllWorktreeSetups
+            !closingSetupProjectIDs.contains(project.id), !isStoppingAllWorktreeSetups,
+            canClaimWorkspaceRoot(orphan.path)
         else { return nil }
         let branchName = orphan.branchName ?? (orphan.path as NSString).lastPathComponent
         let workspace = Workspace(
@@ -133,7 +148,7 @@ extension WorkspaceManager {
             worktreePath: orphan.path
         )
         workspaces.append(workspace)
-        project.addWorkspace(workspace.id)
+        appendPlacement(workspace.id, to: collectionId)
         selectWorkspace(workspace.id)
         saveSession()
         return workspace
@@ -144,8 +159,7 @@ extension WorkspaceManager {
             .resolvingSymlinksInPath()
             .path
         return projects.contains {
-            !$0.isCatchAll
-                && URL(fileURLWithPath: $0.repositoryPath).resolvingSymlinksInPath().path == canonicalRoot
+            URL(fileURLWithPath: $0.repositoryPath).resolvingSymlinksInPath().path == canonicalRoot
         }
     }
 
@@ -154,12 +168,12 @@ extension WorkspaceManager {
         branchName: String,
         createNewBranch: Bool = true,
         customTitle: String? = nil,
-        parentBranch: String? = nil
+        parentBranch: String? = nil,
+        collectionId: UUID? = nil
     ) async -> Workspace? {
         lastWorkspaceCreationError = nil
-        guard workspaces.count < Self.maxWorkspaces,
-            let project = projects.first(where: { $0.id == projectId }),
-            !project.isCatchAll
+        guard validateCreationDestination(collectionId), workspaces.count < Self.maxWorkspaces,
+            let project = projects.first(where: { $0.id == projectId })
         else { return nil }
 
         let repositoryPath = project.repositoryPath
@@ -186,7 +200,8 @@ extension WorkspaceManager {
                     projectId: projectId,
                     repositoryPath: repositoryPath,
                     reusedExistingWorktree: prepared.reusedExistingWorktree,
-                    setupCommand: setupCommand
+                    setupCommand: setupCommand,
+                    collectionId: collectionId
                 ))
         } catch let error as WorktreeError {
             lastWorkspaceCreationError = error
@@ -206,21 +221,21 @@ extension WorkspaceManager {
         let repositoryPath: String
         let reusedExistingWorktree: Bool
         let setupCommand: String?
+        let collectionId: UUID?
     }
 
     private func attachPreparedWorktree(_ attachment: PreparedWorktreeAttachment) async -> Workspace? {
-        guard let project = projects.first(where: { $0.id == attachment.projectId }),
-            !project.isCatchAll, !closingSetupProjectIDs.contains(project.id), !isStoppingAllWorktreeSetups,
+        guard validateCreationDestination(attachment.collectionId),
+            let project = projects.first(where: { $0.id == attachment.projectId }),
+            !closingSetupProjectIDs.contains(project.id), !isStoppingAllWorktreeSetups,
             canonicalPath(project.repositoryPath) == canonicalPath(attachment.repositoryPath),
-            workspaces.count < Self.maxWorkspaces
+            workspaces.count < Self.maxWorkspaces, canClaimWorkspaceRoot(attachment.path)
         else {
-            if !attachment.reusedExistingWorktree {
-                try? await worktreeService.removeWorktree(
-                    repositoryPath: attachment.repositoryPath,
-                    worktreePath: attachment.path,
-                    force: true
-                )
-            }
+            let error = lastWorkspaceCreationError
+            await cleanupUnattachedWorktree(
+                path: attachment.path, repositoryPath: attachment.repositoryPath,
+                reusedExistingWorktree: attachment.reusedExistingWorktree)
+            lastWorkspaceCreationError = error
             return nil
         }
 
@@ -236,7 +251,7 @@ extension WorkspaceManager {
             workspace.setCustomTitle(customTitle)
         }
         workspaces.append(workspace)
-        project.addWorkspace(workspace.id)
+        appendPlacement(workspace.id, to: attachment.collectionId)
         selectWorkspace(workspace.id)
         checkpointAndStartSetup(
             in: workspace, command: attachment.reusedExistingWorktree ? nil : attachment.setupCommand)
@@ -245,17 +260,20 @@ extension WorkspaceManager {
 
     /// Resolves one Pull Request through the active GitHub CLI and attaches
     /// its exact head to a Worktree Workspace in the initiating Project.
-    ///
     /// Provider and Git work happen while this MainActor remains suspended;
     /// Project identity and the Project Repository Root are revalidated before
     /// durable Workspace state is changed.
     @discardableResult
     func createWorkspace(
         fromPullRequest input: String,
-        in projectId: UUID
+        in projectId: UUID,
+        collectionId: UUID? = nil
     ) async throws -> Workspace {
         lastPullRequestWorkspaceError = nil
         do {
+            guard validateCreationDestination(collectionId) else {
+                throw PullRequestWorkspaceError.worktreeCreationFailed(lastWorkspaceCreationError!.localizedDescription)
+            }
             let parsedInput = try PullRequestInput.parse(input)
             let context = try pullRequestProjectContext(for: projectId)
             let setupCommand = projects.first(where: { $0.id == projectId })?.worktreeSetupCommand
@@ -271,9 +289,9 @@ extension WorkspaceManager {
             return try await attachPullRequestWorkspace(
                 resolution,
                 metadata: metadata,
-                projectID: context.projectID,
-                repositoryRoot: context.repositoryRoot,
-                setupCommand: setupCommand
+                context: context,
+                setupCommand: setupCommand,
+                collectionId: collectionId
             )
         } catch let error as PullRequestWorkspaceError {
             lastPullRequestWorkspaceError = error
@@ -293,9 +311,6 @@ extension WorkspaceManager {
         guard let project = projects.first(where: { $0.id == projectId }) else {
             throw PullRequestWorkspaceError.projectUnavailable
         }
-        guard !project.isCatchAll else {
-            throw PullRequestWorkspaceError.catchAllProject
-        }
         guard workspaces.count < Self.maxWorkspaces else {
             throw PullRequestWorkspaceError.workspaceLimitReached
         }
@@ -305,12 +320,13 @@ extension WorkspaceManager {
     private func attachPullRequestWorkspace(
         _ resolution: PullRequestWorktreeResolution,
         metadata: PullRequestWorkspaceMetadata,
-        projectID: UUID,
-        repositoryRoot: String,
-        setupCommand: String?
+        context: (projectID: UUID, repositoryRoot: String),
+        setupCommand: String?,
+        collectionId: UUID?
     ) async throws -> Workspace {
+        let (projectID, repositoryRoot) = context
         guard let currentProject = projects.first(where: { $0.id == projectID }),
-            !currentProject.isCatchAll, !closingSetupProjectIDs.contains(projectID), !isStoppingAllWorktreeSetups,
+            !closingSetupProjectIDs.contains(projectID), !isStoppingAllWorktreeSetups,
             canonicalPath(currentProject.repositoryPath) == canonicalPath(repositoryRoot)
         else {
             await cleanupPullRequestWorktreeIfNeeded(
@@ -318,6 +334,12 @@ extension WorkspaceManager {
                 repositoryPath: repositoryRoot
             )
             throw PullRequestWorkspaceError.projectChanged
+        }
+
+        guard validateCreationDestination(collectionId), canClaimWorkspaceRoot(resolution.worktreePath) else {
+            let error = lastWorkspaceCreationError!.localizedDescription
+            await cleanupPullRequestWorktreeIfNeeded(resolution, repositoryPath: repositoryRoot)
+            throw PullRequestWorkspaceError.worktreeCreationFailed(error)
         }
 
         if let existingWorkspace = workspaces.first(where: { workspace in
@@ -354,7 +376,7 @@ extension WorkspaceManager {
         // created Pull Request Workspaces. Preserve it exactly as returned.
         workspace.customTitle = metadata.title
         workspaces.append(workspace)
-        currentProject.addWorkspace(workspace.id)
+        appendPlacement(workspace.id, to: collectionId)
         selectWorkspace(workspace.id)
         checkpointAndStartSetup(in: workspace, command: resolution.reusedExistingWorktree ? nil : setupCommand)
         return workspace
@@ -364,37 +386,8 @@ extension WorkspaceManager {
         _ resolution: PullRequestWorktreeResolution,
         repositoryPath: String
     ) async {
-        guard !resolution.reusedExistingWorktree else { return }
-        do {
-            try await worktreeService.removeWorktree(
-                repositoryPath: repositoryPath,
-                worktreePath: resolution.worktreePath
-            )
-        } catch {
-            // Keep the original Project/Workspace error visible. The normal
-            // Orphaned Worktree scan remains the recovery path for cleanup
-            // failures; do not log provider or Git transport diagnostics here.
-        }
-    }
-
-    func restoreSelectionAfterRemovingWorkspaces(_ removedIds: Set<UUID>, previousOrder: [UUID]) {
-        guard let selectedWorkspaceId, removedIds.contains(selectedWorkspaceId) else { return }
-        if workspaces.isEmpty {
-            let workspace = freshStandaloneWorkspace()
-            workspaces.append(workspace)
-            catchAllProject.addWorkspace(workspace.id)
-            selectWorkspace(workspace.id)
-            return
-        }
-        let survivingIds = Set(workspaces.map(\.id))
-        let selectedIndex = previousOrder.firstIndex(of: selectedWorkspaceId) ?? 0
-        let replacementId =
-            previousOrder.dropFirst(selectedIndex + 1).first(where: survivingIds.contains)
-            ?? previousOrder.prefix(selectedIndex).last(where: survivingIds.contains)
-            ?? sidebarOrderedWorkspaces.first?.workspace.id
-            ?? workspaces.first?.id
-        if let replacementId {
-            selectWorkspace(replacementId)
-        }
+        await cleanupUnattachedWorktree(
+            path: resolution.worktreePath, repositoryPath: repositoryPath,
+            reusedExistingWorktree: resolution.reusedExistingWorktree)
     }
 }

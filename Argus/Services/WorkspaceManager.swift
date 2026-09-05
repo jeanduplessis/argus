@@ -15,16 +15,15 @@ enum WorkspaceDeletionStage: Int, CaseIterable, Sendable {
 /// It is the single source of truth for workspace state and is shared via
 /// the SwiftUI environment as an `@EnvironmentObject`.
 ///
-/// Phase 2 adds project management: workspaces are grouped under projects,
-/// each backed by a git repository with worktree support. Cmd+1–8 select by
-/// global sidebar order; Cmd+9 selects the last Workspace.
+/// Collection placement is independent of shared repository configuration.
+/// Cmd+1–8 and Cmd+9 use the fully expanded navigation projection.
 @MainActor
 // swiftlint:disable:next type_body_length
 final class WorkspaceManager: ObservableObject {
 
     // MARK: - Published State
 
-    /// Ordered list of workspaces (determines sidebar order).
+    /// Workspace registry. Collection and ungrouped placement determine navigation order.
     @Published var workspaces: [Workspace] = []
 
     /// ID of the currently selected workspace.
@@ -46,20 +45,19 @@ final class WorkspaceManager: ObservableObject {
     @Published internal(set) var workspaceStackErrors: [UUID: String] = [:]
     @Published internal(set) var refreshingWorkspaceStackProjectIds: Set<UUID> = []
 
-    /// Ordered list of projects (named projects first, catch-all last).
+    /// Shared repository registry; repeated navigation headings never duplicate records.
     @Published var projects: [Project] = [] {
         didSet { reconcileWorkspaceStackObservations() }
     }
 
     @Published internal(set) var collections: [ProjectCollection] = []
+    @Published internal(set) var ungroupedWorkspaceIds: [UUID] = []
+    @Published internal(set) var ungroupedRepositoryDisclosure: [RepositoryDisclosure] = []
 
     let workspaceStackReader: any WorkspaceStackReading
     var workspaceStackObservations: [UUID: (project: Project, observation: WorkspaceStackObservation)] = [:]
     var isObservingWorkspaceStacks = false
     var pendingWorkspaceStackReveal: PendingWorkspaceStackReveal?
-
-    /// The non-removable catch-all project for standalone workspaces.
-    var catchAllProject: Project!
 
     /// Shared worktree service for git operations.
     let worktreeService: WorktreeService
@@ -85,11 +83,12 @@ final class WorkspaceManager: ObservableObject {
     /// Last worktree deletion error for user-visible close feedback.
     var lastWorkspaceDeletionError: WorktreeError?
 
-    /// Location of the minimal Phase 2 session snapshot.
+    /// Location of the durable Session Snapshot.
     ///
     /// This is the production Session Snapshot location for normal app
     /// instances and a temporary per-process location for test instances.
     let sessionSnapshotURL: URL
+    let legacySessionSnapshotURL: URL?
 
     let settings: AppSettings
     var turnCompletionRuntime: TurnCompletionRuntime?
@@ -118,7 +117,7 @@ final class WorkspaceManager: ObservableObject {
     /// available, otherwise the workspace directory basename.
     func activeWorkspaceContextName(for workspace: Workspace) -> String {
         let project = project(for: workspace.id)
-        let projectName = project?.isCatchAll == false ? project?.displayName : nil
+        let projectName = project?.displayName
         return WorkspaceTitleFormatter.contextName(
             projectName: projectName,
             directoryPath: workspace.currentDirectory
@@ -139,7 +138,7 @@ final class WorkspaceManager: ObservableObject {
     /// Default application support path for persisted session state.
     static let defaultSessionSnapshotURL: URL = FileManager.default
         .homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Application Support/Argus/session.json")
+        .appendingPathComponent("Library/Application Support/Argus/session-v2.json")
 
     /// Root for session snapshots created by test instances. The process ID
     /// keeps concurrent test-host app instances isolated from one another.
@@ -159,6 +158,7 @@ final class WorkspaceManager: ObservableObject {
     init(
         settings: AppSettings,
         sessionSnapshotURL: URL? = nil,
+        legacySessionSnapshotURL: URL? = nil,
         environment: [String: String] = ProcessInfo.processInfo.environment,
         worktreeService: WorktreeService = WorktreeService(),
         pullRequestService: GitHubPullRequestService = GitHubPullRequestService(),
@@ -174,6 +174,12 @@ final class WorkspaceManager: ObservableObject {
             suppliedURL: sessionSnapshotURL,
             environment: environment
         )
+
+        self.legacySessionSnapshotURL =
+            legacySessionSnapshotURL
+            ?? (sessionSnapshotURL == nil && !Self.isTestInstance(environment: environment)
+                ? Self.defaultSessionSnapshotURL.deletingLastPathComponent().appendingPathComponent("session.json")
+                : nil)
 
         if !Self.shouldSkipSessionRestore(settings: settings, environment: environment),
             restoreSessionIfAvailable(from: self.sessionSnapshotURL)
@@ -304,25 +310,24 @@ final class WorkspaceManager: ObservableObject {
             .appendingPathComponent("session.json")
     }
 
-    /// Creates a new default session with one catch-all workspace.
+    /// Creates a new default session with one ungrouped Standalone Workspace.
     private func createFreshSession() {
-        let catchAll = Project.catchAll()
-        self.catchAllProject = catchAll
-        self.projects = [catchAll]
-
+        projects = []
         let workspace = freshStandaloneWorkspace()
         workspaces = [workspace]
-        catchAll.addWorkspace(workspace.id)
+        ungroupedWorkspaceIds = [workspace.id]
         selectedWorkspaceId = workspace.id
     }
 
-    /// Builds the minimal durable Phase 2 session snapshot.
+    /// Builds the durable Session Snapshot.
     func makeSessionSnapshot() -> ArgusSessionSnapshot {
         ArgusSessionSnapshot(
             selectedWorkspaceId: selectedWorkspaceId,
             projects: projects.map { $0.snapshot() },
             workspaces: workspaces.map { $0.snapshot() },
-            collections: collections.isEmpty ? nil : collections
+            collections: collections.isEmpty ? nil : collections,
+            ungroupedWorkspaceIds: ungroupedWorkspaceIds,
+            ungroupedRepositoryDisclosure: ungroupedRepositoryDisclosure
         )
     }
 
@@ -350,13 +355,34 @@ final class WorkspaceManager: ObservableObject {
         }
     }
 
-    /// Restores a minimal Phase 2 session snapshot from disk if it is valid.
+    /// Restores a durable Session Snapshot from disk if it is valid.
     @discardableResult
     private func restoreSessionIfAvailable(from url: URL) -> Bool {
-        guard let data = try? Data(contentsOf: url),
-            let snapshot = try? JSONDecoder().decode(ArgusSessionSnapshot.self, from: data)
+        let fileManager = FileManager.default
+        if fileManager.fileExists(atPath: url.path) {
+            guard let data = try? Data(contentsOf: url),
+                let snapshot = try? JSONDecoder().decode(ArgusSessionSnapshot.self, from: data),
+                snapshot.isCompatible
+            else { return false }
+            return restoreSession(from: snapshot)
+        }
+        guard let legacySessionSnapshotURL,
+            let data = try? Data(contentsOf: legacySessionSnapshotURL),
+            let legacy = try? JSONDecoder().decode(ArgusSessionSnapshot.self, from: data),
+            legacy.schemaVersion == 1, legacy.isValidForRestore(maxWorkspaces: Self.maxWorkspaces)
         else { return false }
-        return restoreSession(from: snapshot)
+        let converted = legacy.reconciledForRestore()
+        // Checkpoint at the new destination before any runtime mutation/save.
+        // Never write, rename, or remove the schema-1 downgrade backup.
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            try fileManager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try encoder.encode(converted).write(to: url, options: .atomic)
+        } catch {
+            print("Could not checkpoint imported Argus session: \(error.localizedDescription)")
+        }
+        return restoreSession(from: converted)
     }
 
     /// Restores a decoded session snapshot. Incompatible or empty snapshots are
@@ -369,14 +395,14 @@ final class WorkspaceManager: ObservableObject {
 
         let reconciledSnapshot = snapshot.reconciledForRestore()
         let restoredProjects = reconciledSnapshot.projects.map(Project.init(snapshot:))
-        let catchAll = restoredProjects.first(where: { $0.isCatchAll }) ?? Project.catchAll()
         let restoredWorkspaces = reconciledSnapshot.workspaces.map(Workspace.init(snapshot:))
 
         for workspace in workspaces { workspace.worktreeSetupPanel = nil }
-        self.catchAllProject = catchAll
         self.projects = restoredProjects
         self.workspaces = restoredWorkspaces
         self.collections = reconciledSnapshot.collections ?? []
+        self.ungroupedWorkspaceIds = reconciledSnapshot.ungroupedWorkspaceIds
+        self.ungroupedRepositoryDisclosure = reconciledSnapshot.ungroupedRepositoryDisclosure
         self.selectedWorkspaceId = reconciledSnapshot.selectedWorkspaceId
         notifyWorkspaceContextChanged()
         return true
@@ -432,15 +458,23 @@ final class WorkspaceManager: ObservableObject {
     ///   - workingDirectory: Initial working directory for the first panel.
     /// - Returns: The new workspace, or `nil` if the limit has been reached.
     @discardableResult
-    func addWorkspace(title: String? = nil, workingDirectory: String? = nil) -> Workspace? {
-        guard workspaces.count < Self.maxWorkspaces else { return nil }
+    func addWorkspace(
+        title: String? = nil, workingDirectory: String? = nil, collectionId: UUID? = nil,
+        customTitle: String? = nil
+    ) -> Workspace? {
+        guard validateCreationDestination(collectionId), workspaces.count < Self.maxWorkspaces,
+            canClaimWorkspaceRoot(workingDirectory ?? settings.defaultStandaloneWorkspaceDirectory)
+        else { return nil }
 
         let workspace = freshStandaloneWorkspace(
             title: title ?? "Terminal",
             workingDirectory: workingDirectory
         )
+        if let customTitle, !customTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            workspace.setCustomTitle(customTitle)
+        }
         workspaces.append(workspace)
-        catchAllProject.addWorkspace(workspace.id)
+        appendPlacement(workspace.id, to: collectionId)
         selectWorkspace(workspace.id)
         // Checkpoint Workspace identity and its Workspace Root immediately so
         // an application crash cannot discard a newly created Workspace.
@@ -472,8 +506,7 @@ final class WorkspaceManager: ObservableObject {
     func shouldConfirmWorktreeDeletionBeforeClosing(_ workspaceId: UUID) -> Bool {
         guard let workspace = workspaces.first(where: { $0.id == workspaceId }),
             workspace.worktreePath != nil,
-            let project = project(for: workspaceId),
-            !project.isCatchAll
+            project(for: workspaceId) != nil
         else { return false }
         return true
     }
@@ -504,11 +537,12 @@ final class WorkspaceManager: ObservableObject {
         return workspace.runningProcessCount + workspace.runningSetupCount > 0
     }
 
-    func removeWorkspaceFromState(_ workspaceId: UUID) {
-        guard let index = workspaces.firstIndex(where: { $0.id == workspaceId }) else { return }
+    @discardableResult
+    func removeWorkspaceFromState(_ workspaceId: UUID) -> Bool {
+        guard let index = workspaces.firstIndex(where: { $0.id == workspaceId }) else { return false }
 
         let workspace = workspaces[index]
-        guard workspace.runningSetupCount == 0 else { return }
+        guard workspace.runningSetupCount == 0, canRemoveWorkspaces([workspaceId]) else { return false }
         let previousOrder = sidebarOrderedWorkspaces.map(\.workspace.id)
 
         turnCompletionRuntime?.removeAttention(forWorkspace: workspaceId)
@@ -521,14 +555,12 @@ final class WorkspaceManager: ObservableObject {
 
         workspace.worktreeSetupPanel = nil
 
-        // Remove from parent project.
-        if let project = project(for: workspaceId) {
-            project.removeWorkspace(workspaceId)
-        }
+        removePlacement(workspaceId)
 
         workspaces.remove(at: index)
 
         restoreSelectionAfterRemovingWorkspaces([workspaceId], previousOrder: previousOrder)
+        return true
     }
 
     func notifyWorkspaceContextChanged() {

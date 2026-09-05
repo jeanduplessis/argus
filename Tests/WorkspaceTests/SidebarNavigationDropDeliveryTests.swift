@@ -7,7 +7,7 @@ import Testing
 @MainActor
 struct SidebarNavigationDropDeliveryTests {
     enum DestinationChange: CaseIterable, Sendable {
-        case none, membership, projectOrder, collectionOrder, removeProject, removeCollection
+        case none, membership, workspaceOrder, sourceOrder, collectionOrder, removeWorkspace, removeCollection
     }
 
     @Test(arguments: DestinationChange.allCases)
@@ -17,13 +17,13 @@ struct SidebarNavigationDropDeliveryTests {
         let manager = fixture.manager
         let first = try #require(manager.createCollection(name: "First"))
         let second = try #require(manager.createCollection(name: "Second"))
-        let target = Project(repositoryPath: fixture.root.appendingPathComponent("target").path, mainBranch: "main")
-        let sibling = Project(repositoryPath: fixture.root.appendingPathComponent("sibling").path, mainBranch: "main")
-        manager.projects.insert(contentsOf: [target, sibling], at: 0)
-        manager.moveProject(target.id, toCollection: first.id)
-        manager.moveProject(sibling.id, toCollection: first.id)
-        let drag = manager.projectDrag(fixture.project.id)
-        let context = try #require(manager.navigationDropContext(for: .project(target.id)))
+        let target = try #require(manager.addWorkspace(workingDirectory: fixture.root.path))
+        let sibling = try #require(manager.addWorkspace(workingDirectory: fixture.root.path))
+        manager.selectWorkspace(fixture.child.id)
+        manager.moveWorkspace(target.id, toCollection: first.id)
+        manager.moveWorkspace(sibling.id, toCollection: first.id)
+        let drag = manager.workspaceDrag(fixture.child.id)
+        let context = try #require(manager.navigationDropContext(for: .workspace(target.id)))
         let delayed = DelayedNavigationProvider(typeIdentifier: drag.typeIdentifier)
         let delivery = Task {
             await manager.loadNavigationDrop(
@@ -32,17 +32,18 @@ struct SidebarNavigationDropDeliveryTests {
         await waitForStackState { delayed.isRequested }
         switch change {
         case .none: break
-        case .membership: manager.moveProject(target.id, toCollection: second.id)
-        case .projectOrder: manager.moveProject(target.id, offset: 1)
+        case .membership: manager.moveWorkspace(target.id, toCollection: second.id)
+        case .sourceOrder: manager.moveWorkspace(fixture.parent.id, toCollection: nil, at: 0)
+        case .workspaceOrder: manager.moveWorkspace(target.id, toCollection: first.id, at: 1)
         case .collectionOrder: manager.moveCollection(first.id, offset: 1)
-        case .removeProject: await manager.removeProject(target.id)
+        case .removeWorkspace: manager.removeWorkspace(target.id)
         case .removeCollection: manager.removeCollection(first.id)
         }
         delayed.complete(with: try JSONEncoder().encode(drag))
         #expect(await delivery.value == (change == .none))
-        #expect(manager.collection(containing: fixture.project.id)?.id == (change == .none ? first.id : nil))
+        #expect(manager.collection(containing: fixture.child.id)?.id == (change == .none ? first.id : nil))
         if change == .none {
-            #expect(manager.projects(in: first.id).map(\.id) == [target.id, fixture.project.id, sibling.id])
+            #expect(manager.manualWorkspaceIds(in: first.id) == [target.id, fixture.child.id, sibling.id])
         }
         #expect(manager.selectedWorkspaceId == fixture.child.id)
     }

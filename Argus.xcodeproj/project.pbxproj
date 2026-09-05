@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D03A01000000000000000001 /* NewWorkspaceSheet+Choices.swift in Sources */ = {isa = PBXBuildFile; fileRef = D03A01000000000000000002 /* NewWorkspaceSheet+Choices.swift */; };
 		AB739136C32C4C10AC183841 /* StackWorkspaceCreationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB739136C32C4C10AC183842 /* StackWorkspaceCreationTests.swift */; };
 		AB739136C32C4C10AC183843 /* WorkspaceStackUIContractTests+Creation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB739136C32C4C10AC183844 /* WorkspaceStackUIContractTests+Creation.swift */; };
 		0005F1BE34EC7C0DA1814AFC /* WorktreeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709721096373D93A263660AB /* WorktreeService.swift */; };
@@ -294,6 +295,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		D03A01000000000000000002 /* NewWorkspaceSheet+Choices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NewWorkspaceSheet+Choices.swift"; sourceTree = "<group>"; };
 		AB739136C32C4C10AC183842 /* StackWorkspaceCreationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackWorkspaceCreationTests.swift; sourceTree = "<group>"; };
 		AB739136C32C4C10AC183844 /* WorkspaceStackUIContractTests+Creation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspaceStackUIContractTests+Creation.swift"; sourceTree = "<group>"; };
 		0163CE072B8461A861431A19 /* GitTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitTestSupport.swift; sourceTree = "<group>"; };
@@ -778,6 +780,7 @@
 				A4805B3F026B11429DBC9070 /* CloseWorkspaceConfirmationView.swift */,
 				704AC69ACE9114900992E244 /* NewProjectSheet.swift */,
 				8C01FB15CE585853A5C6581E /* NewWorkspaceSheet.swift */,
+				D03A01000000000000000002 /* NewWorkspaceSheet+Choices.swift */,
 				4FA4A99862B8FD090D3E03DF /* OrphanedWorktreesSheet.swift */,
 				592791F9F27A74E3630CFBDE /* RunningProcessConfirmationView.swift */,
 				26A673793BA15A2530C9474F /* WorktreeSetupSheet.swift */,
@@ -1286,6 +1289,7 @@
 				2401E44539747B1C9FDBC5E9 /* MainWindowView.swift in Sources */,
 				E3FCCA98DDAA416589EF30A8 /* NewProjectSheet.swift in Sources */,
 				4B7BD698C037E123F109CA97 /* NewWorkspaceSheet.swift in Sources */,
+				D03A01000000000000000001 /* NewWorkspaceSheet+Choices.swift in Sources */,
 				92C213F4093831E8F18EAD07 /* OrphanedWorktreesSheet.swift in Sources */,
 				EF04235849461CCB3B6C16E5 /* Panel.swift in Sources */,
 				2BBA95463C2B5209FB51F312 /* PiIntegrationService.swift in Sources */,

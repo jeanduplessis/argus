@@ -25,6 +25,19 @@ final class WorkspaceStackTestFixture {
     let snapshot: WorkspaceStackSnapshot
     let stackId = "gh-stack:4:main:14:feature/parent"
 
+    var manualOrder: [UUID] {
+        get { manager.ungroupedWorkspaceIds }
+        set { manager.ungroupedWorkspaceIds = newValue }
+    }
+    var isExpanded: Bool {
+        get { manager.repositoryDisclosure(for: project.id, in: nil).isExpanded }
+        set { manager.updateRepositoryDisclosure(for: project.id, in: nil) { $0.isExpanded = newValue } }
+    }
+    var collapsedStackIds: Set<String> {
+        get { manager.repositoryDisclosure(for: project.id, in: nil).collapsedStackIds }
+        set { manager.updateRepositoryDisclosure(for: project.id, in: nil) { $0.collapsedStackIds = newValue } }
+    }
+
     var orderedIds: [UUID] { manager.sidebarOrderedWorkspaces.map(\.workspace.id) }
 
     var snapshotIncludingGap: WorkspaceStackSnapshot {
@@ -37,15 +50,15 @@ final class WorkspaceStackTestFixture {
         )
     }
 
-    func adoptGapWorkspace() throws -> Workspace {
-        project.isExpanded = false
-        project.collapsedStackIds = [stackId]
+    func adoptGapWorkspace(collectionId: UUID? = nil) throws -> Workspace {
+        isExpanded = false
+        collapsedStackIds = [stackId]
         return try #require(
             manager.adoptOrphanedWorktree(
                 OrphanedWorktreeInfo(
                     path: root.appendingPathComponent("gap").path,
                     branchName: "outdated-branch-label", projectId: project.id
-                )
+                ), collectionId: collectionId
             ))
     }
 
@@ -73,9 +86,8 @@ final class WorkspaceStackTestFixture {
             ],
             parents: ["feature/parent": "main", "feature/gap": "feature/parent", "feature/child": "feature/gap"]
         )
-        manager.catchAllProject.workspaceIds = []
         manager.workspaces = [child, ordinary, parent]
-        project.workspaceIds = manager.workspaces.map(\.id)
+        manager.ungroupedWorkspaceIds = manager.workspaces.map(\.id)
         manager.projects.insert(project, at: 0)
         manager.selectedWorkspaceId = child.id
         manager.workspaceStackSnapshots[project.id] = snapshot

@@ -23,6 +23,10 @@ struct WorktreeSetupLifecycleTests {
             try await fixture.waitForRuns(2)
         }
         let manager = fixture.manager
+        let first = try #require(manager.createCollection(name: "First"))
+        let second = try #require(manager.createCollection(name: "Second"))
+        manager.moveWorkspace(owner.id, toCollection: first.id)
+        manager.moveWorkspace(duplicate.id, toCollection: second.id)
         #expect(await !manager.removeWorkspace(duplicate.id, deletingWorktree: true))
         #expect(FileManager.default.fileExists(atPath: owner.currentDirectory))
         #expect(manager.workspaces.contains { $0 === duplicate })
@@ -228,9 +232,8 @@ struct WorktreeSetupLifecycleTests {
                 "return .terminateLater", "allowMainWindowClose()"
             ], "application and window close share setup guard")
         let projectMenu = try SourceContract("Argus/Views/Sidebar/SidebarView+Projects.swift")
-        projectMenu.containsAll(
-            ["confirmProjectRemoval()", "Running terminal and Worktree Setup processes will be terminated."],
-            "Project removal includes setup consequence")
+        projectMenu.excludes("removeProject(", "Local repository headings cannot close global repository scope")
+        projectMenu.excludes("confirmProjectRemoval", "Local headings do not authorize global deletion")
     }
 }
 
@@ -348,11 +351,32 @@ extension WorktreeSetupLifecycleTests {
         let duplicate = try await fixture.workspace(newBranch: false)
         fixture.manager.runWorktreeSetupAgain(in: duplicate)
         try await fixture.waitForRuns(2)
-        await fixture.manager.removeProject(fixture.project.id)
+        let manager = fixture.manager
+        let projectId = fixture.project.id
+        let scopedIds = Set(manager.workspaceIds(for: fixture.project))
+        let first = try #require(manager.createCollection(name: "First"))
+        let second = try #require(manager.createCollection(name: "Second"))
+        manager.moveWorkspace(owner.id, toCollection: first.id)
+        manager.moveWorkspace(duplicate.id, toCollection: second.id)
+        let peerProject = try await fixture.addProject(name: "unaffected")
+        let peer = try #require(manager.selectedWorkspace)
+        let peerPanels = peer.panelOrder
+        manager.moveWorkspace(peer.id, toCollection: first.id)
+        await manager.removeProject(projectId)
         #expect(await fixture.runner.stopRequests == 2)
         #expect(await fixture.runner.rootExistedAtStop)
         #expect(!FileManager.default.fileExists(atPath: owner.currentDirectory))
-        #expect(fixture.manager.worktreeDeletionRoots.isEmpty)
+        #expect(manager.worktreeDeletionRoots.isEmpty)
+        #expect(manager.lastWorkspaceDeletionError == nil)
+        #expect(!manager.projects.contains { $0.id == projectId })
+        #expect(manager.workspaces.allSatisfy { !scopedIds.contains($0.id) })
+        #expect(manager.collections[0].workspaceIds == [peer.id])
+        #expect(manager.collections[1].workspaceIds.isEmpty)
+        #expect(manager.ungroupedWorkspaceIds.allSatisfy { !scopedIds.contains($0) })
+        #expect(manager.project(for: peer.id) === peerProject)
+        #expect(peer.panelOrder == peerPanels)
+        #expect(manager.selectedWorkspaceId == peer.id)
+        #expect(FileManager.default.fileExists(atPath: peer.currentDirectory))
         await fixture.remove()
     }
 
@@ -372,10 +396,11 @@ extension WorktreeSetupLifecycleTests {
         #expect(!manager.canRunWorktreeSetup(in: duplicate))
         manager.runWorktreeSetupAgain(in: duplicate)
         manager.startWorktreeSetup(command: "printf fixture", in: duplicate)
-        let newlyAttached = try await fixture.workspace(newBranch: false)
-        manager.runWorktreeSetupAgain(in: newlyAttached)
-        manager.startWorktreeSetup(command: "printf fixture", in: newlyAttached)
-        #expect(newlyAttached.worktreeSetupPanel == nil)
+        let ids = manager.workspaces.map(\.id)
+        #expect(
+            await manager.addWorkspaceToProject(fixture.project.id, branchName: "feature", createNewBranch: false)
+                == nil)
+        #expect(manager.workspaces.map(\.id) == ids)
         #expect(duplicate.worktreeSetupPanel == nil)
         #expect(await !manager.removeWorkspace(duplicate.id, deletingWorktree: true))
         #expect(manager.worktreeDeletionRoots == roots)
@@ -430,6 +455,117 @@ extension WorktreeSetupLifecycleTests {
         #expect(fixture.manager.worktreeDeletionRoots.isEmpty)
         #expect(fixture.manager.workspaces.contains { $0 === workspace })
         #expect(FileManager.default.fileExists(atPath: fixture.repository.path))
+        await fixture.remove()
+    }
+}
+
+extension WorktreeSetupLifecycleTests {
+    @Test(arguments: [false, true])
+    func stalePreparationNeverDeletesAnAdoptedPeerRootOrStopsItsSetup(runSetup: Bool) async throws {
+        let fixture = try await SetupManagerFixture.make()
+        await fixture.runner.configure(hold: true)
+        let manager = fixture.manager
+        let project = fixture.project
+        let destination = try #require(manager.createCollection(name: "Removed"))
+        let gate = try BoundedGitHookGate(root: fixture.directory.url, repository: fixture.repository, name: "prepare")
+        defer { gate.release() }
+        let creation = Task {
+            await manager.addWorkspaceToProject(project.id, branchName: "pending", collectionId: destination.id)
+        }
+        try await gate.waitUntilStarted()
+        let path = manager.worktreeService.managedWorktreeBaseURL
+            .appendingPathComponent(project.id.uuidString).appendingPathComponent("pending").path
+        let adopted = try #require(
+            manager.adoptOrphanedWorktree(.init(path: path, branchName: "pending", projectId: project.id)))
+        if runSetup {
+            manager.runWorktreeSetupAgain(in: adopted)
+            try await fixture.waitForRuns(1)
+        }
+        let panels = adopted.panelOrder
+        manager.removeCollection(destination.id)
+        gate.release()
+        #expect(await creation.value == nil)
+        #expect(!gate.didTimeOut)
+        #expect(manager.lastWorkspaceCreationError?.localizedDescription.contains("Collection") == true)
+        #expect(manager.workspaces.contains { $0 === adopted })
+        #expect(adopted.panelOrder == panels)
+        #expect(FileManager.default.fileExists(atPath: path))
+        #expect(adopted.runningSetupCount == (runSetup ? 1 : 0))
+        #expect(await fixture.runner.stopRequests == 0)
+        #expect(manager.worktreeDeletionRoots.isEmpty)
+        await fixture.remove()
+    }
+
+    @Test
+    func awaitedUnattachedCleanupReservesRootAgainstEveryNewClaimAndReleasesAfterFailure() async throws {
+        let fixture = try await SetupManagerFixture.make(command: nil)
+        let manager = fixture.manager
+        let project = fixture.project
+        let path = try await manager.worktreeService.createWorktree(
+            projectId: project.id,
+            repositoryPath: fixture.repository.path, branchName: "unattached")
+        // Retain a dirty file so cleanup fails unforced, permitting a subsequent claim after release.
+        try Data("edited".utf8).write(to: URL(fileURLWithPath: path).appendingPathComponent("edited.txt"))
+        let gate = try BoundedGitHookGate(
+            root: fixture.directory.url, repository: fixture.repository,
+            name: "cleanup", monitorsStatus: true)
+        defer { gate.release() }
+        let standalone = try #require(manager.addWorkspace(workingDirectory: fixture.directory.url.path))
+        let before = manager.workspaces.map(\.id)
+        let cleanup = Task {
+            await manager.cleanupUnattachedWorktree(
+                path: path, repositoryPath: project.repositoryPath, reusedExistingWorktree: false)
+        }
+        try await gate.waitUntilStarted()
+        #expect(manager.worktreeDeletionRoots == [manager.canonicalPath(path)])
+        #expect(
+            manager.adoptOrphanedWorktree(.init(path: path, branchName: "unattached", projectId: project.id)) == nil)
+        #expect(manager.addWorkspace(workingDirectory: path) == nil)
+        #expect(await manager.createProject(repositoryPath: path, mainBranchOverride: "main") == nil)
+        #expect(!manager.setStandaloneWorkspaceRoot(standalone.id, path: path))
+        #expect(manager.lastWorkspaceCreationError?.localizedDescription.contains("being deleted") == true)
+        #expect(!manager.setStandaloneWorkspaceRoot(standalone.id, path: ""))
+        #expect(manager.lastWorkspaceCreationError == nil)
+        #expect(
+            await manager.addWorkspaceToProject(project.id, branchName: "unattached", createNewBranch: false) == nil)
+        #expect(manager.workspaces.map(\.id) == before)
+        #expect(manager.worktreeDeletionRoots == [manager.canonicalPath(path)])
+        gate.release()
+        await cleanup.value
+        #expect(!gate.didTimeOut)
+        #expect(manager.worktreeDeletionRoots.isEmpty)
+        #expect(FileManager.default.fileExists(atPath: path))
+        #expect(
+            manager.adoptOrphanedWorktree(.init(path: path, branchName: "unattached", projectId: project.id)) != nil)
+        await fixture.remove()
+    }
+}
+
+extension WorktreeSetupLifecycleTests {
+    @Test
+    func automaticLastWorkspaceFallbackAvoidsReservedDefaultAndRefusesWhenHomeIsUnsafe() async throws {
+        let fixture = try await SetupManagerFixture.make(command: nil)
+        let manager = fixture.manager
+        let only = try #require(manager.selectedWorkspace)
+        for id in manager.workspaces.map(\.id) where id != only.id { manager.removeWorkspace(id) }
+        let preferred = fixture.directory.url.path
+        manager.settings.defaultStandaloneWorkspaceDirectory = preferred
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        manager.worktreeDeletionRoots = [manager.canonicalPath(preferred), manager.canonicalPath(home)]
+        let panels = only.panelOrder
+        #expect(await !manager.removeWorkspace(only.id, deletingWorktree: false))
+        #expect(manager.selectedWorkspace === only)
+        #expect(only.panelOrder == panels)
+        #expect(manager.lastWorkspaceDeletionError != nil)
+        manager.worktreeDeletionRoots.remove(manager.canonicalPath(home))
+        manager.removeWorkspace(only.id)
+        let fallback = try #require(manager.selectedWorkspace)
+        #expect(fallback.id != only.id)
+        #expect(fallback.currentDirectory == home)
+        #expect(manager.settings.defaultStandaloneWorkspaceDirectory == preferred)
+        #expect(manager.addWorkspace() == nil)
+        #expect(manager.workspaces.count == 1)
+        manager.worktreeDeletionRoots.removeAll()
         await fixture.remove()
     }
 }

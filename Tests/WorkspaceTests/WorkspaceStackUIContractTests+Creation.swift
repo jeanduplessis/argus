@@ -13,7 +13,7 @@ extension WorkspaceStackUIContractTests {
             [
                 "Button(\"New Workspace in Stack…\")",
                 "group.newWorkspaceParentBranch",
-                "\"parentBranch\": parentBranch",
+                "stackParentBranch: parentBranch",
                 "name: .showNewWorkspaceSheet"
             ],
             "Stack Group header context menu offers New Workspace in Stack\u{2026} with last real row branch as parent")
@@ -46,10 +46,10 @@ extension WorkspaceStackUIContractTests {
         let window = try SourceContract("Argus/Views/MainWindowView.swift")
         window.containsAll(
             [
-                "let stackParentBranch: String?",
-                "let parentBranch = notification.userInfo?[\"parentBranch\"] as? String",
-                "stackParentBranch: parentBranch",
-                "NewWorkspaceSheet(projectId: request.projectId, stackParentBranch: request.stackParentBranch)"
+                "var stackParentBranch: String?",
+                "notification.object as? WorkspaceCreationRequest",
+                "collectionId: request.collectionId",
+                "stackParentBranch: request.stackParentBranch"
             ], "MainWindowView threads parentBranch from notification through request to sheet")
     }
 

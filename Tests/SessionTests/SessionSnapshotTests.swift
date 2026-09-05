@@ -35,7 +35,9 @@ struct SessionSnapshotTests {
             schemaVersion: ArgusSessionSnapshot.currentSchemaVersion,
             selectedWorkspaceId: workspaceId,
             projects: [project],
-            workspaces: [workspace]
+            workspaces: [workspace],
+            ungroupedWorkspaceIds: [workspaceId],
+            ungroupedRepositoryDisclosure: [RepositoryDisclosure(projectId: projectId, isExpanded: false)]
         )
 
         let encoded = try JSONEncoder().encode(snapshot)
@@ -45,7 +47,8 @@ struct SessionSnapshotTests {
             decoded.schemaVersion, ArgusSessionSnapshot.currentSchemaVersion, "schema version round-trips"
         )
         assertEqual(decoded.projects.first?.id, projectId, "project id round-trips")
-        assertEqual(decoded.projects.first?.isExpanded, false, "project expansion state round-trips")
+        assertEqual(
+            decoded.ungroupedRepositoryDisclosure.first?.isExpanded, false, "section expansion state round-trips")
         assertEqual(decoded.workspaces.first?.projectId, projectId, "workspace project id round-trips")
         assertEqual(
             decoded.workspaces.first?.branchName, "feature/persist", "workspace branch round-trips")
@@ -233,5 +236,29 @@ struct SessionSnapshotTests {
 
     private func assertEqual<T: Equatable>(_ actual: T, _ expected: T, _ message: String) {
         #expect(actual == expected, Comment(rawValue: message))
+    }
+}
+
+extension SessionSnapshotTests {
+    @Test @MainActor
+    func explicitStandaloneNameSurvivesDerivedTerminalTitleAndCheckpoint() throws {
+        let fixture = try WorkspaceStackTestFixture()
+        defer { fixture.cleanup() }
+        let manager = fixture.manager
+        let named = try #require(manager.addWorkspace(workingDirectory: fixture.root.path, customTitle: "  Notes  "))
+        named.title = "Terminal"
+        #expect(named.displayTitle == "Notes")
+        let saved = try JSONDecoder().decode(
+            ArgusSessionSnapshot.self, from: Data(contentsOf: manager.sessionSnapshotURL))
+        #expect(saved.workspaces.first { $0.id == named.id }?.customTitle == "Notes")
+        #expect(manager.restoreSession(from: saved))
+        #expect(manager.selectedWorkspace?.displayTitle == "Notes")
+        let derived = try #require(manager.addWorkspace(workingDirectory: fixture.root.path, customTitle: " \n"))
+        #expect(derived.customTitle == nil)
+        derived.title = "Derived shell name"
+        #expect(derived.displayTitle == "Derived shell name")
+        try SourceContract("Argus/Views/Dialogs/NewWorkspaceSheet.swift").contains(
+            "customTitle: workspaceName",
+            "Standalone sheet names are durable custom titles, not terminal-derived titles")
     }
 }

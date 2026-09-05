@@ -7,43 +7,44 @@ import Testing
 @MainActor
 struct SidebarNavigationDraggingTests {
     @Test
-    func typedProjectDropsMoveWholeBlocksWithoutChangingSelectionAndRejectStaleSources() throws {
+    func typedWorkspaceDropsMoveIndividualsWithoutChangingSelectionAndRejectStaleSources() throws {
         let fixture = try WorkspaceStackTestFixture()
         defer { fixture.cleanup() }
         let manager = fixture.manager
-        let other = Project(repositoryPath: fixture.root.appendingPathComponent("other").path, mainBranch: "main")
-        manager.projects.insert(other, at: 0)
+        let other = try #require(manager.addWorkspace(workingDirectory: fixture.root.path))
+        manager.selectWorkspace(fixture.child.id)
         let first = try #require(manager.createCollection(name: "First"))
         let second = try #require(manager.createCollection(name: "Second"))
         let selection = manager.selectedWorkspaceId
-        let workspaceOrder = fixture.project.workspaceIds
-        let drag = manager.projectDrag(fixture.project.id)
+        let workspaceOrder = manager.workspaceIds(for: fixture.project)
+        let drag = manager.workspaceDrag(fixture.child.id)
         #expect(manager.applyNavigationDrop(drag, to: .collection(first.id), after: false))
         #expect(!manager.applyNavigationDrop(drag, to: .collection(second.id), after: false))
-        #expect(manager.collection(containing: fixture.project.id)?.id == first.id)
+        #expect(manager.collection(containing: fixture.child.id)?.id == first.id)
         #expect(
-            manager.applyNavigationDrop(manager.projectDrag(other.id), to: .project(fixture.project.id), after: true))
-        #expect(manager.projects(in: first.id).map(\.id) == [fixture.project.id, other.id])
+            manager.applyNavigationDrop(manager.workspaceDrag(other.id), to: .workspace(fixture.child.id), after: true))
+        #expect(manager.manualWorkspaceIds(in: first.id) == [fixture.child.id, other.id])
         #expect(
-            manager.applyNavigationDrop(manager.projectDrag(other.id), to: .project(fixture.project.id), after: false))
-        #expect(manager.projects(in: first.id).map(\.id) == [other.id, fixture.project.id])
-        #expect(manager.applyNavigationDrop(manager.projectDrag(other.id), to: .collection(second.id), after: false))
-        #expect(manager.applyNavigationDrop(manager.projectDrag(fixture.project.id), to: .otherProjects, after: false))
-        #expect(manager.ungroupedProjects.map(\.id) == [fixture.project.id])
+            manager.applyNavigationDrop(manager.workspaceDrag(other.id), to: .workspace(fixture.child.id), after: false)
+        )
+        #expect(manager.manualWorkspaceIds(in: first.id) == [other.id, fixture.child.id])
+        #expect(manager.applyNavigationDrop(manager.workspaceDrag(other.id), to: .collection(second.id), after: false))
+        #expect(manager.applyNavigationDrop(manager.workspaceDrag(fixture.child.id), to: .ungrouped, after: false))
+        #expect(Array(manager.ungroupedWorkspaceIds.suffix(1)) == [fixture.child.id])
         #expect(manager.selectedWorkspaceId == selection)
-        #expect(fixture.project.workspaceIds == workspaceOrder)
+        #expect(manager.workspaceIds(for: fixture.project) == workspaceOrder)
         #expect(
             !manager.applyNavigationDrop(
-                manager.projectDrag(fixture.project.id), to: .project(fixture.project.id), after: true))
+                manager.workspaceDrag(fixture.child.id), to: .workspace(fixture.child.id), after: true))
         #expect(
             !manager.applyNavigationDrop(
-                manager.projectDrag(manager.catchAllProject.id), to: .collection(first.id), after: false))
+                manager.workspaceDrag(UUID()), to: .collection(first.id), after: false))
         #expect(
             !manager.applyNavigationDrop(
-                manager.projectDrag(fixture.project.id), to: .project(manager.catchAllProject.id), after: false))
-        #expect(!manager.applyNavigationDrop(manager.projectDrag(UUID()), to: .collection(first.id), after: false))
+                manager.workspaceDrag(fixture.child.id), to: .workspace(UUID()), after: false))
+        #expect(!manager.applyNavigationDrop(manager.workspaceDrag(UUID()), to: .collection(first.id), after: false))
         #expect(
-            !manager.applyNavigationDrop(manager.projectDrag(fixture.project.id), to: .collection(UUID()), after: false)
+            !manager.applyNavigationDrop(manager.workspaceDrag(fixture.child.id), to: .collection(UUID()), after: false)
         )
     }
 
@@ -63,8 +64,8 @@ struct SidebarNavigationDraggingTests {
         #expect(manager.collections.map(\.id) == [first.id, second.id, third.id])
         #expect(
             !manager.applyNavigationDrop(
-                manager.collectionDrag(first.id), to: .project(fixture.project.id), after: false))
-        #expect(!manager.applyNavigationDrop(manager.collectionDrag(first.id), to: .otherProjects, after: false))
+                manager.collectionDrag(first.id), to: .workspace(fixture.child.id), after: false))
+        #expect(!manager.applyNavigationDrop(manager.collectionDrag(first.id), to: .ungrouped, after: false))
         #expect(!manager.applyNavigationDrop(manager.collectionDrag(first.id), to: .collection(first.id), after: false))
         #expect(!manager.applyNavigationDrop(manager.collectionDrag(UUID()), to: .collection(first.id), after: false))
     }
@@ -75,13 +76,13 @@ struct SidebarNavigationDraggingTests {
         defer { fixture.cleanup() }
         let manager = fixture.manager
         let collection = try #require(manager.createCollection(name: "Work"))
-        let projectType = manager.projectDrag(fixture.project.id).typeIdentifier
+        let projectType = manager.workspaceDrag(fixture.child.id).typeIdentifier
         let collectionType = manager.collectionDrag(collection.id).typeIdentifier
         for after in [false, true] {
             let insertion = after ? SidebarNavigationDropPlacement.after : .before
             #expect(
                 SidebarNavigationDropPlacement(
-                    typeIdentifier: projectType, target: .project(fixture.project.id), after: after) == insertion)
+                    typeIdentifier: projectType, target: .workspace(fixture.child.id), after: after) == insertion)
             #expect(
                 SidebarNavigationDropPlacement(
                     typeIdentifier: collectionType, target: .collection(collection.id), after: after) == insertion)
@@ -90,17 +91,17 @@ struct SidebarNavigationDraggingTests {
                     typeIdentifier: projectType, target: .collection(collection.id), after: after) == .append)
             #expect(
                 SidebarNavigationDropPlacement(
-                    typeIdentifier: projectType, target: .otherProjects, after: after) == .append)
+                    typeIdentifier: projectType, target: .ungrouped, after: after) == .append)
         }
     }
 
     @Test
-    func mixedMultipleAndWorkspaceProvidersCannotEnterNavigationDrops() throws {
+    func mixedMultipleAndLegacyTextProvidersCannotEnterNavigationDrops() throws {
         let fixture = try WorkspaceStackTestFixture()
         defer { fixture.cleanup() }
         let manager = fixture.manager
         let collection = try #require(manager.createCollection(name: "Work"))
-        let projectDrag = manager.projectDrag(fixture.project.id)
+        let projectDrag = manager.workspaceDrag(fixture.child.id)
         let collectionDrag = manager.collectionDrag(collection.id)
         let project = projectDrag.itemProvider
         let organizer = collectionDrag.itemProvider
@@ -113,7 +114,7 @@ struct SidebarNavigationDraggingTests {
         #expect(SidebarNavigationDropValidation.provider(from: [project, workspace], target: target) == nil)
         #expect(SidebarNavigationDropValidation.provider(from: [project, project], target: target) == nil)
         #expect(
-            SidebarNavigationDropValidation.provider(from: [organizer], target: .project(fixture.project.id)) == nil)
+            SidebarNavigationDropValidation.provider(from: [organizer], target: .workspace(fixture.child.id)) == nil)
         let mixed = NSItemProvider()
         for type in [projectDrag.typeIdentifier, collectionDrag.typeIdentifier] {
             mixed.registerDataRepresentation(forTypeIdentifier: type, visibility: .ownProcess) { completion in

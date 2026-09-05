@@ -10,17 +10,20 @@ extension ProjectSection {
                 SidebarStackHeader(
                     workspace: firstWorkspace,
                     group: group,
-                    isCollapsed: project.collapsedStackIds.contains(group.id),
-                    onToggle: { workspaceManager.toggleWorkspaceStack(group.id, in: project.id) }
+                    isCollapsed: workspaceManager.repositoryDisclosure(for: project.id, in: collectionId)
+                        .collapsedStackIds.contains(group.id),
+                    onToggle: {
+                        workspaceManager.toggleWorkspaceStack(group.id, in: project.id, collectionId: collectionId)
+                    }
                 )
-                .modifier(SidebarWorkspaceReordering(projectId: project.id, workspaceId: workspaceId))
                 .contextMenu {
                     if let parentBranch = group.newWorkspaceParentBranch {
                         Button("New Workspace in Stack…") {
                             NotificationCenter.default.post(
                                 name: .showNewWorkspaceSheet,
-                                object: nil,
-                                userInfo: ["projectId": project.id, "parentBranch": parentBranch]
+                                object: WorkspaceCreationRequest(
+                                    projectId: project.id, collectionId: collectionId,
+                                    stackParentBranch: parentBranch)
                             )
                         }
                         Divider()
@@ -28,7 +31,9 @@ extension ProjectSection {
                     workspaceMoveActions(for: workspaceId, isStack: true)
                 }
 
-                if project.collapsedStackIds.contains(group.id) {
+                if workspaceManager.repositoryDisclosure(for: project.id, in: collectionId).collapsedStackIds.contains(
+                    group.id)
+                {
                     SidebarCollapsedWorkspaceSummary(workspaceIds: group.workspaceIds)
                 } else {
                     stackRows(group)
@@ -276,6 +281,10 @@ private struct SidebarStackReferenceRow: View {
     @Environment(\.sidebarWidthMetrics) private var sidebarMetrics
     @Environment(\.sidebarCollectionContentInset) private var collectionContentInset
 
+    private var workspaceLocation: String {
+        row.workspaceIsElsewhere ? "Workspace in another section" : "Workspace not open"
+    }
+
     var body: some View {
         HStack(spacing: sidebarMetrics.rowSpacing) {
             SidebarStackGutter(branch: row.branch, lane: row.lane)
@@ -287,7 +296,7 @@ private struct SidebarStackReferenceRow: View {
                     .font(.system(size: appSettings.presentationMetrics.textSize(forBaseSize: 10), design: .monospaced))
                     .lineLimit(1)
                     .truncationMode(.middle)
-                Text("Workspace not open")
+                Text(workspaceLocation)
                     .font(.system(size: appSettings.presentationMetrics.textSize(forBaseSize: 9)))
                     .lineLimit(1)
             }
@@ -302,9 +311,13 @@ private struct SidebarStackReferenceRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .foregroundStyle(.secondary)
         .windowFocusChrome()
-        .help("\(row.branch), Workspace not open. \(row.sidebarRelationshipDescription)")
+        .help(
+            "\(row.branch), \(workspaceLocation). \(row.sidebarRelationshipDescription)"
+        )
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Branch \(row.branch), Workspace not open")
+        .accessibilityLabel(
+            "Branch \(row.branch), \(workspaceLocation)"
+        )
         .accessibilityValue(row.sidebarRelationshipDescription)
     }
 }

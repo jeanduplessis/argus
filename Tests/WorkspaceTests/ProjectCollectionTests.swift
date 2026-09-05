@@ -7,175 +7,135 @@ import Testing
 @MainActor
 struct ProjectCollectionTests {
     @Test
-    func createRenameMoveReorderAndRemoveOnlyOrganizesProjects() throws {
+    func mixedPlacementRepeatsRepositoryHeadingsWithoutDuplicatingContent() throws {
         let fixture = try WorkspaceStackTestFixture()
         defer { fixture.cleanup() }
         let manager = fixture.manager
-        let projects = addProjects(to: fixture)
-
+        let other = addWorkspaces(to: fixture)[0]
+        let standalone = try #require(manager.addWorkspace(workingDirectory: fixture.root.path))
         let first = try #require(manager.createCollection(name: "  Client Work  "))
         let second = try #require(manager.createCollection(name: "Personal"))
         #expect(first.name == "Client Work")
-        #expect(manager.collections.count == 2)
-        #expect(manager.projects(in: first.id).isEmpty)
+        #expect(manager.moveWorkspace(fixture.child.id, toCollection: first.id))
+        #expect(manager.moveWorkspace(other.id, toCollection: first.id))
+        #expect(manager.moveWorkspace(standalone.id, toCollection: first.id))
+        #expect(manager.moveWorkspace(fixture.parent.id, toCollection: second.id))
+        let sections = manager.navigationSections
+        #expect(sections[0].blocks.map(\.project?.id) == [fixture.project.id, other.projectId, nil])
+        #expect(sections[1].blocks.first?.project === fixture.project)
+        #expect(Set(sections.flatMap(\.workspaceIds)).count == manager.workspaces.count)
+        #expect(sections.flatMap(\.workspaceIds).count == manager.workspaces.count)
+        #expect(standalone.projectId == nil)
+        #expect(manager.project(for: fixture.child.id) === fixture.project)
         #expect(manager.renameCollection(first.id, name: "Client aPI"))
-        #expect(manager.collections.first?.name == "Client aPI")
-        #expect(!manager.renameCollection(first.id, name: " \n"))
-        #expect(manager.createCollection(name: " \n") == nil)
-        #expect(manager.moveProject(projects[2].id, toCollection: first.id))
-        #expect(manager.moveProject(projects[0].id, toCollection: first.id))
-        #expect(manager.moveProject(projects[1].id, toCollection: second.id))
-        #expect(manager.moveProject(projects[0].id, offset: -1))
-        #expect(manager.projects(in: first.id).map(\.id) == [projects[0].id, projects[2].id])
         #expect(manager.moveCollection(second.id, offset: -1))
-        #expect(
-            manager.sidebarOrderedProjects.map(\.id) == [
-                projects[1].id, projects[0].id, projects[2].id, fixture.project.id, manager.catchAllProject.id
-            ])
-        #expect(manager.moveProject(fixture.project.id, toCollection: second.id))
-        manager.toggleCollection(second.id)
-        #expect(manager.collections.first?.isExpanded == false)
-        #expect(manager.moveProject(projects[1].id, toCollection: first.id))
+        let oldUngrouped = manager.ungroupedWorkspaceIds
         manager.removeCollection(first.id)
-        #expect(manager.ungroupedProjects.map(\.id) == [projects[0].id, projects[2].id, projects[1].id])
-        manager.removeCollection(second.id)
-        #expect(
-            manager.ungroupedProjects.map(\.id) == [
-                projects[0].id, projects[2].id, projects[1].id, fixture.project.id
-            ])
-        #expect(manager.collections.isEmpty)
-        let saved = try JSONDecoder().decode(
-            ArgusSessionSnapshot.self, from: Data(contentsOf: manager.sessionSnapshotURL))
-        #expect(saved.collections == nil)
-        #expect(saved.projects.map(\.id) == manager.projects.map(\.id))
+        #expect(manager.ungroupedWorkspaceIds == oldUngrouped + [fixture.child.id, other.id, standalone.id])
+        #expect(manager.collections.first?.id == second.id)
+        #expect(manager.workspaces.contains { $0 === standalone })
     }
 
     @Test
-    func collectionMutationsPreserveWorkspaceAttentionAndUncommittedWork() throws {
+    func organizationPreservesSelectionPanelsAttentionFilesAndSharedRuntime() throws {
         let fixture = try WorkspaceStackTestFixture()
         defer { fixture.cleanup() }
         let manager = fixture.manager
-        let projects = addProjects(to: fixture)
         let terminal = try #require(fixture.child.addTerminalPanel(workingDirectory: fixture.root.path))
-        let selection = manager.selectedWorkspaceId
-        let focus = fixture.child.activePanelId
+        let selected = manager.selectedWorkspaceId
         let workspaceIds = manager.workspaces.map(\.id)
-        let manualOrder = fixture.project.workspaceIds
-        let resources = projects.map(\.repositoryPath)
-        let worktree = URL(fileURLWithPath: try #require(fixture.child.worktreePath))
-        try FileManager.default.createDirectory(at: worktree, withIntermediateDirectories: true)
-        let userFile = worktree.appendingPathComponent("uncommitted.txt")
-        try Data("Uncommitted work".utf8).write(to: userFile)
+        let path = fixture.root.appendingPathComponent("uncommitted.txt")
+        try FileManager.default.createDirectory(at: fixture.root, withIntermediateDirectories: true)
+        try Data("Uncommitted work".utf8).write(to: path)
         let attention = TurnCompletionAttentionStore()
+        let target = TurnCompletionAttentionTarget(workspaceId: fixture.child.id, tabId: terminal.id)
+        _ = attention.record(agentKey: "test", eventId: "done", target: target, isViewed: false)
         manager.setTurnCompletionRuntime(
             TurnCompletionRuntime(
                 workspaceManager: manager, attentionStore: attention, isMainWindowKey: { false }))
-        let target = TurnCompletionAttentionTarget(workspaceId: fixture.child.id, tabId: terminal.id)
-        _ = attention.record(agentKey: "test", eventId: "completed", target: target, isViewed: false)
-
         let first = try #require(manager.createCollection(name: "First"))
         let second = try #require(manager.createCollection(name: "Second"))
-        manager.moveProject(fixture.project.id, toCollection: first.id)
-        manager.moveProject(projects[0].id, toCollection: first.id)
-        manager.moveProject(fixture.project.id, offset: 1)
-        manager.renameCollection(first.id, name: "Renamed")
+        manager.moveWorkspace(fixture.child.id, toCollection: first.id)
         manager.toggleCollection(first.id)
-        manager.moveCollection(first.id, offset: 1)
-        manager.moveProject(fixture.project.id, toCollection: second.id)
+        manager.renameCollection(first.id, name: "Renamed")
+        manager.moveWorkspace(fixture.child.id, toCollection: second.id)
         manager.removeCollection(first.id)
         manager.removeCollection(second.id)
-        #expect(manager.selectedWorkspaceId == selection)
-        #expect(fixture.child.activePanelId == focus)
-        #expect(fixture.child.panels[terminal.id] === terminal)
+        #expect(manager.selectedWorkspaceId == selected)
         #expect(manager.workspaces.map(\.id) == workspaceIds)
-        #expect(fixture.project.workspaceIds == manualOrder)
-        #expect(projects.map(\.repositoryPath) == resources)
-        #expect(try Data(contentsOf: userFile) == Data("Uncommitted work".utf8))
+        #expect(fixture.child.activePanelId == terminal.id)
+        #expect(fixture.child.panels[terminal.id] === terminal)
         #expect(attention.attentionTargets == [target])
+        #expect(try Data(contentsOf: path) == Data("Uncommitted work".utf8))
         #expect(manager.workspaceStackSnapshots[fixture.project.id] == fixture.snapshot)
+        #expect(manager.project(for: fixture.child.id) === fixture.project)
     }
 
     @Test
-    func invalidActionsAndLimitsDoNotChangeTheHierarchy() throws {
+    func invalidActionsAndLimitsLeavePlacementUnchanged() throws {
         let fixture = try WorkspaceStackTestFixture()
         defer { fixture.cleanup() }
         let manager = fixture.manager
+        let original = fixture.manualOrder
         let collection = try #require(manager.createCollection(name: "Work"))
-        #expect(!manager.moveProject(manager.catchAllProject.id, toCollection: collection.id))
-        #expect(!manager.moveProject(UUID(), toCollection: collection.id))
-        #expect(!manager.moveProject(fixture.project.id, toCollection: UUID()))
-        #expect(!manager.moveProject(fixture.project.id, toCollection: collection.id, at: -1))
+        #expect(!manager.moveWorkspace(UUID(), toCollection: collection.id))
+        #expect(!manager.moveWorkspace(fixture.child.id, toCollection: UUID()))
+        #expect(!manager.moveWorkspace(fixture.child.id, toCollection: collection.id, at: -1))
         #expect(!manager.moveCollection(collection.id, offset: -1))
-        #expect(!manager.moveProject(fixture.project.id, offset: 2))
-        #expect(!manager.renameCollection(UUID(), name: "Missing"))
+        #expect(!manager.renameCollection(collection.id, name: " \n"))
         #expect(manager.createCollection(name: String(repeating: "x", count: 4097)) == nil)
-        for index in 1..<ProjectCollection.maximumCount {
-            #expect(manager.createCollection(name: "Empty \(index)") != nil)
-        }
-        #expect(!manager.canCreateCollection)
+        for index in 1..<128 { #expect(manager.createCollection(name: "Empty \(index)") != nil) }
         #expect(manager.createCollection(name: "Too many") == nil)
         #expect(manager.collections.count == 128)
-        #expect(manager.ungroupedProjects.map(\.id) == [fixture.project.id])
+        #expect(manager.ungroupedWorkspaceIds == original)
     }
 
-    @Test(arguments: 0..<8)
-    func sameIdSelectionRevealsEveryAncestorWithoutChangingTabOrNumber(disclosure: Int) throws {
+    @Test
+    func splitStackKeepsLocalHeadersReferencesParentAndIndependentDisclosure() throws {
         let fixture = try WorkspaceStackTestFixture()
         defer { fixture.cleanup() }
         let manager = fixture.manager
-        let collection = try #require(manager.createCollection(name: "Work"))
-        manager.moveProject(fixture.project.id, toCollection: collection.id)
-        let terminal = try #require(fixture.child.addTerminalPanel(workingDirectory: fixture.root.path))
+        let first = try #require(manager.createCollection(name: "First"))
+        let second = try #require(manager.createCollection(name: "Second"))
+        manager.moveWorkspace(fixture.parent.id, toCollection: first.id)
+        manager.moveWorkspace(fixture.child.id, toCollection: second.id)
+        let parentGroup = try #require(manager.stackGroup(for: fixture.parent.id, in: fixture.project.id))
+        let childGroup = try #require(manager.stackGroup(for: fixture.child.id, in: fixture.project.id))
+        #expect(parentGroup.id == childGroup.id)
+        #expect(parentGroup.workspaceIds == [fixture.parent.id])
+        #expect(childGroup.workspaceIds == [fixture.child.id])
+        #expect(childGroup.rows.first?.workspaceIsElsewhere == true)
+        #expect(childGroup.rows.first?.workspaceId == nil)
+        #expect(parentGroup.newWorkspaceParentBranch == "feature/parent")
+        #expect(childGroup.newWorkspaceParentBranch == "feature/child")
         let order = fixture.orderedIds
-        if disclosure & 1 != 0 { manager.toggleCollection(collection.id) }
-        fixture.project.isExpanded = disclosure & 2 == 0
-        if disclosure & 4 != 0 { manager.toggleWorkspaceStack(fixture.stackId, in: fixture.project.id) }
-        let revision = manager.workspaceRevealRevision
-        manager.selectWorkspace(fixture.child.id)
-        #expect(manager.collections.first?.isExpanded == true)
-        #expect(fixture.project.isExpanded)
-        #expect(fixture.project.collapsedStackIds.isEmpty)
-        #expect(manager.selectedWorkspaceId == fixture.child.id)
-        #expect(fixture.child.activePanelId == terminal.id)
-        #expect(manager.workspaceRevealRevision == revision + 1)
+        manager.toggleWorkspaceStack(parentGroup.id, in: fixture.project.id, collectionId: first.id)
+        manager.toggleWorkspaceStack(childGroup.id, in: fixture.project.id, collectionId: second.id)
+        manager.toggleRepository(fixture.project.id, in: first.id)
+        manager.toggleRepository(fixture.project.id, in: second.id)
+        manager.toggleCollection(first.id)
+        manager.toggleCollection(second.id)
         #expect(fixture.orderedIds == order)
-        #expect(manager.workspaceShortcutDigit(for: fixture.child.id) == 2)
-    }
-
-    @Test
-    func shortcutAdjacentAndCloseNavigationShareTheCollectionProjection() throws {
-        let fixture = try WorkspaceStackTestFixture()
-        defer { fixture.cleanup() }
-        let manager = fixture.manager
-        let projects = addProjects(to: fixture)
-        let collection = try #require(manager.createCollection(name: "First"))
-        manager.moveProject(projects[1].id, toCollection: collection.id)
-        manager.moveProject(fixture.project.id, toCollection: collection.id)
-        manager.toggleCollection(collection.id)
-        fixture.project.isExpanded = false
-        fixture.project.collapsedStackIds = [fixture.stackId]
-        let first = try #require(projects[1].workspaceIds.first)
-        let expected =
-            [first, fixture.parent.id, fixture.child.id, fixture.ordinary.id]
-            + projects[0].workspaceIds + projects[2].workspaceIds
-        #expect(fixture.orderedIds == expected)
+        manager.selectWorkspace(fixture.child.id)
+        manager.selectWorkspace(fixture.child.id)
+        #expect(manager.collections[0].isExpanded == false)
+        #expect(manager.collections[1].isExpanded)
+        #expect(!manager.repositoryDisclosure(for: fixture.project.id, in: first.id).isExpanded)
+        #expect(manager.repositoryDisclosure(for: fixture.project.id, in: second.id).isExpanded)
+        #expect(
+            manager.repositoryDisclosure(for: fixture.project.id, in: first.id).collapsedStackIds == [parentGroup.id])
+        #expect(manager.repositoryDisclosure(for: fixture.project.id, in: second.id).collapsedStackIds.isEmpty)
         manager.handleWorkspaceShortcut(number: 1)
-        #expect(manager.selectedWorkspaceId == first)
+        #expect(manager.selectedWorkspaceId == fixture.parent.id)
         manager.selectNextWorkspace()
-        #expect(manager.selectedWorkspaceId == fixture.parent.id)
-        manager.selectPreviousWorkspace()
-        #expect(manager.selectedWorkspaceId == first)
-        manager.removeWorkspace(first)
-        #expect(manager.selectedWorkspaceId == fixture.parent.id)
-        manager.handleWorkspaceShortcut(number: 9)
-        #expect(manager.selectedWorkspaceId == expected.last)
-        manager.selectNextWorkspace()
-        #expect(manager.selectedWorkspaceId == fixture.parent.id)
-        #expect(manager.collections.first?.isExpanded == true)
+        #expect(manager.selectedWorkspaceId == fixture.child.id)
+        manager.removeWorkspace(fixture.child.id)
+        #expect(manager.selectedWorkspaceId == fixture.ordinary.id)
+        #expect(manager.collections[1].workspaceIds.isEmpty)
     }
 
     @Test
-    func collapsingCollectionCancelsDelayedStackRevealButNotDiscovery() async throws {
+    func collapsingCollectionCancelsDelayedRevealButNotDiscovery() async throws {
         let reader = ControlledWorkspaceStackReader()
         let fixture = try WorkspaceStackTestFixture(reader: reader)
         defer {
@@ -183,10 +143,9 @@ struct ProjectCollectionTests {
             reader.cancelAll()
         }
         let manager = fixture.manager
-        let collection = try #require(manager.createCollection(name: "Work"))
-        manager.moveProject(fixture.project.id, toCollection: collection.id)
         await reader.startAndLoad(fixture)
-        let workspace = try fixture.adoptGapWorkspace()
+        let collection = try #require(manager.createCollection(name: "Work"))
+        let workspace = try fixture.adoptGapWorkspace(collectionId: collection.id)
         await waitForStackState { reader.requests.count == 3 }
         let revision = manager.workspaceRevealRevision
         manager.toggleCollection(collection.id)
@@ -196,10 +155,8 @@ struct ProjectCollectionTests {
         #expect(manager.collections.first?.isExpanded == false)
         #expect(manager.selectedWorkspaceId == workspace.id)
         #expect(manager.workspaceRevealRevision == revision)
-        #expect(fixture.project.collapsedStackIds == [fixture.stackId])
         #expect(manager.isObservingWorkspaceStacks)
     }
-
 }
 
 extension ProjectCollectionTests {
@@ -208,13 +165,13 @@ extension ProjectCollectionTests {
         let fixture = try WorkspaceStackTestFixture()
         defer { fixture.cleanup() }
         let manager = fixture.manager
-        let projects = addProjects(to: fixture)
+        let members = addWorkspaces(to: fixture)
         let repository = try makeRepository(in: fixture)
         let other = try #require(manager.createCollection(name: "Client"))
         let destination = try #require(manager.createCollection(name: "Client"))
-        manager.moveProject(projects[1].id, toCollection: other.id)
-        manager.moveProject(projects[2].id, toCollection: destination.id)
-        manager.moveProject(projects[0].id, toCollection: destination.id)
+        manager.moveWorkspace(members[1].id, toCollection: other.id)
+        manager.moveWorkspace(members[2].id, toCollection: destination.id)
+        manager.moveWorkspace(members[0].id, toCollection: destination.id)
         manager.toggleCollection(destination.id)
         let previousWorkspaceCount = manager.workspaces.count
         let revision = manager.workspaceRevealRevision
@@ -223,29 +180,29 @@ extension ProjectCollectionTests {
             await manager.createProject(
                 repositoryPath: repository.path, displayName: "New Client", collectionId: destination.id))
         let workspace = try #require(manager.selectedWorkspace)
-        let memberIds = [projects[2].id, projects[0].id, project.id]
-        #expect(manager.projects(in: destination.id).map(\.id) == memberIds)
-        #expect(manager.projects(in: other.id).map(\.id) == [projects[1].id])
-        #expect(!manager.ungroupedProjects.contains { $0.id == project.id })
+        let memberIds = [members[2].id, members[0].id, workspace.id]
+        #expect(manager.manualWorkspaceIds(in: destination.id) == memberIds)
+        #expect(manager.manualWorkspaceIds(in: other.id) == [members[1].id])
+        #expect(!manager.ungroupedWorkspaceIds.contains(workspace.id))
         #expect(manager.collections.last?.isExpanded == true)
-        #expect(project.isExpanded)
+        #expect(manager.repositoryDisclosure(for: project.id, in: destination.id).isExpanded)
         #expect(project.displayName == "New Client")
         #expect(project.mainBranch == "main")
         #expect(manager.workspaces.count == previousWorkspaceCount + 1)
         #expect(workspace.workspaceType == .mainCheckout)
         #expect(workspace.projectId == project.id)
         #expect(workspace.currentDirectory == repository.resolvingSymlinksInPath().path)
-        #expect(project.workspaceIds == [workspace.id])
+        #expect(manager.workspaceIds(for: project) == [workspace.id])
         #expect(workspace.panels.count == 1)
         #expect(workspace.panelOrder.count == 1)
         #expect(manager.workspaceRevealRevision == revision + 1)
         let saved = try JSONDecoder().decode(
             ArgusSessionSnapshot.self, from: Data(contentsOf: manager.sessionSnapshotURL))
-        #expect(saved.collections?.last?.projectIds == memberIds)
+        #expect(saved.collections?.last?.workspaceIds == memberIds)
         #expect(saved.collections?.last?.isExpanded == true)
         #expect(saved.selectedWorkspaceId == workspace.id)
         #expect(manager.restoreSession(from: saved))
-        #expect(manager.collections.last?.projectIds == memberIds)
+        #expect(manager.collections.last?.workspaceIds == memberIds)
         #expect(manager.collections.last?.isExpanded == true)
         #expect(manager.selectedWorkspaceId == workspace.id)
     }
@@ -258,13 +215,13 @@ extension ProjectCollectionTests {
         let repository = try makeRepository(in: fixture)
         if hasCollection {
             let collection = try #require(manager.createCollection(name: "Work"))
-            manager.moveProject(fixture.project.id, toCollection: collection.id)
+            manager.moveWorkspace(fixture.child.id, toCollection: collection.id)
             manager.toggleCollection(collection.id)
         }
         let collections = manager.collections
         let project = try #require(await manager.createProject(repositoryPath: repository.path, collectionId: nil))
-        #expect(manager.ungroupedProjects.last?.id == project.id)
-        #expect(manager.collection(containing: project.id) == nil)
+        #expect(manager.selectedWorkspace.map { manager.ungroupedWorkspaceIds.contains($0.id) } == true)
+        #expect(manager.collection(containing: manager.selectedWorkspaceId!) == nil)
         #expect(manager.selectedWorkspace?.projectId == project.id)
         #expect(manager.collections == collections)
         let saved = try JSONDecoder().decode(
@@ -320,7 +277,7 @@ extension ProjectCollectionTests {
         #expect(manager.workspaces.map(\.id) == workspaceIds)
         #expect(manager.selectedWorkspaceId == selection)
         #expect(manager.collections.first?.id != collection.id)
-        #expect(manager.collections.first?.projectIds.isEmpty == true)
+        #expect(manager.collections.first?.workspaceIds.isEmpty == true)
         let saved = try JSONDecoder().decode(
             ArgusSessionSnapshot.self, from: Data(contentsOf: manager.sessionSnapshotURL))
         #expect(saved.projects.map(\.id) == projectIds)
@@ -346,7 +303,7 @@ extension ProjectCollectionTests {
         #expect(manager.projects.map(\.id) == projectIds)
         #expect(manager.workspaces.map(\.id) == workspaceIds)
         #expect(manager.selectedWorkspace?.projectId == project.id)
-        #expect(manager.collections.first?.projectIds.isEmpty == true)
+        #expect(manager.collections.first?.workspaceIds.isEmpty == true)
         #expect(try Data(contentsOf: manager.sessionSnapshotURL) == saved)
     }
 
@@ -363,19 +320,21 @@ extension ProjectCollectionTests {
         return repository
     }
 
-    private func addProjects(to fixture: WorkspaceStackTestFixture) -> [Project] {
+    private func addWorkspaces(to fixture: WorkspaceStackTestFixture) -> [Workspace] {
         (1...3).map { index in
             let project = Project(
-                repositoryPath: fixture.root.appendingPathComponent("project-\(index)").path, mainBranch: "main")
+                repositoryPath: fixture.root.appendingPathComponent("project-\(index)").path,
+                mainBranch: "main")
             let workspace = Workspace(
                 snapshot: WorkspaceSnapshot(
-                    id: UUID(), projectId: project.id, branchName: "main", workspaceType: .mainCheckout,
-                    worktreePath: nil, title: "Project \(index)", customTitle: nil,
-                    currentDirectory: project.repositoryPath, panelCount: 0))
-            project.addWorkspace(workspace.id)
+                    id: UUID(), projectId: project.id,
+                    branchName: "main", workspaceType: .mainCheckout, worktreePath: nil,
+                    title: "Project \(index)", customTitle: nil, currentDirectory: project.repositoryPath, panelCount: 0
+                ))
+            fixture.manager.projects.append(project)
             fixture.manager.workspaces.append(workspace)
-            fixture.manager.projects.insert(project, at: fixture.manager.projects.count - 1)
-            return project
+            fixture.manager.appendPlacement(workspace.id, to: nil)
+            return workspace
         }
     }
 }

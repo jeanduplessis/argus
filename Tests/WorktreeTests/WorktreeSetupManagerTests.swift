@@ -144,7 +144,7 @@ struct WorktreeSetupManagerTests {
         case "disable": try manager.setWorktreeSetupCommand("", for: fixture.project.id)
         case "change": try manager.setWorktreeSetupCommand("printf different", for: fixture.project.id)
         case "root": workspace.currentDirectory = fixture.repository.path
-        default: fixture.project.removeWorkspace(workspace.id)
+        default: workspace.projectId = nil
         }
         try await fixture.waitForFinish(panel)
         #expect(await fixture.runner.requests.isEmpty)
@@ -159,12 +159,12 @@ struct WorktreeSetupManagerTests {
         let workspace = try await fixture.workspace()
         let panel = try #require(fixture.manager.setupPanel(in: workspace))
         try await fixture.waitForRuns(1)
-        fixture.project.removeWorkspace(workspace.id)
+        workspace.projectId = nil
         await fixture.runner.emit("stale owner output")
         #expect(panel.output != "stale owner output")
         #expect(await panel.stop())
         #expect(panel.outcome == .ownershipChanged)
-        fixture.project.addWorkspace(workspace.id)
+        workspace.projectId = fixture.project.id
         try await fixture.manager.worktreeService.removeWorktree(
             repositoryPath: fixture.repository.path, worktreePath: workspace.currentDirectory
         )
@@ -195,14 +195,15 @@ struct WorktreeSetupManagerTests {
         legacy.worktreeSetupCommand = nil
         let restored = try JSONDecoder().decode(ProjectSnapshot.self, from: JSONEncoder().encode(legacy))
         #expect(restored.worktreeSetupCommand == nil)
-        var catchAll = fixture.manager.catchAllProject.snapshot()
+        var catchAll = ProjectSnapshot(
+            id: UUID(), repositoryPath: "", isCatchAll: true,
+            displayName: "Workspaces", mainBranch: "", workspaceIds: [], isExpanded: true, color: nil)
         catchAll.worktreeSetupCommand = "never"
-        #expect(Project(snapshot: catchAll).worktreeSetupCommand == nil)
         let mixed = ArgusSessionSnapshot(
             selectedWorkspaceId: decoded.selectedWorkspaceId,
             projects: decoded.projects.filter { !$0.isCatchAll } + [catchAll], workspaces: decoded.workspaces
         ).reconciledForRestore()
-        #expect(mixed.projects.first(where: \.isCatchAll)?.worktreeSetupCommand == nil)
+        #expect(!mixed.projects.contains { $0.isCatchAll })
         try fixture.manager.setWorktreeSetupCommand(" \n", for: fixture.project.id)
         let saved = try JSONDecoder().decode(
             ArgusSessionSnapshot.self, from: Data(contentsOf: fixture.manager.sessionSnapshotURL))
@@ -225,6 +226,85 @@ struct WorktreeSetupManagerTests {
         #expect(manager.workspaces.contains { $0 === workspace })
         #expect(manager.setupPanel(in: workspace)?.outcome != nil)
         #expect(await fixture.runner.requests.isEmpty)
+        await fixture.remove()
+    }
+}
+
+extension WorktreeSetupManagerTests {
+    @Test(arguments: [false, true])
+    func removedDestinationDoesNotAttachRunSetupOrDeleteReusedOrEditedWork(reuse: Bool) async throws {
+        let fixture = try await SetupManagerFixture.make()
+        let manager = fixture.manager
+        let collection = try #require(manager.createCollection(name: "Destination"))
+        let branch = "late-destination"
+        let path: String
+        if reuse {
+            path = try await manager.worktreeService.createWorktree(
+                projectId: fixture.project.id, repositoryPath: fixture.repository.path, branchName: branch)
+            try Data("user changes".utf8).write(to: URL(fileURLWithPath: path).appendingPathComponent("edited.txt"))
+        } else {
+            // A disposable hook models an edit between Git creation and attachment.
+            let hook = fixture.repository.appendingPathComponent(".git/hooks/post-checkout")
+            try Data("#!/bin/sh\nprintf 'user changes' > edited.txt\n".utf8).write(to: hook)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hook.path)
+            path =
+                manager.worktreeService.managedWorktreeBaseURL
+                .appendingPathComponent(fixture.project.id.uuidString).appendingPathComponent(branch).path
+        }
+        let before = manager.workspaces.map(\.id)
+        let selection = manager.selectedWorkspaceId
+        // The task runs when creation suspends for its first local Git read.
+        let removal = Task { @MainActor in manager.removeCollection(collection.id) }
+        let created = await manager.addWorkspaceToProject(
+            fixture.project.id, branchName: branch,
+            createNewBranch: !reuse, collectionId: collection.id)
+        await removal.value
+        #expect(created == nil)
+        #expect(manager.lastWorkspaceCreationError?.localizedDescription.contains("Collection") == true)
+        #expect(manager.workspaces.map(\.id) == before)
+        #expect(manager.selectedWorkspaceId == selection)
+        #expect(await fixture.runner.requests.isEmpty)
+        #expect(
+            try Data(contentsOf: URL(fileURLWithPath: path).appendingPathComponent("edited.txt"))
+                == Data("user changes".utf8))
+        #expect(
+            try TestGit.run(["rev-parse", "--verify", "refs/heads/\(branch)"], in: fixture.repository).isEmpty == false)
+        #expect(
+            manager.adoptOrphanedWorktree(
+                .init(path: path, branchName: branch, projectId: fixture.project.id),
+                collectionId: collection.id) == nil)
+        let adopted = try #require(
+            manager.adoptOrphanedWorktree(.init(path: path, branchName: branch, projectId: fixture.project.id)))
+        #expect(manager.setupPanel(in: adopted) == nil)
+        #expect(await fixture.runner.requests.isEmpty)
+        let destination = try #require(manager.createCollection(name: "New destination"))
+        manager.moveWorkspace(adopted.id, toCollection: destination.id)
+        #expect(adopted.projectId == fixture.project.id)
+        #expect(await fixture.runner.requests.isEmpty)
+        await fixture.remove()
+    }
+
+    @Test
+    func repositoryConfigurationSurvivesClosingAllMembersAndStandaloneIntakeStaysUnassociated() async throws {
+        let fixture = try await SetupManagerFixture.make()
+        let manager = fixture.manager
+        let project = fixture.project
+        let collection = try #require(manager.createCollection(name: "Work"))
+        for id in manager.workspaceIds(for: project) { manager.removeWorkspace(id) }
+        #expect(manager.projects.contains { $0 === project })
+        #expect(manager.navigationSections.flatMap(\.blocks).allSatisfy { $0.project?.id != project.id })
+        #expect(project.worktreeSetupCommand == "printf fixture")
+        let standalone = try #require(
+            manager.addWorkspace(workingDirectory: fixture.repository.path, collectionId: collection.id))
+        #expect(manager.project(for: standalone.id) == nil)
+        #expect(manager.projects.count == 1)
+        #expect(await fixture.runner.requests.isEmpty)
+        let created = try #require(
+            await manager.addWorkspaceToProject(
+                project.id, branchName: "from-empty-repository", collectionId: collection.id))
+        try await fixture.waitForRuns(1)
+        #expect(created.projectId == project.id)
+        #expect(manager.collection(containing: created.id)?.id == collection.id)
         await fixture.remove()
     }
 }

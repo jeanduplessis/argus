@@ -7,11 +7,12 @@ extension WorkspaceManager {
         pendingWorkspaceStackReveal = nil
         selectedWorkspace?.activePanel?.unfocus()
         selectedWorkspaceId = workspaceId
+        revealCollection(containing: workspaceId)
         if let project = project(for: workspaceId) {
-            revealCollection(containing: project.id)
-            project.isExpanded = true
+            let sectionId = collection(containing: workspaceId)?.id
+            updateRepositoryDisclosure(for: project.id, in: sectionId) { $0.isExpanded = true }
             if let group = stackGroup(for: workspaceId, in: project.id) {
-                project.collapsedStackIds.remove(group.id)
+                updateRepositoryDisclosure(for: project.id, in: sectionId) { $0.collapsedStackIds.remove(group.id) }
             }
         }
         workspaceRevealRevision &+= 1
@@ -61,6 +62,7 @@ extension WorkspaceManager {
 
     @discardableResult
     func setStandaloneWorkspaceRoot(_ workspaceId: UUID, path: String) -> Bool {
+        lastWorkspaceCreationError = nil
         let trimmedPath = path.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedPath.isEmpty else { return false }
         let expandedPath = NSString(string: trimmedPath).expandingTildeInPath
@@ -72,10 +74,12 @@ extension WorkspaceManager {
 
     @discardableResult
     func setStandaloneWorkspaceRoot(_ workspaceId: UUID, directoryURL: URL) -> Bool {
+        lastWorkspaceCreationError = nil
         guard let workspace = workspaces.first(where: { $0.id == workspaceId }),
             workspace.workspaceType == .external
         else { return false }
 
+        guard canClaimWorkspaceRoot(directoryURL.path) else { return false }
         let standardizedURL = directoryURL.standardizedFileURL
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: standardizedURL.path, isDirectory: &isDirectory),
@@ -87,8 +91,7 @@ extension WorkspaceManager {
         if selectedWorkspaceId == workspaceId {
             notifyWorkspaceContextChanged()
         }
-        // The Workspace Root is user-authored durable state. Save it
-        // synchronously before returning so it survives a later crash.
+        // Checkpoint the user-authored Workspace Root before returning.
         saveSession()
         return true
     }
@@ -173,7 +176,6 @@ extension WorkspaceManager {
         removeWorkspace(workspaceId)
     }
 
-    /// Removes a workspace, optionally deleting its associated git worktree first.
     @discardableResult
     func removeWorkspace(
         _ workspaceId: UUID,
@@ -185,8 +187,8 @@ extension WorkspaceManager {
 
         guard !closingSetupWorkspaceIDs.contains(workspaceId) else { return false }
         let deletionProject = deletingWorktree ? project(for: workspaceId) : nil
-        let worktreePath = deletionProject?.isCatchAll == false ? workspace.worktreePath.map(canonicalPath) : nil
-        guard
+        let worktreePath = deletionProject != nil ? workspace.worktreePath.map(canonicalPath) : nil
+        guard canRemoveWorkspaces([workspaceId], deletingRoots: Set(worktreePath.map { [$0] } ?? [])),
             let deletionRoots = acquireWorktreeDeletionRoots(
                 worktreePath.map { [$0] } ?? [], closingWorkspaceIDs: [workspaceId]
             )
@@ -195,7 +197,7 @@ extension WorkspaceManager {
         closingSetupWorkspaceIDs.insert(workspaceId)
         defer { closingSetupWorkspaceIDs.remove(workspaceId) }
         if workspace.runningSetupCount > 0 { onProgress?(.stoppingSetup) }
-        guard await stopWorktreeSetup(in: workspace) else { return false }
+        guard await stopWorktreeSetup(in: workspace), canRemoveWorkspaces([workspaceId]) else { return false }
 
         if let worktreePath, let project = deletionProject {
             do {
@@ -218,8 +220,7 @@ extension WorkspaceManager {
         }
         onProgress?(.closingWorkspace)
         await Task.yield()
-        removeWorkspaceFromState(workspaceId)
-        return true
+        return removeWorkspaceFromState(workspaceId)
     }
 
     func requestCloseTab(
@@ -349,10 +350,10 @@ extension WorkspaceManager {
         )
     }
 
-    var sidebarOrderedWorkspaces: [(project: Project, workspace: Workspace)] {
-        sidebarOrderedProjects.flatMap { project in
-            sidebarItems(for: project).flatMap(\.workspaceIds).compactMap { workspaceId in
-                workspaces.first(where: { $0.id == workspaceId }).map { (project, $0) }
+    var sidebarOrderedWorkspaces: [(project: Project?, workspace: Workspace)] {
+        navigationSections.flatMap(\.blocks).flatMap { block in
+            block.workspaceIds.compactMap { workspaceId in
+                workspaces.first(where: { $0.id == workspaceId }).map { (block.project, $0) }
             }
         }
     }
