@@ -2,6 +2,11 @@
 
 This file records changes pushed for local Argus releases. New entries use a `YYYY-MM-DD` heading and link to their commit or commits.
 
+## 2026-09-05
+
+- Create a Named Project directly in a Collection with New Project… in the Collection context menu. The existing creation sheet adds it to that Collection and reveals its Main-checkout Workspace. Top-level Project creation stays ungrouped. ([9dfe7bb](https://github.com/jeanduplessis/argus/commit/9dfe7bbbe892f62c0710e806212aa33c3835a240))
+- Named Projects can now save an optional Worktree Setup command. Newly created worktrees, including Pull Request worktrees, run it noninteractively and show live output, an exit result, Stop, and Run Setup Again in a Workspace tab. Failures keep the Workspace, and the last completed log can be reopened during the session. Existing or restored worktrees do not run setup automatically. Closing waits for setup cleanup, and deletion is blocked while another Workspace's setup uses the same worktree. ([208c211](https://github.com/jeanduplessis/argus/commit/208c211d05d2471798e121fe5ec9f99d155d5e8d))
+
 ## 2026-09-03
 
 - Right-click a Stack Group and choose New Workspace in Stack… to use the existing New Workspace sheet. The new branch starts from the last Workspace branch in the stack's displayed order, and Argus automatically records that parent with `git config --local branch.<new>.base <parent>`. Configuration failures show an error and preserve the branch and any modified worktree. ([ed812e7](https://github.com/jeanduplessis/argus/commit/ed812e79f05352f2419a7270f1b151a4f51a4ec6))
