@@ -2,6 +2,10 @@
 
 This file records changes pushed for local Argus releases. New entries use a `YYYY-MM-DD` heading and link to their commit or commits.
 
+## 2026-09-06
+
+- Fixed dragging a Workspace onto a Collection header, including empty and collapsed Collections. The header shows a highlight and outline before release, and dropping moves only that Workspace without changing its repository or open content. ([a891418](https://github.com/jeanduplessis/argus/commit/a891418a0a07b548bcca85627e50143e82dda537))
+
 ## 2026-09-05
 
 - Collections now organize individual Workspaces independently of their optional repository association. Move standalone or repository-backed Workspaces between Collections without changing their repository or Stack, and remove a Collection without removing its Workspaces. Existing sessions migrate once to the new Workspace placement format while preserving Project and Workspace identities, roots, worktree paths, terminal metadata, and Worktree Setup consent. ([47b1e24](https://github.com/jeanduplessis/argus/commit/47b1e24e3af8605b65c168d9e062225ecebb5166))
