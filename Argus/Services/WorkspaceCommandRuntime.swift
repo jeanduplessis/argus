@@ -28,6 +28,14 @@ struct WorkspaceCommandRejection: Error, Sendable {
 /// sheet so revalidation and persistence behavior cannot drift.
 @MainActor
 final class WorkspaceCommandRuntime {
+    /// Longest accepted branch name or Workspace title, in bytes.
+    ///
+    /// Git imposes no length limit of its own, and both values are persisted,
+    /// so a Workspace Command bounds them the way the agent methods bound
+    /// their string parameters rather than letting a whole Socket frame
+    /// through.
+    static let maximumNameBytes = 255
+
     let workspaceManager: WorkspaceManager
 
     init(workspaceManager: WorkspaceManager) {
@@ -44,6 +52,10 @@ final class WorkspaceCommandRuntime {
     }
 
     private func create(_ parameters: WorkspaceCreateParameters) async -> WorkspaceCommandOutcome {
+        if let rejection = titleRejection(parameters.name) {
+            return .rejected(code: rejection.code, message: rejection.message)
+        }
+
         let context: WorkspaceCreationContext
         switch resolveCreationContext(parameters) {
         case .success(let resolved):
@@ -159,6 +171,15 @@ final class WorkspaceCommandRuntime {
         repositoryPath: String
     ) async -> Result<String, WorkspaceCommandRejection> {
         if let requested = normalized(requested) {
+            // Length first, so an oversized value is never echoed back.
+            guard requested.utf8.count <= Self.maximumNameBytes else {
+                return .failure(
+                    WorkspaceCommandRejection(
+                        code: .invalidParameters,
+                        message: "A branch name may not exceed \(Self.maximumNameBytes) bytes"
+                    )
+                )
+            }
             guard GitReferenceValidation.isValidBranchName(requested) else {
                 return .failure(
                     WorkspaceCommandRejection(
@@ -171,12 +192,32 @@ final class WorkspaceCommandRuntime {
         }
         let prefix = workspaceManager.settings.newBranchPrefix
         let candidate = RandomBranchNameGenerator.generate(prefix: prefix)
-        let suggested = try? await workspaceManager.worktreeService.suggestAvailableBranchName(
-            preferring: candidate,
-            prefix: prefix,
-            repositoryPath: repositoryPath
+        do {
+            return .success(
+                try await workspaceManager.worktreeService.suggestAvailableBranchName(
+                    preferring: candidate,
+                    prefix: prefix,
+                    repositoryPath: repositoryPath
+                )
+            )
+        } catch {
+            // Falling back to the unchecked candidate would report a branch
+            // collision for a name the caller never chose.
+            return .failure(
+                WorkspaceCommandRejection(
+                    code: .workspaceCreationFailed,
+                    message: "Could not find an available branch name: \(error.localizedDescription)"
+                )
+            )
+        }
+    }
+
+    private func titleRejection(_ requested: String?) -> WorkspaceCommandRejection? {
+        guard let title = normalized(requested), title.utf8.count > Self.maximumNameBytes else { return nil }
+        return WorkspaceCommandRejection(
+            code: .invalidParameters,
+            message: "A Workspace name may not exceed \(Self.maximumNameBytes) bytes"
         )
-        return .success(suggested ?? candidate)
     }
 
     private func creationRejection() -> WorkspaceCommandRejection {
