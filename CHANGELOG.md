@@ -2,6 +2,12 @@
 
 This file records changes pushed for local Argus releases. New entries use a `YYYY-MM-DD` heading and link to their commit or commits.
 
+## 2026-09-06
+
+- `argus workspace create` now refuses an over-long `--branch` or `--name` up front with a clear invalid parameters message, instead of passing it to Git and reporting a confusing creation failure. ([06e9c53](https://github.com/eshurakov/argus/commit/06e9c53119f7cc70c3215acf12eee8e965603512))
+- When Argus cannot search a Project's branches to pick a name for you, `argus workspace create` now reports that failure. It previously fell back to an unchecked generated name, which could collide with an existing branch and blame you for a name you never chose. ([06e9c53](https://github.com/eshurakov/argus/commit/06e9c53119f7cc70c3215acf12eee8e965603512))
+- Argus and the `argus` command line tool now share one implementation of Socket frame reassembly, and resolving which Project holds a directory no longer rescans every Workspace for each Project. Behavior is unchanged. ([06e9c53](https://github.com/eshurakov/argus/commit/06e9c53119f7cc70c3215acf12eee8e965603512))
+
 ## 2026-09-04
 
 - The `argus` command line tool now lists and creates Workspaces in a running Argus. `argus workspace list` prints Projects and their Workspaces in sidebar order, with each Workspace's number, type, and branch, and shows Stack Groups as parent-to-dependent trees including branches that have no open Workspace. `--json` prints the same information for scripts. ([69d3adf](https://github.com/eshurakov/argus/commit/69d3adfbe7dfab5c15d91b101bbe92a9f84359ed))
