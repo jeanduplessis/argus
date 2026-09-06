@@ -1,11 +1,37 @@
 import AppKit
 import Testing
+import UniformTypeIdentifiers
 
 @testable import Argus
 
 @Suite
 @MainActor
 struct SidebarNavigationDraggingTests {
+    @Test
+    func exportedNavigationTypesReachTheGenericItemDropQuery() throws {
+        let workspaceId = UUID()
+        let collectionId = UUID()
+        let drags: [SidebarNavigationDrag] = [
+            .workspace(
+                SidebarWorkspaceDrag(workspaceId: workspaceId, sourceCollectionId: nil, sourceOrder: [workspaceId])),
+            .collection(SidebarCollectionDrag(collectionId: collectionId, sourceOrder: [collectionId]))
+        ]
+        let declarations = try #require(
+            Bundle.main.object(forInfoDictionaryKey: "UTExportedTypeDeclarations") as? [[String: Any]])
+        for drag in drags {
+            #expect(declarations.contains { $0["UTTypeIdentifier"] as? String == drag.typeIdentifier })
+            let type = try #require(UTType(drag.typeIdentifier))
+            #expect(type.conforms(to: .data))
+            #expect(type.conforms(to: .item))
+            // DropInfo.itemProviders(for: [.item]) uses this conformance, not just exact type matching.
+            let providers = [drag.itemProvider].filter {
+                $0.hasItemConformingToTypeIdentifier(UTType.item.identifier)
+            }
+            #expect(providers.count == 1)
+            #expect(SidebarNavigationDropValidation.provider(from: providers, target: .collection(collectionId)) != nil)
+        }
+    }
+
     @Test
     func typedWorkspaceDropsMoveIndividualsWithoutChangingSelectionAndRejectStaleSources() throws {
         let fixture = try WorkspaceStackTestFixture()

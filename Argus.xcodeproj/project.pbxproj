@@ -384,6 +384,7 @@
 		4EA1923AE8EFCF89F42CB0AC /* Workspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Workspace.swift; sourceTree = "<group>"; };
 		4EC88B0BFC64101A7C347EDB /* WindowFocusAppearanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowFocusAppearanceTests.swift; sourceTree = "<group>"; };
 		4F4253A4E13FA79C8E83E7C1 /* ChromeColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromeColors.swift; sourceTree = "<group>"; };
+		4F445884EC74506A5EE35E2A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		4FA4A99862B8FD090D3E03DF /* OrphanedWorktreesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrphanedWorktreesSheet.swift; sourceTree = "<group>"; };
 		50C95ED19A79999FCE8827F9 /* WorkspaceStackUIContractTests+Relationships.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspaceStackUIContractTests+Relationships.swift"; sourceTree = "<group>"; };
 		519A8E19E8100B740C1F8F48 /* GitStatusService+Presentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GitStatusService+Presentation.swift"; sourceTree = "<group>"; };
@@ -759,6 +760,7 @@
 				A7BFE3635908AAEF89CC326C /* ArgusTerminalTheme.ghostty */,
 				B2BB5044CB09060A67E19074 /* ArgusUnfocusedTerminalTheme.ghostty */,
 				C46B327656627D8D71A2C84F /* Assets.xcassets */,
+				4F445884EC74506A5EE35E2A /* Info.plist */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -1672,6 +1674,7 @@
 				HEADER_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/Frameworks/GhosttyKit.xcframework/macos-arm64/Headers",
 				);
+				INFOPLIST_FILE = Argus/Resources/Info.plist;
 				INFOPLIST_GENERATION_MODE = GeneratedByBuildSystem;
 				INFOPLIST_KEY_CFBundleDisplayName = Argus;
 				INFOPLIST_KEY_CFBundleName = Argus;
@@ -1720,6 +1723,7 @@
 				HEADER_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/Frameworks/GhosttyKit.xcframework/macos-arm64/Headers",
 				);
+				INFOPLIST_FILE = Argus/Resources/Info.plist;
 				INFOPLIST_GENERATION_MODE = GeneratedByBuildSystem;
 				INFOPLIST_KEY_CFBundleDisplayName = Argus;
 				INFOPLIST_KEY_CFBundleName = Argus;

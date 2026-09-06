@@ -1,11 +1,49 @@
 import AppKit
 import Testing
+import UniformTypeIdentifiers
 
 @testable import Argus
 
 @Suite
 @MainActor
 struct SidebarNavigationDropDeliveryTests {
+    @Test(arguments: [true, false], [true, false])
+    func workspaceProviderAppendsToEmptyCollectionWithoutChangingContent(
+        isExpanded: Bool, sourceIsGrouped: Bool
+    ) async throws {
+        let fixture = try WorkspaceStackTestFixture()
+        defer { fixture.cleanup() }
+        let manager = fixture.manager
+        let destination = try #require(manager.createCollection(name: "Destination"))
+        if !isExpanded { manager.toggleCollection(destination.id) }
+        let sourceId: UUID?
+        if sourceIsGrouped {
+            sourceId = try #require(manager.createCollection(name: "Source")).id
+            manager.moveWorkspace(fixture.child.id, toCollection: sourceId)
+        } else {
+            sourceId = nil
+        }
+        let panel = try #require(fixture.child.addTerminalPanel())
+        let drag = manager.workspaceDrag(fixture.child.id)
+        let target = SidebarNavigationDrop.collection(destination.id)
+        let providers = [drag.itemProvider].filter {
+            $0.hasItemConformingToTypeIdentifier(UTType.item.identifier)
+        }
+        let (provider, type) = try #require(SidebarNavigationDropValidation.provider(from: providers, target: target))
+        #expect(SidebarNavigationDropPlacement(typeIdentifier: type, target: target, after: false) == .append)
+        let context = try #require(manager.navigationDropContext(for: target))
+        #expect(await manager.loadNavigationDrop(from: provider, typeIdentifier: type, context: context, after: false))
+        #expect(manager.manualWorkspaceIds(in: destination.id) == [fixture.child.id])
+        #expect(!manager.manualWorkspaceIds(in: sourceId).contains(fixture.child.id))
+        #expect(manager.collection(containing: fixture.parent.id) == nil)
+        #expect(manager.collections.first?.isExpanded == isExpanded)
+        #expect(manager.selectedWorkspaceId == fixture.child.id)
+        #expect(fixture.child.projectId == fixture.project.id)
+        #expect(fixture.child.activeTabId == panel.id)
+        #expect(fixture.child.activePanelId == panel.id)
+        #expect(fixture.child.panels[panel.id] as? TerminalPanel === panel)
+    }
+
     enum DestinationChange: CaseIterable, Sendable {
         case none, membership, workspaceOrder, sourceOrder, collectionOrder, removeWorkspace, removeCollection
     }

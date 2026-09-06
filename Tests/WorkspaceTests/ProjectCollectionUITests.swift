@@ -16,6 +16,7 @@ struct ProjectCollectionUITests {
         manager.moveWorkspace(fixture.child.id, toCollection: collection.id)
         let selection = manager.selectedWorkspaceId
         let header = SidebarCollectionHeader(collection: collection)
+            .modifier(SidebarNavigationDropTarget(target: .collection(collection.id)))
             .environmentObject(manager)
             .environmentObject(manager.settings)
             .environment(WindowFocusState())
@@ -144,6 +145,28 @@ struct ProjectCollectionUITests {
             ], "explicit actions and native interaction are available without dragging")
         collections.excludes(".textCase(", "Collection names retain entered casing")
         collections.excludes("collection.projectIds.count", "Collection headers do not show counts")
+    }
+
+    @Test
+    func collectionHeaderDropFeedbackIsFullWidthTransientAndIndependentOfDisclosure() throws {
+        let collections = try SourceContract("Argus/Views/Sidebar/SidebarView+Collections.swift")
+        let sectionHeader = try collections.section(
+            after: "VStack(spacing: 0) {", before: "if collection.isExpanded {")
+        #expect(sectionHeader.contains("SidebarCollectionHeader(collection: collection)"))
+        #expect(sectionHeader.contains(".modifier(SidebarNavigationDropTarget(target: .collection(collection.id)))"))
+        let dragging = try SourceContract("Argus/Views/Sidebar/SidebarNavigationDragging.swift")
+        let feedback = try dragging.section(after: ".overlay {", before: ".onDrop(")
+        for fragment in [
+            "placement == .append", ".fill(Color.accentColor.opacity(0.12))",
+            ".stroke(Color.accentColor, lineWidth: 1)",
+            ".allowsHitTesting(false)", ".accessibilityHidden(true)"
+        ] {
+            #expect(feedback.contains(fragment))
+        }
+        dragging.contains("func dropExited(info: DropInfo) { placement = nil }", "exit clears acceptance feedback")
+        let drop = try dragging.section(after: "func performDrop(info: DropInfo) -> Bool {", before: "guard let")
+        #expect(drop.contains("placement = nil"))
+        dragging.contains("info.itemProviders(for: [.item])", "mixed payload rejection includes non-navigation items")
     }
 
     @Test

@@ -3,6 +3,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension UTType {
+    // Keep these types declared in project.yml's generated Info.plist so the
+    // drop delegate's generic .item query can discover their providers.
     fileprivate static let argusWorkspace = UTType(exportedAs: "com.argus.sidebar-workspace", conformingTo: .data)
     fileprivate static let argusCollection = UTType(exportedAs: "com.argus.sidebar-collection", conformingTo: .data)
 }

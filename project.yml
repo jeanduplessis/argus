@@ -26,6 +26,18 @@ targets:
   Argus:
     type: application
     platform: macOS
+    info:
+      path: Argus/Resources/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.argus.sidebar-workspace
+            UTTypeConformsTo: [public.data]
+            UTTypeDescription: Argus Workspace
+          - UTTypeIdentifier: com.argus.sidebar-collection
+            UTTypeConformsTo: [public.data]
+            UTTypeDescription: Argus Collection
     sources:
       - path: Argus
         excludes:

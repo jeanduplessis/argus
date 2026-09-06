@@ -261,9 +261,15 @@ Collection headers MUST preserve the user's entered casing, use semibold primary
 text stronger than muted Project headings, and show a disclosure chevron with a
 subtle trailing horizontal rule. They MUST NOT show a Project count, icon, color
 marker, vertical rail, or persistent card/background. A transient full-width
-hover/focus treatment remains appropriate. The rule MUST give way before the
-name truncates and disappear below 160 points. Use the application's text and
-density metrics, with more space before the header than below it.
+hover/focus treatment remains appropriate. The full header MUST accept Workspace
+drops even when the Collection is empty or collapsed. An accepted Workspace drag
+MUST show a transient accent fill and outline across the header before release,
+distinct from ordinary hover. This feedback MUST use an overlay without changing
+layout or intercepting input, and MUST clear on exit or drop. Collection reorder
+drags MUST retain their before/after insertion line. The trailing horizontal rule
+MUST give way before the name truncates and disappear below 160 points. Use the
+application's text and density metrics, with more space before the header than
+below it.
 
 With Collections present, section content MUST have one 8-point leading
 inset at normal widths and no additional inset below 160 points. This inset MUST
