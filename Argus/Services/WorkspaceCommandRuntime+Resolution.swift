@@ -165,9 +165,13 @@ extension WorkspaceCommandRuntime {
     /// repository it belongs to.
     private func project(containingDirectory path: String) -> Project? {
         let target = Self.canonicalPath(path)
+        let workspacesById = Dictionary(
+            workspaceManager.workspaces.map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
         var best: (length: Int, project: Project)?
         for project in workspaceManager.namedProjects {
-            for root in roots(of: project) {
+            for root in roots(of: project, workspacesById: workspacesById) {
                 guard target == root || target.hasPrefix(root + "/") else { continue }
                 if best == nil || root.count > (best?.length ?? 0) {
                     best = (root.count, project)
@@ -177,10 +181,10 @@ extension WorkspaceCommandRuntime {
         return best?.project
     }
 
-    private func roots(of project: Project) -> [String] {
+    private func roots(of project: Project, workspacesById: [UUID: Workspace]) -> [String] {
         var paths = [project.repositoryPath]
         for workspaceId in project.workspaceIds {
-            guard let workspace = workspaceManager.workspaces.first(where: { $0.id == workspaceId }) else { continue }
+            guard let workspace = workspacesById[workspaceId] else { continue }
             paths.append(workspace.worktreePath ?? workspace.currentDirectory)
         }
         return paths.compactMap(normalized).map(Self.canonicalPath)

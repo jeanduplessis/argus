@@ -220,26 +220,24 @@ actor AgentSocketServer {
             clients.remove(client)
         }
 
-        var buffered = Data()
+        var buffer = ArgusSocketLineBuffer()
         var bytes = [UInt8](repeating: 0, count: 4096)
         while true {
             let received = Darwin.recv(client, &bytes, bytes.count, 0)
             guard received > 0 else { return }
-            buffered.append(contentsOf: bytes.prefix(received))
+            buffer.append(bytes.prefix(received))
 
-            while let newline = buffered.firstIndex(of: 0x0A) {
-                let frame = buffered.prefix(upTo: newline)
-                buffered.removeSubrange(...newline)
+            while let frame = buffer.nextFrame() {
                 if frame.count > maximumFrameBytes {
                     writeResponse(
                         .failure(id: nil, code: .frameTooLarge, message: "Frame exceeds maximum size"), to: client)
                     return
                 }
-                let response = handleSynchronously(frame: Data(frame), handlers: handlers)
+                let response = handleSynchronously(frame: frame, handlers: handlers)
                 writeResponse(response, to: client)
             }
 
-            if buffered.count > maximumFrameBytes {
+            if buffer.pendingByteCount > maximumFrameBytes {
                 writeResponse(
                     .failure(id: nil, code: .frameTooLarge, message: "Frame exceeds maximum size"), to: client)
                 return

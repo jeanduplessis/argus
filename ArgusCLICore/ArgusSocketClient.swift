@@ -141,7 +141,7 @@ struct ArgusSocketClient {
     }
 
     private func readLine(from descriptor: Int32) throws -> Data {
-        var buffered = Data()
+        var buffer = ArgusSocketLineBuffer()
         var bytes = [UInt8](repeating: 0, count: 8 * 1024)
         while true {
             let received = Darwin.recv(descriptor, &bytes, bytes.count, 0)
@@ -153,11 +153,11 @@ struct ArgusSocketClient {
                     ? ArgusCLIError.transport("Argus did not respond within \(Int(responseTimeout))s")
                     : ArgusCLIError.transport("Could not read the Argus response")
             }
-            buffered.append(contentsOf: bytes.prefix(received))
-            if let newline = buffered.firstIndex(of: 0x0A) {
-                return buffered.prefix(upTo: newline)
+            buffer.append(bytes.prefix(received))
+            if let frame = buffer.nextFrame() {
+                return frame
             }
-            guard buffered.count <= ArgusSocketProtocol.maximumResponseBytes else {
+            guard buffer.pendingByteCount <= ArgusSocketProtocol.maximumResponseBytes else {
                 throw ArgusCLIError.malformedResponse("Argus response exceeded the maximum size")
             }
         }

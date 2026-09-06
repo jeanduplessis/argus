@@ -106,6 +106,46 @@ struct WorkspaceCommandRejectionTests {
         #expect(fixture.manager.workspaces.count == 1)
     }
 
+    @Test
+    func oversizedBranchNamesAndWorkspaceNamesAreRefusedWithoutEchoingThem() async throws {
+        let fixture = try WorkspaceCommandFixture()
+        defer { fixture.cleanup() }
+        let oversized = String(repeating: "b", count: WorkspaceCommandRuntime.maximumNameBytes + 1)
+
+        let branch = await fixture.runtime.receive(
+            .create(fixture.createParameters(project: fixture.project.displayName, branch: oversized)))
+        let branchRejection = try #require(Self.rejection(branch))
+        #expect(branchRejection.code == .invalidParameters)
+        #expect(!branchRejection.message.contains(oversized))
+
+        let name = await fixture.runtime.receive(
+            .create(fixture.createParameters(project: fixture.project.displayName, name: oversized)))
+        let nameRejection = try #require(Self.rejection(name))
+        #expect(nameRejection.code == .invalidParameters)
+        #expect(!nameRejection.message.contains(oversized))
+
+        #expect(fixture.manager.workspaces.count == 1)
+    }
+
+    /// A failed branch-name search must be reported, not replaced by an
+    /// unchecked generated name the caller never asked for.
+    @Test
+    func aFailedBranchNameSearchIsReportedRatherThanGuessed() async throws {
+        let fixture = try WorkspaceCommandFixture()
+        defer { fixture.cleanup() }
+        let absent = Project(
+            repositoryPath: fixture.temporary.url.appendingPathComponent("absent").path,
+            mainBranch: "main")
+        fixture.manager.projects.insert(absent, at: 0)
+
+        let outcome = await fixture.runtime.receive(
+            .create(fixture.createParameters(project: absent.id.uuidString)))
+        let rejection = try #require(Self.rejection(outcome))
+        #expect(rejection.code == .workspaceCreationFailed)
+        #expect(rejection.message.contains("available branch name"))
+        #expect(fixture.manager.workspaces.count == 1)
+    }
+
     static func rejection(_ outcome: WorkspaceCommandOutcome) -> (code: ArgusSocketErrorCode, message: String)? {
         guard case .rejected(let code, let message) = outcome else { return nil }
         return (code, message)
