@@ -25,7 +25,7 @@ struct WorkspaceCommandSetupOrderingTests {
                         base: fixture.mainCheckout.id.uuidString, branch: "ordered"))))
         let workspace = try #require(fixture.workspace(branch: "ordered"))
         let panel = try #require(fixture.manager.setupPanel(in: workspace))
-        await waitForStackState { !panel.isRunning }
+        try await waitForSetupCompletion(panel)
         #expect(panel.outcome == .succeeded)
         #expect(result.recordedBaseBranch == !recordingFails)
         #expect(
@@ -80,6 +80,22 @@ struct WorkspaceCommandSetupOrderingTests {
         }
         manager.worktreeDeletionRoots.removeAll()
         await fixture.remove()
+    }
+
+    private func waitForSetupCompletion(_ panel: WorktreeSetupPanel) async throws {
+        // Match the setup fixture's bounded suspension-turn convention. A wall-
+        // clock deadline can expire while MainActor prevents setup publication.
+        // These 200 ten-millisecond turns are not a hard wall-clock timeout.
+        do {
+            for _ in 0..<200 {
+                if !panel.isRunning { return }
+                try await Task.sleep(for: .milliseconds(10))
+            }
+        } catch {
+            #expect(await panel.stop())
+            throw error
+        }
+        #expect(!panel.isRunning)
     }
 
     private func prepareChange(
