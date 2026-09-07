@@ -141,11 +141,53 @@ extension WorkspaceManager {
     }
 }
 
+/// SwiftUI can deliver a final dropUpdated after dropExited or performDrop.
+/// Region identity is separate from the destination: several headers can append
+/// to the same Collection. Only entry may acquire feedback; late updates must
+/// not restore a guide after that region has been cleared.
+@MainActor
+final class SidebarNavigationDropFeedback: ObservableObject {
+    struct Destination: Equatable {
+        let ownerId: UUID
+        let placement: SidebarNavigationDropPlacement
+    }
+
+    @Published private(set) var destination: Destination?
+
+    func placement(for ownerId: UUID) -> SidebarNavigationDropPlacement? {
+        destination?.ownerId == ownerId ? destination?.placement : nil
+    }
+
+    func enter(_ ownerId: UUID, placement: SidebarNavigationDropPlacement?) {
+        destination = placement.map { Destination(ownerId: ownerId, placement: $0) }
+    }
+
+    func update(_ ownerId: UUID, placement: SidebarNavigationDropPlacement?) {
+        guard destination?.ownerId == ownerId else { return }
+        enter(ownerId, placement: placement)
+    }
+
+    func exit(_ ownerId: UUID) {
+        guard destination?.ownerId == ownerId else { return }
+        end()
+    }
+
+    func end() {
+        destination = nil
+    }
+}
+
 struct SidebarNavigationDropTarget: ViewModifier {
     let target: SidebarNavigationDrop
     @EnvironmentObject private var workspaceManager: WorkspaceManager
-    @State private var placement: SidebarNavigationDropPlacement?
+    @EnvironmentObject private var feedback: SidebarNavigationDropFeedback
+
+    @State var feedbackId = UUID()
     @State private var targetHeight: CGFloat = 28
+
+    private var placement: SidebarNavigationDropPlacement? {
+        feedback.placement(for: feedbackId)
+    }
 
     func body(content: Content) -> some View {
         content
@@ -175,7 +217,8 @@ struct SidebarNavigationDropTarget: ViewModifier {
             .onDrop(
                 of: [.argusWorkspace, .argusCollection],
                 delegate: SidebarNavigationDropDelegate(
-                    manager: workspaceManager, target: target, targetHeight: targetHeight, placement: $placement)
+                    manager: workspaceManager, target: target, targetHeight: targetHeight, feedback: feedback,
+                    feedbackId: feedbackId)
             )
     }
 }
@@ -184,27 +227,34 @@ private struct SidebarNavigationDropDelegate: DropDelegate {
     let manager: WorkspaceManager
     let target: SidebarNavigationDrop
     let targetHeight: CGFloat
-    @Binding var placement: SidebarNavigationDropPlacement?
+    let feedback: SidebarNavigationDropFeedback
+    let feedbackId: UUID
 
-    func validateDrop(info: DropInfo) -> Bool { provider(in: info) != nil }
+    func validateDrop(info: DropInfo) -> Bool { typeIdentifier(in: info) != nil }
 
-    func dropEntered(info: DropInfo) { updatePlacement(info: info) }
-    func dropExited(info: DropInfo) { placement = nil }
+    func dropEntered(info: DropInfo) {
+        feedback.enter(feedbackId, placement: placement(in: info))
+    }
+    func dropExited(info: DropInfo) {
+        feedback.exit(feedbackId)
+    }
     func dropUpdated(info: DropInfo) -> DropProposal? {
-        updatePlacement(info: info)
-        return DropProposal(operation: placement != nil ? .move : .forbidden)
+        feedback.update(feedbackId, placement: placement(in: info))
+        return DropProposal(operation: feedback.placement(for: feedbackId) != nil ? .move : .forbidden)
     }
 
-    private func updatePlacement(info: DropInfo) {
-        placement = provider(in: info).map { _, type in
+    private func placement(in info: DropInfo) -> SidebarNavigationDropPlacement? {
+        typeIdentifier(in: info).map { type in
             SidebarNavigationDropPlacement(
                 typeIdentifier: type, target: target, after: info.location.y > targetHeight / 2)
         }
     }
 
     func performDrop(info: DropInfo) -> Bool {
-        placement = nil
-        guard let (provider, type) = provider(in: info),
+        feedback.end()
+        guard
+            let (provider, type) = SidebarNavigationDropValidation.provider(
+                from: info.itemProviders(for: [.item]), target: target),
             let context = manager.navigationDropContext(for: target)
         else { return false }
         let after = info.location.y > targetHeight / 2
@@ -214,22 +264,35 @@ private struct SidebarNavigationDropDelegate: DropDelegate {
         return true
     }
 
-    private func provider(in info: DropInfo) -> (NSItemProvider, String)? {
-        let providers = info.itemProviders(for: [.item])
-        return SidebarNavigationDropValidation.provider(from: providers, target: target)
+    private func typeIdentifier(in info: DropInfo) -> String? {
+        // Enumerating generic item providers can start a file-promise read.
+        // AppKit permits that only at drop time, not during validation or hover.
+        SidebarNavigationDropValidation.typeIdentifier(
+            hasWorkspace: info.hasItemsConforming(to: [.argusWorkspace]),
+            hasCollection: info.hasItemsConforming(to: [.argusCollection]),
+            hasText: info.hasItemsConforming(to: [.text]), target: target)
     }
 }
 
 enum SidebarNavigationDropValidation {
     static func provider(from providers: [NSItemProvider], target: SidebarNavigationDrop) -> (NSItemProvider, String)? {
         guard providers.count == 1, let provider = providers.first else { return nil }
-        let types = [UTType.argusWorkspace.identifier, UTType.argusCollection.identifier]
-            .filter { provider.hasItemConformingToTypeIdentifier($0) }
-        guard types.count == 1, let type = types.first,
-            !provider.hasItemConformingToTypeIdentifier(UTType.text.identifier)
+        guard
+            let type = typeIdentifier(
+                hasWorkspace: provider.hasItemConformingToTypeIdentifier(UTType.argusWorkspace.identifier),
+                hasCollection: provider.hasItemConformingToTypeIdentifier(UTType.argusCollection.identifier),
+                hasText: provider.hasItemConformingToTypeIdentifier(UTType.text.identifier), target: target)
         else { return nil }
-        if type == UTType.argusCollection.identifier, case .collection = target { return (provider, type) }
-        return type == UTType.argusWorkspace.identifier ? (provider, type) : nil
+        return (provider, type)
+    }
+
+    static func typeIdentifier(
+        hasWorkspace: Bool, hasCollection: Bool, hasText: Bool, target: SidebarNavigationDrop
+    ) -> String? {
+        guard hasWorkspace != hasCollection, !hasText else { return nil }
+        if hasWorkspace { return UTType.argusWorkspace.identifier }
+        if case .collection = target { return UTType.argusCollection.identifier }
+        return nil
     }
 }
 

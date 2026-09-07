@@ -8,6 +8,34 @@ import UniformTypeIdentifiers
 @MainActor
 struct SidebarNavigationDraggingTests {
     @Test
+    func feedbackIgnoresLateUpdatesAndExitsWithoutRevivingFinishedDrags() {
+        let feedback = SidebarNavigationDropFeedback()
+        let firstRegion = UUID()
+        let secondRegion = UUID()
+        feedback.enter(firstRegion, placement: .before)
+        #expect(feedback.placement(for: firstRegion) == .before)
+        feedback.enter(secondRegion, placement: .append)
+        #expect(feedback.placement(for: firstRegion) == nil)
+        feedback.exit(firstRegion)
+        feedback.update(firstRegion, placement: .after)
+        #expect(feedback.placement(for: secondRegion) == .append)
+        #expect(feedback.placement(for: firstRegion) == nil)
+        feedback.end()  // Drop clears before provider validation, including a rejected/self drop.
+        feedback.update(secondRegion, placement: .after)
+        #expect(feedback.destination == nil)
+
+        // Native cancellation/exit can also be followed by a final update.
+        feedback.enter(secondRegion, placement: .before)
+        feedback.exit(secondRegion)
+        feedback.update(secondRegion, placement: .after)
+        #expect(feedback.destination == nil)
+        feedback.enter(firstRegion, placement: .after)
+        #expect(feedback.placement(for: firstRegion) == .after)
+        feedback.update(firstRegion, placement: nil)
+        #expect(feedback.destination == nil)
+    }
+
+    @Test
     func exportedNavigationTypesReachTheGenericItemDropQuery() throws {
         let workspaceId = UUID()
         let collectionId = UUID()
@@ -30,6 +58,54 @@ struct SidebarNavigationDraggingTests {
             #expect(providers.count == 1)
             #expect(SidebarNavigationDropValidation.provider(from: providers, target: .collection(collectionId)) != nil)
         }
+    }
+
+    @Test(arguments: [true, false], [true, false])
+    func hoverMetadataDistinguishesNavigationKindsAndRejectsMixedText(hasWorkspace: Bool, hasCollection: Bool) {
+        let workspaceId = UUID()
+        let collectionId = UUID()
+        for target in [SidebarNavigationDrop.workspace(workspaceId), .collection(collectionId), .ungrouped] {
+            let expected: String?
+            if hasWorkspace == hasCollection {
+                expected = nil
+            } else if hasWorkspace {
+                expected =
+                    SidebarNavigationDrag.workspace(
+                        SidebarWorkspaceDrag(
+                            workspaceId: workspaceId, sourceCollectionId: nil, sourceOrder: [workspaceId])
+                    ).typeIdentifier
+            } else if case .collection = target {
+                expected =
+                    SidebarNavigationDrag.collection(
+                        SidebarCollectionDrag(collectionId: collectionId, sourceOrder: [collectionId])
+                    ).typeIdentifier
+            } else {
+                expected = nil
+            }
+            #expect(
+                SidebarNavigationDropValidation.typeIdentifier(
+                    hasWorkspace: hasWorkspace, hasCollection: hasCollection, hasText: false, target: target)
+                    == expected)
+            #expect(
+                SidebarNavigationDropValidation.typeIdentifier(
+                    hasWorkspace: hasWorkspace, hasCollection: hasCollection, hasText: true, target: target) == nil)
+        }
+    }
+
+    @Test
+    func hoverDoesNotMaterializeFilePromisesBeforeTheDrop() throws {
+        let source = try SourceContract("Argus/Views/Sidebar/SidebarNavigationDragging.swift")
+        let hover = try source.section(after: "func validateDrop(info:", before: "func performDrop(info:")
+        #expect(hover.contains("typeIdentifier(in: info)"))
+        #expect(!hover.contains("itemProviders("))
+        #expect(!hover.contains("provider(in:"))
+        let metadata = try source.section(
+            after: "private func typeIdentifier(in info:", before: "enum SidebarNavigationDropValidation")
+        #expect(metadata.contains("info.hasItemsConforming(to:"))
+        #expect(!metadata.contains("itemProviders("))
+        let drop = try source.section(after: "func performDrop(info:", before: "private func typeIdentifier(in info:")
+        #expect(drop.contains("info.itemProviders(for: [.item])"))
+        #expect(drop.contains("SidebarNavigationDropValidation.provider("))
     }
 
     @Test

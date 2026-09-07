@@ -17,6 +17,7 @@ struct ProjectCollectionUITests {
         let selection = manager.selectedWorkspaceId
         let header = SidebarCollectionHeader(collection: collection)
             .modifier(SidebarNavigationDropTarget(target: .collection(collection.id)))
+            .environmentObject(SidebarNavigationDropFeedback())
             .environmentObject(manager)
             .environmentObject(manager.settings)
             .environment(WindowFocusState())
@@ -163,10 +164,65 @@ struct ProjectCollectionUITests {
         ] {
             #expect(feedback.contains(fragment))
         }
-        dragging.contains("func dropExited(info: DropInfo) { placement = nil }", "exit clears acceptance feedback")
-        let drop = try dragging.section(after: "func performDrop(info: DropInfo) -> Bool {", before: "guard let")
-        #expect(drop.contains("placement = nil"))
+        dragging.contains("feedback.exit(feedbackId)", "exit releases only its own feedback region")
+        let drop = try dragging.section(after: "func performDrop(info: DropInfo) -> Bool {", before: "guard")
+        #expect(drop.contains("feedback.end()"))
         dragging.contains("info.itemProviders(for: [.item])", "mixed payload rejection includes non-navigation items")
+    }
+
+    @Test
+    func feedbackRenderingUsesRegionIdentityAndClearsLinesAndOutlines() throws {
+        let fixture = try WorkspaceStackTestFixture()
+        defer { fixture.cleanup() }
+        let feedback = SidebarNavigationDropFeedback()
+        let collection = try #require(fixture.manager.createCollection(name: "Work"))
+        let header = UUID()
+        let repositoryHeading = UUID()
+
+        func accentPixels() throws -> (header: Int, repositoryHeading: Int) {
+            // Both regions append to the same Collection, but only one may light up.
+            let content = VStack(spacing: 8) {
+                Color.black.frame(width: 120, height: 32)
+                    .modifier(SidebarNavigationDropTarget(target: .collection(collection.id), feedbackId: header))
+                Color.black.frame(width: 120, height: 32)
+                    .modifier(
+                        SidebarNavigationDropTarget(target: .collection(collection.id), feedbackId: repositoryHeading))
+            }
+            .accentColor(.blue)
+            .environmentObject(fixture.manager)
+            .environmentObject(feedback)
+            let image = try #require(ImageRenderer(content: content).cgImage)
+            let bitmap = NSBitmapImageRep(cgImage: image)
+            var counts = [0, 0]
+            for y in 0..<bitmap.pixelsHigh {
+                for x in 0..<bitmap.pixelsWide {
+                    let color = try #require(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
+                    if color.blueComponent > 0.5 && color.redComponent < 0.3 {
+                        counts[y < bitmap.pixelsHigh / 2 ? 0 : 1] += 1
+                    }
+                }
+            }
+            return (counts[0], counts[1])
+        }
+
+        #expect(try accentPixels() == (0, 0))
+        feedback.enter(header, placement: .append)
+        let outline = try accentPixels()
+        #expect(outline.header > 100)
+        #expect(outline.repositoryHeading == 0)
+        feedback.enter(repositoryHeading, placement: .before)
+        feedback.exit(header)
+        feedback.update(header, placement: .append)
+        let line = try accentPixels()
+        #expect(line.header == 0)
+        #expect(line.repositoryHeading >= 120)
+        feedback.end()
+        feedback.update(repositoryHeading, placement: .before)
+        #expect(try accentPixels() == (0, 0))
+        feedback.enter(header, placement: .append)
+        feedback.exit(header)
+        feedback.update(header, placement: .append)
+        #expect(try accentPixels() == (0, 0))
     }
 
     @Test

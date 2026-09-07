@@ -173,4 +173,5 @@ extension Notification.Name {
 struct SidebarView: View {
     @EnvironmentObject var workspaceManager: WorkspaceManager
     @StateObject var commandKeyMonitor = CommandKeyMonitor()
+    @StateObject var dropFeedback = SidebarNavigationDropFeedback()
 }
