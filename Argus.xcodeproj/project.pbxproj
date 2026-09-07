@@ -7,9 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		D03A01000000000000000001 /* NewWorkspaceSheet+Choices.swift in Sources */ = {isa = PBXBuildFile; fileRef = D03A01000000000000000002 /* NewWorkspaceSheet+Choices.swift */; };
-		AB739136C32C4C10AC183841 /* StackWorkspaceCreationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB739136C32C4C10AC183842 /* StackWorkspaceCreationTests.swift */; };
-		AB739136C32C4C10AC183843 /* WorkspaceStackUIContractTests+Creation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB739136C32C4C10AC183844 /* WorkspaceStackUIContractTests+Creation.swift */; };
 		0005F1BE34EC7C0DA1814AFC /* WorktreeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709721096373D93A263660AB /* WorktreeService.swift */; };
 		009EDD4EF70E0ECD40403AFD /* WorkspacePullRequestLocalInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33DD4836E8671FB5492642EE /* WorkspacePullRequestLocalInputTests.swift */; };
 		00B80A1012001A81F4F25980 /* WorkspacePullRequestStatusModelLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 230BD564B7A3E6B3245DAC24 /* WorkspacePullRequestStatusModelLifecycleTests.swift */; };
@@ -27,18 +24,22 @@
 		06D940FC58CFA264CECE7332 /* LocalBranchPickerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDA50BB27255AFF560A99F86 /* LocalBranchPickerTests.swift */; };
 		0A3E6960DEB14D2769E4775A /* ContentAreaView+FilePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD50F7E8079BEC5DEA0DC523 /* ContentAreaView+FilePanel.swift */; };
 		0A9174FAA98F116001D65A47 /* WorkspacePullRequestStatusModel+Requests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E306A62F476E14142539F06 /* WorkspacePullRequestStatusModel+Requests.swift */; };
+		0AD9524D83A220F3109144DA /* ArgusSocketLineBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F61CD808317F709A4E88A5 /* ArgusSocketLineBuffer.swift */; };
+		0B288531A6384AB3BE0B427F /* writer_publication_failure.cpython-314.pyc in Resources */ = {isa = PBXBuildFile; fileRef = EC2677B4336D0765347A99D9 /* writer_publication_failure.cpython-314.pyc */; };
 		0B8AAB5E791399EA83F83F18 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF5C0E9D5F6638CD5FEFE123 /* Project.swift */; };
 		0BA0CCB0D419D3E91B7DD0DB /* AgentSocketProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A9A2C48FE8D4F787DCC3CB7 /* AgentSocketProtocol.swift */; };
 		0C51FCA86CA2FF57B0C80037 /* TerminalClipboardConfirmation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D768BF4B1DD82D18B53E28F /* TerminalClipboardConfirmation.swift */; };
 		0CB71789E21CE29F968F9AEC /* EmptyWorkspaceUIContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D1C8CBCD5980B96C02A3E7 /* EmptyWorkspaceUIContractTests.swift */; };
 		0DE9DF07EE474CAF5F4525BE /* WorkspacePullRequestStatusModel+HostBudget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96EC1387C07FC818EEB2D035 /* WorkspacePullRequestStatusModel+HostBudget.swift */; };
 		0E12DBED45B56CCE6139ADA2 /* GitDiffStatParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31F5743E7A55EE9FBC908770 /* GitDiffStatParserTests.swift */; };
+		104DBD0D752766F49BB55424 /* WorkspaceCommandPayloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D1A3065B0B5364A5D74FAA8 /* WorkspaceCommandPayloads.swift */; };
 		10B09CE9364DF1549BB1A7B2 /* AgentSocketServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53CB9B33F335E72D861FBF52 /* AgentSocketServer.swift */; };
 		119DE14EA5609D09869E6820 /* RightSidebarView+WorkspaceFileModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A5341177B2D47B156B6A161 /* RightSidebarView+WorkspaceFileModels.swift */; };
 		11D39C3061F589896484986D /* ReleaseNotesPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79A04E6A0B906D9BA17D8594 /* ReleaseNotesPanelView.swift */; };
 		125426EC576B3F2B180385BD /* RecordedBaseBranchReader+Graphite.swift in Sources */ = {isa = PBXBuildFile; fileRef = A170B01F39BB2D7F5D058D43 /* RecordedBaseBranchReader+Graphite.swift */; };
 		12D7A8C68E6686B8EB0BF266 /* SidebarState.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0B9ECA31DC779CDC60C200 /* SidebarState.swift */; };
 		158E0537E195ED287B7C90D0 /* SwiftDiffs in Frameworks */ = {isa = PBXBuildFile; productRef = AD384A8B8CD031E4BE9CB4AB /* SwiftDiffs */; };
+		15902E9BAA38F163B406EA80 /* check_stop_recovery.cpython-314.pyc in Resources */ = {isa = PBXBuildFile; fileRef = 04772374136B87D47384F9F0 /* check_stop_recovery.cpython-314.pyc */; };
 		15DFA75952566E938AECED46 /* GitPreviewPanelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D74EFE13FBE5E49414DB592 /* GitPreviewPanelTests.swift */; };
 		17BFCE03C38DDA36E1922CE9 /* BuildScriptTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E1E08E66AF3EA0DE27005CF /* BuildScriptTests.swift */; };
 		19931B12DE9DC4CF1FAE8180 /* TerminalNSViewSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24CFEA98D48AB58A04B6D707 /* TerminalNSViewSupport.swift */; };
@@ -47,12 +48,14 @@
 		1C9D29E73850C1E987EA7691 /* AgentStatusUIContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF53172B91C7A98FE555BB50 /* AgentStatusUIContractTests.swift */; };
 		1D0A442D039D75704DE38487 /* ArgusPiAgentStatusPlugin-1.13.2.js in Resources */ = {isa = PBXBuildFile; fileRef = EBFBCD01970CD5AD9C39793D /* ArgusPiAgentStatusPlugin-1.13.2.js */; };
 		1E8DB0ADCCBD53DF40A36B88 /* WorktreeBranchUniquenessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93BB47420C5E72E32FA26F97 /* WorktreeBranchUniquenessTests.swift */; };
+		1F62348C8D02DDA7DC6B385F /* WorkspaceCommandSetupOrderingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EF512E5AB557B4CCBA878F8 /* WorkspaceCommandSetupOrderingTests.swift */; };
 		20EA8F6CA1409532AB1BEAFC /* WorktreeSetupPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77147BF59C52DD9D207B94A3 /* WorktreeSetupPanelView.swift */; };
 		21B3E316D345B5A2038674EF /* GitBaseBranchMetadataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26C760682C442D934B98A7C5 /* GitBaseBranchMetadataTests.swift */; };
 		2210B2ED868B766A70EB50B5 /* ArgusKiloTurnCompletionPlugin.js in Resources */ = {isa = PBXBuildFile; fileRef = D606C09272FA91886158DAD8 /* ArgusKiloTurnCompletionPlugin.js */; };
 		2266303ED8AE744D12B4504F /* WorkspaceStackTestFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3304745D72EFF2A2FD6153 /* WorkspaceStackTestFixture.swift */; };
 		22DC1F646410EC34EB56076A /* GitStatusTestDoubles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55DDF88B263EFCB1ADF78506 /* GitStatusTestDoubles.swift */; };
 		2401E44539747B1C9FDBC5E9 /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 172F49E4DC138F5AEEE1E515 /* MainWindowView.swift */; };
+		2419E166F5544D3F337D4E54 /* WorkspaceCommandCreateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F509AAAEF59301767234CF4 /* WorkspaceCommandCreateTests.swift */; };
 		247685C4A4ECA874C1C850AD /* WorkspaceTabNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95D7FCE69AC486FA39A5DFBA /* WorkspaceTabNavigationTests.swift */; };
 		250B3D2B9ACACC6A9F9C1B12 /* WorkspaceTitleFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC3870BE2DAE279DC4BF8974 /* WorkspaceTitleFormatter.swift */; };
 		260C169969B555F7E7CCAD81 /* GitStatusUIContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAEA40E4A41292D6EBE0E95B /* GitStatusUIContractTests.swift */; };
@@ -74,6 +77,7 @@
 		35E93CC71885A962F87B4C38 /* AgentStatusRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE9456CE11D12038D4B1F242 /* AgentStatusRuntime.swift */; };
 		379B1034885C2D88CA1DCAA1 /* RecordedBaseBranchReaderTests+Validation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0A255A12996ADC4CB007D60 /* RecordedBaseBranchReaderTests+Validation.swift */; };
 		37DCAA487A2EA6A8E73E8A71 /* DestructiveConfirmation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C769DEBE4174CF967355B999 /* DestructiveConfirmation.swift */; };
+		38BBBDA03419B3C98D09C960 /* test_launcher.cpython-314.pyc in Resources */ = {isa = PBXBuildFile; fileRef = C606483AAA27EB321741ABCF /* test_launcher.cpython-314.pyc */; };
 		395203F465B0D6EDBD1BC9E3 /* GitStatusParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9E7D7DCF97A300FE8386B3A /* GitStatusParserTests.swift */; };
 		3981D357A580D757AF507411 /* GitHubPullRequestStatusDecoder+Batch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92C39B1185261DF074BBA419 /* GitHubPullRequestStatusDecoder+Batch.swift */; };
 		3A06E393704C710E7A736961 /* PullRequestStatusNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B6EB45942AB2C93E80121B /* PullRequestStatusNavigationTests.swift */; };
@@ -99,6 +103,7 @@
 		4D4AB09B09FEDFF19A8933AC /* SidebarNavigationDraggingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D13D93F55EB4E125C14ACAA /* SidebarNavigationDraggingTests.swift */; };
 		4DA794F359E00C48E50F95BD /* GitBranchBarUIContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9808219B436E2F4D81EE357 /* GitBranchBarUIContractTests.swift */; };
 		4F81BDEFFCEA1A6FE07CD163 /* ReleaseNotesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AC77E6BD2DA84BD16B57890 /* ReleaseNotesTests.swift */; };
+		4FB1F7AB0C18AAFB1B052D55 /* TerminalEnvironmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91AE5F5A0080B0BAA411546 /* TerminalEnvironmentTests.swift */; };
 		50F6B25472890B2CE7A86800 /* ArgusApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10818EB6FE9BF83CFC040732 /* ArgusApp.swift */; };
 		5101AE424BA99887F4AF8416 /* WorkspaceStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA5D6527224E4CE72C1A099A /* WorkspaceStack.swift */; };
 		525EB7C9FE714A19ED1C3457 /* ProjectCollectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D91555A21B626A22D60280E6 /* ProjectCollectionTests.swift */; };
@@ -111,6 +116,7 @@
 		58D43CF9309B20D6179B4A7F /* PullRequestStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09618DED610CBB0E435DB0A8 /* PullRequestStatus.swift */; };
 		5974AE95C0C64669D0C96C1E /* GitPreviewServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B61F2A403CEF604900074280 /* GitPreviewServiceTests.swift */; };
 		5A59FFC0BA2E3DDE375850FB /* BrowserPanelUIContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A04D862809818007329A335B /* BrowserPanelUIContractTests.swift */; };
+		5A5F7EA35A41207E047B8910 /* ArgusSocketProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 753854D7F099D8497E727D7B /* ArgusSocketProtocol.swift */; };
 		5B205C015C77F87CB4A403F1 /* PullRequestStatusUIContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D812F4D5C1A2D2C30CB00B4 /* PullRequestStatusUIContractTests.swift */; };
 		5B4BB7179424815BEF595AF7 /* ExistingWorktreeBranchChoiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3FB117AE6DF223AE2B1A0A0 /* ExistingWorktreeBranchChoiceTests.swift */; };
 		5BD7689CFC2FDEE71D53E5A0 /* ArgusKiloTurnCompletionPlugin-1.13.0.js in Resources */ = {isa = PBXBuildFile; fileRef = C3C4B6C5B4B41EB345468D1F /* ArgusKiloTurnCompletionPlugin-1.13.0.js */; };
@@ -120,10 +126,12 @@
 		6107C062A10FDF40A50DC40E /* BranchNameSuggestionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84191554144B687CFE12B3AE /* BranchNameSuggestionTests.swift */; };
 		610D4501B3ABABFC57F88B64 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0418377FEC3C8161DF8DF2FA /* SettingsWindowController.swift */; };
 		643D13B7D8C09DA92418288A /* WorkspaceStackServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C6AADA94A16D9CF95F1663 /* WorkspaceStackServiceTests.swift */; };
+		676770A32E2E91D886FC28D7 /* synthetic_pi_stand_in.cpython-314.pyc in Resources */ = {isa = PBXBuildFile; fileRef = 4072B6C75D724CA88EEED63E /* synthetic_pi_stand_in.cpython-314.pyc */; };
 		6931D0DEA3B30E42F90CD235 /* ContentAreaView+MarkdownRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E54D933E45F24687492BD0F /* ContentAreaView+MarkdownRenderer.swift */; };
 		69936086FA79B07F586B6E81 /* GitStatusPresentationLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66ABF976438B37B162B557DA /* GitStatusPresentationLayoutTests.swift */; };
 		69C6149225D1CC2622FE1896 /* WorktreeSetupProcess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D39CD1533A8E49D49F71ADB /* WorktreeSetupProcess.swift */; };
 		6A070C166FF0C9361AE775B5 /* GitDiffStatParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DB16A21820EB52A4A4D2ABD /* GitDiffStatParser.swift */; };
+		6A0CEB70A8189209C46FB3A4 /* WorkspaceCommandSocketTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD6E577B11B2604373AFFB8D /* WorkspaceCommandSocketTests.swift */; };
 		6A4C05C340641327AC48E31D /* TabBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29E4A93EB538D6AE1F188805 /* TabBarView.swift */; };
 		6A6A3E9AE3BB277833FED10B /* GitMetadataAutoRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFAF4EE22642733B9792556 /* GitMetadataAutoRefreshTests.swift */; };
 		6ACDF998D304D03C52DE5241 /* GhosttyCallbacks.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD1784EE26371C0FE0BF4A6D /* GhosttyCallbacks.swift */; };
@@ -149,6 +157,8 @@
 		7974C78A17A916E6C5A6B66A /* WorkspaceStackLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D39F4DAC6BAE845BAD6CE386 /* WorkspaceStackLayoutTests.swift */; };
 		7AB1492EB94CEE36D9A9AA31 /* WorkspacePullRequestStatusModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3381C3FB2703F6535D020D95 /* WorkspacePullRequestStatusModelTests.swift */; };
 		7D8EED9F1473ED9C8C39AB19 /* WorkspaceManager+Projects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9444730F6777142B0328C4AF /* WorkspaceManager+Projects.swift */; };
+		7E722FBD805FC0C118A44490 /* WorkspaceStackUIContractTests+Creation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1852F87E503B25B5EF5630EC /* WorkspaceStackUIContractTests+Creation.swift */; };
+		7E83959394E94BA0EEE4ED9D /* NewWorkspaceSheet+Choices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74E3D505C68B4B3F47FF6B11 /* NewWorkspaceSheet+Choices.swift */; };
 		813D2763BDCAD2DEB3EEADF0 /* BrowserPanelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B921EB3F145DEF6CD009EAE1 /* BrowserPanelTests.swift */; };
 		841B38C69626C045E8D3F695 /* GitStatusServiceConcurrencyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5829E829591A4B9BB28161FD /* GitStatusServiceConcurrencyTests.swift */; };
 		84AFCD154E69A6433732EBA7 /* SidebarView+Header.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAD922CBF0C867C0EDB5DBD /* SidebarView+Header.swift */; };
@@ -169,6 +179,7 @@
 		90E15D1FB91698F5F46C6513 /* CHANGELOG.md in Resources */ = {isa = PBXBuildFile; fileRef = 25C6AD3C8C294A2BC8A3BB19 /* CHANGELOG.md */; };
 		9124A35C7B7C12817343252E /* WorktreeService+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3E1F81F2D4F0342CDD02E30 /* WorktreeService+Operations.swift */; };
 		917C8DA5D9433A97C66190D9 /* WorkspaceStackObservationSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D390522594CBE9CFF8CC5EAC /* WorkspaceStackObservationSupport.swift */; };
+		91E2F1D54DBF9F417990EAB6 /* ArgusPiAgentStatusPlugin-1.15.0.js in Resources */ = {isa = PBXBuildFile; fileRef = 40334572574BA40417DE0ACC /* ArgusPiAgentStatusPlugin-1.15.0.js */; };
 		92C213F4093831E8F18EAD07 /* OrphanedWorktreesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FA4A99862B8FD090D3E03DF /* OrphanedWorktreesSheet.swift */; };
 		934A5237A84E1FFF6CE0571D /* ArgusDiffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71046139E7FD2CB143551E37 /* ArgusDiffView.swift */; };
 		946582F28CCD417A6C8F33F3 /* AgentStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF1749489767D34375CBDDCF /* AgentStatus.swift */; };
@@ -181,7 +192,9 @@
 		99A95A1025DD39E36D5230F2 /* SidebarView+Stacks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B29F9564856A8AC25C2468F /* SidebarView+Stacks.swift */; };
 		99AE3FC1AB4F412A618B127C /* ProjectAndWorktreeUIContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFE0FA88546FBFAD28E1D952 /* ProjectAndWorktreeUIContractTests.swift */; };
 		99BC021C9C0803B1481C13A2 /* WorkspacePullRequestStatusModel+LocalContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ACADA277A151829471507F9 /* WorkspacePullRequestStatusModel+LocalContext.swift */; };
+		9A0C5FA25210B03FD5507AA0 /* test_writer_provenance.cpython-314.pyc in Resources */ = {isa = PBXBuildFile; fileRef = 45C341561E793A8AE9D1AC0D /* test_writer_provenance.cpython-314.pyc */; };
 		9A2F8235FB0F7ABE0FED56D9 /* GitSidebarView+RowsAndOperations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C754D8247CA7B2E66E7545A /* GitSidebarView+RowsAndOperations.swift */; };
+		9B717FAC2641108CBEDC3343 /* test_lifecycle.cpython-314.pyc in Resources */ = {isa = PBXBuildFile; fileRef = A06AC1BC7EF1C774C902D400 /* test_lifecycle.cpython-314.pyc */; };
 		9BFCE5E9F8D561CAA0CA6E19 /* ChromeColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F4253A4E13FA79C8E83E7C1 /* ChromeColors.swift */; };
 		9CA1890389D4C351FEC46DC7 /* WorkspaceStackObservationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48D51FA32A28AC4619FBC667 /* WorkspaceStackObservationTests.swift */; };
 		9DCC517DC3E2A4A2CE542BA7 /* PiIntegrationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11FECAF443D881B88A5FD48 /* PiIntegrationServiceTests.swift */; };
@@ -197,23 +210,32 @@
 		A86AB99A5CBC19B820B6A690 /* GitHubPullRequestService+Status.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38790E18BE55548C43B9F68E /* GitHubPullRequestService+Status.swift */; };
 		A87A20318CEEA03EC102D49A /* PullRequestStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84E7834A6BDEE19731655855 /* PullRequestStatusView.swift */; };
 		A8E8E90AA1059981AEBA8548 /* GitStatusService+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67AA67ACDD9DBF4C86C13295 /* GitStatusService+Operations.swift */; };
+		A97A00C03009427D6DAC2A06 /* WorkspaceListSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F03E7AF8CBE7F10A30D69E60 /* WorkspaceListSection.swift */; };
 		AB121FB0384DC0B18B8FDC43 /* RepositoryRootNormalizationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A0B59D2D5F42C91DCDAECE1 /* RepositoryRootNormalizationTests.swift */; };
 		ACD06BC90CB63434E5A8F056 /* CloseWorkspaceConfirmationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4805B3F026B11429DBC9070 /* CloseWorkspaceConfirmationView.swift */; };
+		ADDF78BDB70E74C239D0564C /* WorkspaceCommandRuntime+Listing.swift in Sources */ = {isa = PBXBuildFile; fileRef = D38D992CA821B5C117645183 /* WorkspaceCommandRuntime+Listing.swift */; };
+		AE933A31DD55C4EB434D5729 /* WorkspaceCommandRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A72E7ECE0270C0848C8D615 /* WorkspaceCommandRuntime.swift */; };
 		AEE3EB622810DCECC32D71FD /* GitPreviewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 470C27E1E483568C99FF880E /* GitPreviewService.swift */; };
 		AFE9FE7DB77CEB082BDCEE43 /* WorktreeSetupLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFDAD7F2D43FC73BD681E75 /* WorktreeSetupLifecycleTests.swift */; };
 		B005D72E8CB8CCE5376E364E /* RecordedBaseBranchReaderTests+Resolution.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68C6A0D18C23DE4EC0897500 /* RecordedBaseBranchReaderTests+Resolution.swift */; };
+		B04274C27D50C8DF233A77D5 /* StackWorkspaceCreationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF5A5931709FD52185EFBF7A /* StackWorkspaceCreationTests.swift */; };
 		B16BA47DF803A21B3E1A5E37 /* WorkspaceStackPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80EE2E74B39FEB342DB83A41 /* WorkspaceStackPersistenceTests.swift */; };
 		B2244F13024F14AD4518D076 /* RecordedBaseBranchReader+Metadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93B31BE3628269A47AEA562 /* RecordedBaseBranchReader+Metadata.swift */; };
 		B50B2C4F72FABA84FDBD195C /* PullRequestWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD4D09EA6FAC693CBEC13B64 /* PullRequestWorkspace.swift */; };
+		B59A35BD776DD09F557169D1 /* WorkspaceCommandSetupIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49D1B3C4AB28842A19C16717 /* WorkspaceCommandSetupIntegrationTests.swift */; };
+		B5B9C70020D71F30834C9B8C /* WorkspaceCommandRejectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 925F7CDE6C95D2792B854A22 /* WorkspaceCommandRejectionTests.swift */; };
+		B6C65098303B0ED42C81ECC1 /* WorkspaceCommandProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEAB7503BEC5CB09B96DC99A /* WorkspaceCommandProtocol.swift */; };
 		B6FE9FC9BF9FFFC24721D136 /* SidebarNavigationDropDeliveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A92C35C28C472DB330BB838 /* SidebarNavigationDropDeliveryTests.swift */; };
 		B7966086418801895983597C /* PullRequestStatusBatchServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24D0C2D22FEF3435817AF855 /* PullRequestStatusBatchServiceTests.swift */; };
 		B87E14DF8A9A133F597BC3E9 /* SidebarStatePersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85B710CD787E14321AB971B /* SidebarStatePersistenceTests.swift */; };
+		BAC47294DC7B50006EC97E97 /* TerminalEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18CEC2C4ABBB5016B268EEA9 /* TerminalEnvironment.swift */; };
 		BB01D0A98368F3A152BBF173 /* ReleaseNotesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34A303612085FE84C91B6BDD /* ReleaseNotesService.swift */; };
 		BC08B676B189800ED35AEFFF /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2901E5911A8F9D27A0EB1D45 /* SettingsView.swift */; };
 		BC3B35D6F30F6BB3C15C7DE3 /* GitHubPullRequestStatusDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6462454D71110068A439108A /* GitHubPullRequestStatusDecoder.swift */; };
 		BDC7BC7F2CBFED6BA6D6548A /* RightSidebarView+WorkspaceFilesActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A7DCFCA3143FA38266A9C08 /* RightSidebarView+WorkspaceFilesActions.swift */; };
 		BE0A1DFA18768B0267CA4995 /* GitStatusService+Presentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 519A8E19E8100B740C1F8F48 /* GitStatusService+Presentation.swift */; };
 		BF2202FFE0CAFA09111B2127 /* BrowserPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA7D0BBA1C3E522DF924BE31 /* BrowserPanel.swift */; };
+		C1C15BD7A41E5FD8DF82A7CA /* WorkspaceManager+WorktreeAttachment.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1ACA8589ADC038CDD1183A8 /* WorkspaceManager+WorktreeAttachment.swift */; };
 		C2E5687B5858D87FC40BAA9E /* ArgusDiffRenderingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75E5C691A8EE5685548AEBE8 /* ArgusDiffRenderingTests.swift */; };
 		C43B7F5D9A46D2D07CE6668D /* BrowserPanelConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE2DC12E91B4CA4BEC4B9EC /* BrowserPanelConfigurationTests.swift */; };
 		C4A9324060645CEEF6BF36ED /* GitStatusTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35911854664604B1690D6DD4 /* GitStatusTypes.swift */; };
@@ -245,7 +267,10 @@
 		D5D88A30AFF2FCF06E6A710C /* KiloIntegrationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4A3A14833E6256C1780E16B /* KiloIntegrationService.swift */; };
 		D62DC52C2FFDA79E060D8BB4 /* StackRepositoryFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEAE4423E7B2D58539509C36 /* StackRepositoryFixture.swift */; };
 		D6320826F497FAECD95A5929 /* JSONCEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF0E7DB04998E5C14876F57D /* JSONCEditor.swift */; };
+		D88755FDB8B9E2D07D54D4DF /* BaseBranchRecordingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E83D86AD318F310D531E89AA /* BaseBranchRecordingTests.swift */; };
+		D894F4208A18705850E30F10 /* WorkspaceCommandRuntime+Resolution.swift in Sources */ = {isa = PBXBuildFile; fileRef = E41C71854C68C85690793427 /* WorkspaceCommandRuntime+Resolution.swift */; };
 		D8D1DE19F62552C5501E47BD /* BranchAvailabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F828578257356A65F90D274 /* BranchAvailabilityTests.swift */; };
+		DA8EBDE3D9615CFFC4070291 /* AgentSocketFraming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 179C29ADF29352FC5DCDACDA /* AgentSocketFraming.swift */; };
 		DAE90CFBB8856CB435363223 /* ChangeWorkspaceRootSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85548319C4472916377958B7 /* ChangeWorkspaceRootSheet.swift */; };
 		DC4EE08CB11E1E56F85F398A /* WorkspacePullRequestStatusModelSchedulingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEB0602F7309BA89FFAE52B2 /* WorkspacePullRequestStatusModelSchedulingTests.swift */; };
 		DC862B0710F0629EAB8BDF7A /* SidebarLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D28191E019C7FB7E2AE020 /* SidebarLayout.swift */; };
@@ -255,6 +280,8 @@
 		DE0DA25EC939706E5F217976 /* WorktreeService+PullRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125D3A1015BB9B1284254961 /* WorktreeService+PullRequest.swift */; };
 		DF5782CB9AA7E014F6F68AC4 /* GitSidebarView+Sections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39B7F4539F94C01EAA98ADC9 /* GitSidebarView+Sections.swift */; };
 		DF61F03B0291C4801D0BA0FF /* GitStatusService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B9FAB1109B3A420ADD6DC4 /* GitStatusService.swift */; };
+		E0601A3CBF467D0991C1DE30 /* check_writer_expiry.cpython-314.pyc in Resources */ = {isa = PBXBuildFile; fileRef = B8C771D45CD0857E6EF52951 /* check_writer_expiry.cpython-314.pyc */; };
+		E18387F135D3DCC4ED190FCF /* check_backend_pty.cpython-314.pyc in Resources */ = {isa = PBXBuildFile; fileRef = 03AF9B35C2FC36882BFB549C /* check_backend_pty.cpython-314.pyc */; };
 		E1F1C4573873B10B34181A71 /* TerminalNSView+FileDrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = B70FB104B47A1F61D7AA5A8C /* TerminalNSView+FileDrop.swift */; };
 		E20DFC66EAE40A5C68EC4F09 /* SidebarLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D753CE6E1FFD67B19A85930F /* SidebarLayoutTests.swift */; };
 		E31199E901E44BB6846B8A56 /* WindowFocusAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EC88B0BFC64101A7C347EDB /* WindowFocusAppearanceTests.swift */; };
@@ -264,6 +291,7 @@
 		E86FD6F6D14B7A6DE416A093 /* RightSidebarView+WorkspaceFileLabels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 621BDE2A45BFFDC6F008EE55 /* RightSidebarView+WorkspaceFileLabels.swift */; };
 		EAB3343A6EE57205E148A50E /* GitFileStatusStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C1ED524D3519A8D6A0A46D0 /* GitFileStatusStyle.swift */; };
 		EBD78ABBAF499A8A3E1C6BCF /* WorkspaceManager+WorktreeSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E45E51DE999EF67A4AC5038 /* WorkspaceManager+WorktreeSetup.swift */; };
+		ECABDEE17F7E6E7FA8F828B8 /* WorkspaceCommandFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99D56CCEE4A059E4A04FF593 /* WorkspaceCommandFixture.swift */; };
 		EE31F58DE3DF374DB8E6C07E /* SessionSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EA813F930B12FDBB09C67C8 /* SessionSnapshotTests.swift */; };
 		EF04235849461CCB3B6C16E5 /* Panel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E5CB1EAA0A66B7411EB8C71 /* Panel.swift */; };
 		F23F04D53B763B99EE79486E /* ProjectCollectionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F29FAA647BB11D78C02967A /* ProjectCollectionUITests.swift */; };
@@ -279,6 +307,7 @@
 		FA8B6AC32B82CCA1CFF4E691 /* PullRequestWorkspaceUIContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FE2795A6AC9FCE5AEAF9257 /* PullRequestWorkspaceUIContractTests.swift */; };
 		FA9133A7B329BD1933D7DE64 /* WorktreeProcessOutputReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C59973D1AB55195042E168F /* WorktreeProcessOutputReader.swift */; };
 		FB0D3C8AFA0194B780E21889 /* TerminalPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6799AE81C5533761C5D201 /* TerminalPanel.swift */; };
+		FDAF2BA4BD7232E38852BE37 /* WorkspaceCommandListTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11F757D4A2BF2E70CF7014BE /* WorkspaceCommandListTests.swift */; };
 		FEF72267272150104B7A8F3E /* ArgusPiAgentStatusPlugin.js in Resources */ = {isa = PBXBuildFile; fileRef = EB86E7E260A69A54EFC15308 /* ArgusPiAgentStatusPlugin.js */; };
 		FFAE950F38C88E4897FEF00C /* WorktreeSetupManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD2A418CDB3425D339C36B6 /* WorktreeSetupManagerTests.swift */; };
 		FFBDCD8429853973D6C39753 /* AgentStatusStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 916EC158787B40AD0A9CC20D /* AgentStatusStore.swift */; };
@@ -295,12 +324,11 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		D03A01000000000000000002 /* NewWorkspaceSheet+Choices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NewWorkspaceSheet+Choices.swift"; sourceTree = "<group>"; };
-		AB739136C32C4C10AC183842 /* StackWorkspaceCreationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackWorkspaceCreationTests.swift; sourceTree = "<group>"; };
-		AB739136C32C4C10AC183844 /* WorkspaceStackUIContractTests+Creation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspaceStackUIContractTests+Creation.swift"; sourceTree = "<group>"; };
 		0163CE072B8461A861431A19 /* GitTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitTestSupport.swift; sourceTree = "<group>"; };
 		021986DA7812FCB17C12FC29 /* GitPreviewErrorPropagationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitPreviewErrorPropagationTests.swift; sourceTree = "<group>"; };
+		03AF9B35C2FC36882BFB549C /* check_backend_pty.cpython-314.pyc */ = {isa = PBXFileReference; path = "check_backend_pty.cpython-314.pyc"; sourceTree = "<group>"; };
 		0418377FEC3C8161DF8DF2FA /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
+		04772374136B87D47384F9F0 /* check_stop_recovery.cpython-314.pyc */ = {isa = PBXFileReference; path = "check_stop_recovery.cpython-314.pyc"; sourceTree = "<group>"; };
 		04A77AE31C15EB2829A05321 /* MacOS27UIContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacOS27UIContractTests.swift; sourceTree = "<group>"; };
 		063FB1ED7149ED958918434B /* AgentStatusSocketTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentStatusSocketTests.swift; sourceTree = "<group>"; };
 		0874A663598ED4B3DC8DDCB0 /* AppSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsTests.swift; sourceTree = "<group>"; };
@@ -316,6 +344,7 @@
 		0F8DC3D70F2D5B9E7C22810E /* WorkspacePresentationUIContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePresentationUIContractTests.swift; sourceTree = "<group>"; };
 		10818EB6FE9BF83CFC040732 /* ArgusApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArgusApp.swift; sourceTree = "<group>"; };
 		10EBB5B9672D03C89A4A05E5 /* GitHubPullRequestService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubPullRequestService.swift; sourceTree = "<group>"; };
+		11F757D4A2BF2E70CF7014BE /* WorkspaceCommandListTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceCommandListTests.swift; sourceTree = "<group>"; };
 		125D3A1015BB9B1284254961 /* WorktreeService+PullRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorktreeService+PullRequest.swift"; sourceTree = "<group>"; };
 		131D9C2E0E23FC1E68151005 /* TerminalSurfaceGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSurfaceGeometryTests.swift; sourceTree = "<group>"; };
 		13B8200F602B2E637431B245 /* WorkspaceItemDeletionConfirmation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceItemDeletionConfirmation.swift; sourceTree = "<group>"; };
@@ -323,7 +352,11 @@
 		1645605131C8A8280C0D73CC /* ArgusDiffInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArgusDiffInput.swift; sourceTree = "<group>"; };
 		16B9FAB1109B3A420ADD6DC4 /* GitStatusService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusService.swift; sourceTree = "<group>"; };
 		172F49E4DC138F5AEEE1E515 /* MainWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
+		179C29ADF29352FC5DCDACDA /* AgentSocketFraming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSocketFraming.swift; sourceTree = "<group>"; };
+		1852F87E503B25B5EF5630EC /* WorkspaceStackUIContractTests+Creation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspaceStackUIContractTests+Creation.swift"; sourceTree = "<group>"; };
+		18CEC2C4ABBB5016B268EEA9 /* TerminalEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalEnvironment.swift; sourceTree = "<group>"; };
 		1A268687E6FB693A77166E11 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		1A72E7ECE0270C0848C8D615 /* WorkspaceCommandRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceCommandRuntime.swift; sourceTree = "<group>"; };
 		1A9A2C48FE8D4F787DCC3CB7 /* AgentSocketProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSocketProtocol.swift; sourceTree = "<group>"; };
 		1AD2A418CDB3425D339C36B6 /* WorktreeSetupManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeSetupManagerTests.swift; sourceTree = "<group>"; };
 		1E15708EB64323E1C352E321 /* PullRequestStatusServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PullRequestStatusServiceTests.swift; sourceTree = "<group>"; };
@@ -368,12 +401,16 @@
 		3CF9D7E08152AE8C5202373F /* KiloIntegrationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KiloIntegrationServiceTests.swift; sourceTree = "<group>"; };
 		3D74EFE13FBE5E49414DB592 /* GitPreviewPanelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitPreviewPanelTests.swift; sourceTree = "<group>"; };
 		3E9B5A9FCD2CC6DE79DDC392 /* WorkspacePullRequestStatusModelQuotaTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePullRequestStatusModelQuotaTests.swift; sourceTree = "<group>"; };
+		40334572574BA40417DE0ACC /* ArgusPiAgentStatusPlugin-1.15.0.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "ArgusPiAgentStatusPlugin-1.15.0.js"; sourceTree = "<group>"; };
+		4072B6C75D724CA88EEED63E /* synthetic_pi_stand_in.cpython-314.pyc */ = {isa = PBXFileReference; path = "synthetic_pi_stand_in.cpython-314.pyc"; sourceTree = "<group>"; };
 		42040B76D2872AC71249796C /* GitStatusParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusParser.swift; sourceTree = "<group>"; };
 		4522B14CD49E7A2F3CC4AD86 /* BrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserView.swift; sourceTree = "<group>"; };
+		45C341561E793A8AE9D1AC0D /* test_writer_provenance.cpython-314.pyc */ = {isa = PBXFileReference; path = "test_writer_provenance.cpython-314.pyc"; sourceTree = "<group>"; };
 		470C27E1E483568C99FF880E /* GitPreviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitPreviewService.swift; sourceTree = "<group>"; };
 		472043D4B02CE69C1201A0D8 /* GitHubPullRequestStatusResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubPullRequestStatusResponse.swift; sourceTree = "<group>"; };
 		485F571F1FA56170BBCB7BDF /* ExternalProcess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalProcess.swift; sourceTree = "<group>"; };
 		48D51FA32A28AC4619FBC667 /* WorkspaceStackObservationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStackObservationTests.swift; sourceTree = "<group>"; };
+		49D1B3C4AB28842A19C16717 /* WorkspaceCommandSetupIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceCommandSetupIntegrationTests.swift; sourceTree = "<group>"; };
 		4ACADA277A151829471507F9 /* WorkspacePullRequestStatusModel+LocalContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspacePullRequestStatusModel+LocalContext.swift"; sourceTree = "<group>"; };
 		4B65BCC437F1421231D69ACC /* GitStatusViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusViewModel.swift; sourceTree = "<group>"; };
 		4B8AA912E36F6B912DF8F8D2 /* BrowserPanelConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserPanelConfiguration.swift; sourceTree = "<group>"; };
@@ -402,7 +439,9 @@
 		5AAB858D417F64FAAE7EA512 /* WorkspacePullRequestStatusFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePullRequestStatusFixtures.swift; sourceTree = "<group>"; };
 		5B15831275B325CA2E8A4D69 /* SidebarDivider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarDivider.swift; sourceTree = "<group>"; };
 		5B4D60E83B20F24AA92F8F19 /* TitlebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitlebarView.swift; sourceTree = "<group>"; };
+		5D1A3065B0B5364A5D74FAA8 /* WorkspaceCommandPayloads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceCommandPayloads.swift; sourceTree = "<group>"; };
 		5D812F4D5C1A2D2C30CB00B4 /* PullRequestStatusUIContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PullRequestStatusUIContractTests.swift; sourceTree = "<group>"; };
+		5F509AAAEF59301767234CF4 /* WorkspaceCommandCreateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceCommandCreateTests.swift; sourceTree = "<group>"; };
 		5F828578257356A65F90D274 /* BranchAvailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BranchAvailabilityTests.swift; sourceTree = "<group>"; };
 		5FDD710DA80C6A08EDC5A86D /* TerminalFileDropTargetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalFileDropTargetTests.swift; sourceTree = "<group>"; };
 		6043F6D86FDDF36460856A66 /* WorkspacePullRequestLocalInputs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePullRequestLocalInputs.swift; sourceTree = "<group>"; };
@@ -429,6 +468,8 @@
 		71046139E7FD2CB143551E37 /* ArgusDiffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArgusDiffView.swift; sourceTree = "<group>"; };
 		71A8BDF388CA15280ADB2F01 /* GitStatusPresentationEdgeCaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusPresentationEdgeCaseTests.swift; sourceTree = "<group>"; };
 		72002094AF11DDFDB9C89C08 /* WindowFocusAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowFocusAppearance.swift; sourceTree = "<group>"; };
+		74E3D505C68B4B3F47FF6B11 /* NewWorkspaceSheet+Choices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NewWorkspaceSheet+Choices.swift"; sourceTree = "<group>"; };
+		753854D7F099D8497E727D7B /* ArgusSocketProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArgusSocketProtocol.swift; sourceTree = "<group>"; };
 		75E5C691A8EE5685548AEBE8 /* ArgusDiffRenderingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArgusDiffRenderingTests.swift; sourceTree = "<group>"; };
 		765F5DFD4CF9D655D663E212 /* GitStatusServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusServiceTests.swift; sourceTree = "<group>"; };
 		766D499B513D46D821809F08 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -439,6 +480,7 @@
 		7D08217127D0DB6ED44164BD /* GitStatusAutoRefreshTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusAutoRefreshTests.swift; sourceTree = "<group>"; };
 		7E5CB1EAA0A66B7411EB8C71 /* Panel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panel.swift; sourceTree = "<group>"; };
 		80EE2E74B39FEB342DB83A41 /* WorkspaceStackPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStackPersistenceTests.swift; sourceTree = "<group>"; };
+		80F61CD808317F709A4E88A5 /* ArgusSocketLineBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArgusSocketLineBuffer.swift; sourceTree = "<group>"; };
 		84191554144B687CFE12B3AE /* BranchNameSuggestionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BranchNameSuggestionTests.swift; sourceTree = "<group>"; };
 		84E7834A6BDEE19731655855 /* PullRequestStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PullRequestStatusView.swift; sourceTree = "<group>"; };
 		853A4CD540E21C6486C3F99A /* WorktreeSetupTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeSetupTestSupport.swift; sourceTree = "<group>"; };
@@ -453,9 +495,11 @@
 		8E17B082BF0CDF58B4771512 /* PullRequestStatusServiceFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PullRequestStatusServiceFixtures.swift; sourceTree = "<group>"; };
 		8E1B1E1D880023440A0258DC /* AppSettingsSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsSessionTests.swift; sourceTree = "<group>"; };
 		8E306A62F476E14142539F06 /* WorkspacePullRequestStatusModel+Requests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspacePullRequestStatusModel+Requests.swift"; sourceTree = "<group>"; };
+		8EF512E5AB557B4CCBA878F8 /* WorkspaceCommandSetupOrderingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceCommandSetupOrderingTests.swift; sourceTree = "<group>"; };
 		90EDB050956169889F8EF128 /* GitPreviewService+Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GitPreviewService+Models.swift"; sourceTree = "<group>"; };
 		916EC158787B40AD0A9CC20D /* AgentStatusStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentStatusStore.swift; sourceTree = "<group>"; };
 		925161D329354881878FAB0E /* WorktreeService+Discovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorktreeService+Discovery.swift"; sourceTree = "<group>"; };
+		925F7CDE6C95D2792B854A22 /* WorkspaceCommandRejectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceCommandRejectionTests.swift; sourceTree = "<group>"; };
 		92C39B1185261DF074BBA419 /* GitHubPullRequestStatusDecoder+Batch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GitHubPullRequestStatusDecoder+Batch.swift"; sourceTree = "<group>"; };
 		93A28C47CFFC35C8515E0B8F /* GhosttyConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhosttyConfig.swift; sourceTree = "<group>"; };
 		93BB47420C5E72E32FA26F97 /* WorktreeBranchUniquenessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeBranchUniquenessTests.swift; sourceTree = "<group>"; };
@@ -465,11 +509,13 @@
 		96EC1387C07FC818EEB2D035 /* WorkspacePullRequestStatusModel+HostBudget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspacePullRequestStatusModel+HostBudget.swift"; sourceTree = "<group>"; };
 		9885A25DA78B0AEE7ED1B123 /* WorkspaceCapacityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceCapacityTests.swift; sourceTree = "<group>"; };
 		993038FF837D5E46395CF754 /* Argus.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Argus.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		99D56CCEE4A059E4A04FF593 /* WorkspaceCommandFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceCommandFixture.swift; sourceTree = "<group>"; };
 		9AC77E6BD2DA84BD16B57890 /* ReleaseNotesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseNotesTests.swift; sourceTree = "<group>"; };
 		9B6D6A19F7B861F4BB9D6279 /* CollectionNameSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionNameSheet.swift; sourceTree = "<group>"; };
 		9C0107B8A19AEA8B1CDB683C /* ExistingBranchWorktreeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExistingBranchWorktreeTests.swift; sourceTree = "<group>"; };
 		9CB13ABE54299959FD8A14E1 /* SidebarNavigationDragging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNavigationDragging.swift; sourceTree = "<group>"; };
 		A04D862809818007329A335B /* BrowserPanelUIContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserPanelUIContractTests.swift; sourceTree = "<group>"; };
+		A06AC1BC7EF1C774C902D400 /* test_lifecycle.cpython-314.pyc */ = {isa = PBXFileReference; path = "test_lifecycle.cpython-314.pyc"; sourceTree = "<group>"; };
 		A0DE49DF785BEEBDEBA739E8 /* TerminalSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSurface.swift; sourceTree = "<group>"; };
 		A12241B4E1DFAFF468AEC223 /* GitMetadataWatchPathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitMetadataWatchPathTests.swift; sourceTree = "<group>"; };
 		A170B01F39BB2D7F5D058D43 /* RecordedBaseBranchReader+Graphite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecordedBaseBranchReader+Graphite.swift"; sourceTree = "<group>"; };
@@ -496,6 +542,7 @@
 		B8008B75AC97822EFF6C3FE8 /* WorkspaceManager+PullRequestStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspaceManager+PullRequestStatus.swift"; sourceTree = "<group>"; };
 		B82A11967759AA4F1B34B47C /* ContentAreaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentAreaView.swift; sourceTree = "<group>"; };
 		B85B710CD787E14321AB971B /* SidebarStatePersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarStatePersistenceTests.swift; sourceTree = "<group>"; };
+		B8C771D45CD0857E6EF52951 /* check_writer_expiry.cpython-314.pyc */ = {isa = PBXFileReference; path = "check_writer_expiry.cpython-314.pyc"; sourceTree = "<group>"; };
 		B921EB3F145DEF6CD009EAE1 /* BrowserPanelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserPanelTests.swift; sourceTree = "<group>"; };
 		BBAD922CBF0C867C0EDB5DBD /* SidebarView+Header.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SidebarView+Header.swift"; sourceTree = "<group>"; };
 		BC0B9ECA31DC779CDC60C200 /* SidebarState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarState.swift; sourceTree = "<group>"; };
@@ -505,11 +552,13 @@
 		BF53172B91C7A98FE555BB50 /* AgentStatusUIContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentStatusUIContractTests.swift; sourceTree = "<group>"; };
 		BFE2DC12E91B4CA4BEC4B9EC /* BrowserPanelConfigurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserPanelConfigurationTests.swift; sourceTree = "<group>"; };
 		C16CF6DCF77D4D9C9FAC64B0 /* GitStatusSafetyRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusSafetyRegressionTests.swift; sourceTree = "<group>"; };
+		C1ACA8589ADC038CDD1183A8 /* WorkspaceManager+WorktreeAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspaceManager+WorktreeAttachment.swift"; sourceTree = "<group>"; };
 		C20F83AF521A162C854D1D55 /* WorkspaceManager+Navigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspaceManager+Navigation.swift"; sourceTree = "<group>"; };
 		C210ABA91B6569BA149CC920 /* WorkspaceRootMutationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRootMutationTests.swift; sourceTree = "<group>"; };
 		C3425033A6F482EDB6ECD3B8 /* pi-plugin-events.mjs */ = {isa = PBXFileReference; path = "pi-plugin-events.mjs"; sourceTree = "<group>"; };
 		C3C4B6C5B4B41EB345468D1F /* ArgusKiloTurnCompletionPlugin-1.13.0.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "ArgusKiloTurnCompletionPlugin-1.13.0.js"; sourceTree = "<group>"; };
 		C46B327656627D8D71A2C84F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C606483AAA27EB321741ABCF /* test_launcher.cpython-314.pyc */ = {isa = PBXFileReference; path = "test_launcher.cpython-314.pyc"; sourceTree = "<group>"; };
 		C69B34D7D3E65E340C473C43 /* AgentSocketServerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSocketServerTests.swift; sourceTree = "<group>"; };
 		C769DEBE4174CF967355B999 /* DestructiveConfirmation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DestructiveConfirmation.swift; sourceTree = "<group>"; };
 		C93B31BE3628269A47AEA562 /* RecordedBaseBranchReader+Metadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecordedBaseBranchReader+Metadata.swift"; sourceTree = "<group>"; };
@@ -517,11 +566,13 @@
 		CC68E5584DED0324E81CEF34 /* WorkspaceStackNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStackNavigationTests.swift; sourceTree = "<group>"; };
 		CD1784EE26371C0FE0BF4A6D /* GhosttyCallbacks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhosttyCallbacks.swift; sourceTree = "<group>"; };
 		CD6973DE1B19391C64DF8AA0 /* RightSidebarView+WorkspaceFilesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RightSidebarView+WorkspaceFilesViewModel.swift"; sourceTree = "<group>"; };
+		CD6E577B11B2604373AFFB8D /* WorkspaceCommandSocketTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceCommandSocketTests.swift; sourceTree = "<group>"; };
 		CFD5A9A41CC495B226D51D64 /* WorktreeSetupRunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeSetupRunnerTests.swift; sourceTree = "<group>"; };
 		D05ECF72C3B28256B8F34761 /* WorkspaceRootPathUIContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRootPathUIContractTests.swift; sourceTree = "<group>"; };
 		D11FECAF443D881B88A5FD48 /* PiIntegrationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiIntegrationServiceTests.swift; sourceTree = "<group>"; };
 		D1A031E57FC9BCBBCA5EDE23 /* RandomBranchNameGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomBranchNameGeneratorTests.swift; sourceTree = "<group>"; };
 		D2FE31B230E300291D165856 /* GitSidebarView+Content.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GitSidebarView+Content.swift"; sourceTree = "<group>"; };
+		D38D992CA821B5C117645183 /* WorkspaceCommandRuntime+Listing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspaceCommandRuntime+Listing.swift"; sourceTree = "<group>"; };
 		D390522594CBE9CFF8CC5EAC /* WorkspaceStackObservationSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStackObservationSupport.swift; sourceTree = "<group>"; };
 		D39F4DAC6BAE845BAD6CE386 /* WorkspaceStackLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStackLayoutTests.swift; sourceTree = "<group>"; };
 		D3FB117AE6DF223AE2B1A0A0 /* ExistingWorktreeBranchChoiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExistingWorktreeBranchChoiceTests.swift; sourceTree = "<group>"; };
@@ -542,6 +593,7 @@
 		DA7D0BBA1C3E522DF924BE31 /* BrowserPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserPanel.swift; sourceTree = "<group>"; };
 		DC3870BE2DAE279DC4BF8974 /* WorkspaceTitleFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTitleFormatter.swift; sourceTree = "<group>"; };
 		DD4D09EA6FAC693CBEC13B64 /* PullRequestWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PullRequestWorkspace.swift; sourceTree = "<group>"; };
+		DEAB7503BEC5CB09B96DC99A /* WorkspaceCommandProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceCommandProtocol.swift; sourceTree = "<group>"; };
 		DEB0602F7309BA89FFAE52B2 /* WorkspacePullRequestStatusModelSchedulingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePullRequestStatusModelSchedulingTests.swift; sourceTree = "<group>"; };
 		DF06DE9E1E0CE24D69CAB34F /* WorkspaceStackObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStackObservation.swift; sourceTree = "<group>"; };
 		DF6871C0DAE0801D9EAB7457 /* WorkspacePullRequestStatusBatchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePullRequestStatusBatchTests.swift; sourceTree = "<group>"; };
@@ -551,11 +603,14 @@
 		E0A255A12996ADC4CB007D60 /* RecordedBaseBranchReaderTests+Validation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecordedBaseBranchReaderTests+Validation.swift"; sourceTree = "<group>"; };
 		E0D3842CCF936B3706AD24B9 /* WorktreeSetupRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeSetupRunner.swift; sourceTree = "<group>"; };
 		E1902C84B53CB6CA56DE23B2 /* GhosttyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhosttyApp.swift; sourceTree = "<group>"; };
+		E41C71854C68C85690793427 /* WorkspaceCommandRuntime+Resolution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspaceCommandRuntime+Resolution.swift"; sourceTree = "<group>"; };
 		E52E13DF9804EA3070FE3B7F /* WorkspaceFilesViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceFilesViewModelTests.swift; sourceTree = "<group>"; };
 		E5D7B3F92DBE73B7E781F17B /* RecordedBaseBranchReaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordedBaseBranchReaderTests.swift; sourceTree = "<group>"; };
 		E6D28191E019C7FB7E2AE020 /* SidebarLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarLayout.swift; sourceTree = "<group>"; };
 		E7A44AD812BD8090BF9C57C5 /* ExternalProcessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalProcessTests.swift; sourceTree = "<group>"; };
 		E8262E7069B94AF259CF0905 /* GitStatusViewModel+Actions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GitStatusViewModel+Actions.swift"; sourceTree = "<group>"; };
+		E83D86AD318F310D531E89AA /* BaseBranchRecordingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaseBranchRecordingTests.swift; sourceTree = "<group>"; };
+		E91AE5F5A0080B0BAA411546 /* TerminalEnvironmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalEnvironmentTests.swift; sourceTree = "<group>"; };
 		E99665225CC473D2A6CE4991 /* ProjectCollection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectCollection.swift; sourceTree = "<group>"; };
 		E9BCAEFE4ACA1C2C2E921A6A /* WorkspaceTitleFormatterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTitleFormatterTests.swift; sourceTree = "<group>"; };
 		E9D0DF8776EE06581033FF7E /* WorkspacePullRequestStatusModel+Scheduling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspacePullRequestStatusModel+Scheduling.swift"; sourceTree = "<group>"; };
@@ -563,14 +618,17 @@
 		EAEA40E4A41292D6EBE0E95B /* GitStatusUIContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusUIContractTests.swift; sourceTree = "<group>"; };
 		EB86E7E260A69A54EFC15308 /* ArgusPiAgentStatusPlugin.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = ArgusPiAgentStatusPlugin.js; sourceTree = "<group>"; };
 		EBFBCD01970CD5AD9C39793D /* ArgusPiAgentStatusPlugin-1.13.2.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "ArgusPiAgentStatusPlugin-1.13.2.js"; sourceTree = "<group>"; };
+		EC2677B4336D0765347A99D9 /* writer_publication_failure.cpython-314.pyc */ = {isa = PBXFileReference; path = "writer_publication_failure.cpython-314.pyc"; sourceTree = "<group>"; };
 		ED00064FF5E8E3F4C36DAF6B /* TurnCompletionAttentionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurnCompletionAttentionStore.swift; sourceTree = "<group>"; };
 		ED1CFB5B60DC9CCCB94CEADB /* ContentAreaView+SyntaxHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentAreaView+SyntaxHighlighter.swift"; sourceTree = "<group>"; };
 		EDA50BB27255AFF560A99F86 /* LocalBranchPickerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalBranchPickerTests.swift; sourceTree = "<group>"; };
 		EF781F36ADED8076735767AF /* TerminalNSView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalNSView.swift; sourceTree = "<group>"; };
+		F03E7AF8CBE7F10A30D69E60 /* WorkspaceListSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceListSection.swift; sourceTree = "<group>"; };
 		F1DB58B67B915B98FA696DCA /* ContentAreaView+Previews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentAreaView+Previews.swift"; sourceTree = "<group>"; };
 		F4CAD208D03EF627A5AADF06 /* GitStatusAutoRefreshController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusAutoRefreshController.swift; sourceTree = "<group>"; };
 		F8D1C8CBCD5980B96C02A3E7 /* EmptyWorkspaceUIContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyWorkspaceUIContractTests.swift; sourceTree = "<group>"; };
 		FDFDAD7F2D43FC73BD681E75 /* WorktreeSetupLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeSetupLifecycleTests.swift; sourceTree = "<group>"; };
+		FF5A5931709FD52185EFBF7A /* StackWorkspaceCreationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackWorkspaceCreationTests.swift; sourceTree = "<group>"; };
 		FFEDE6A5A2B6B85C812CEFAC /* SourceContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceContract.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -601,6 +659,7 @@
 				0163CE072B8461A861431A19 /* GitTestSupport.swift */,
 				FFEDE6A5A2B6B85C812CEFAC /* SourceContract.swift */,
 				AEAE4423E7B2D58539509C36 /* StackRepositoryFixture.swift */,
+				99D56CCEE4A059E4A04FF593 /* WorkspaceCommandFixture.swift */,
 				D390522594CBE9CFF8CC5EAC /* WorkspaceStackObservationSupport.swift */,
 				3C3304745D72EFF2A2FD6153 /* WorkspaceStackTestFixture.swift */,
 			);
@@ -610,6 +669,7 @@
 		061231AC08CCEFEFF787F838 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				179C29ADF29352FC5DCDACDA /* AgentSocketFraming.swift */,
 				1A9A2C48FE8D4F787DCC3CB7 /* AgentSocketProtocol.swift */,
 				53CB9B33F335E72D861FBF52 /* AgentSocketServer.swift */,
 				BE9456CE11D12038D4B1F242 /* AgentStatusRuntime.swift */,
@@ -639,12 +699,17 @@
 				C93B31BE3628269A47AEA562 /* RecordedBaseBranchReader+Metadata.swift */,
 				34A303612085FE84C91B6BDD /* ReleaseNotesService.swift */,
 				ED00064FF5E8E3F4C36DAF6B /* TurnCompletionAttentionStore.swift */,
+				DEAB7503BEC5CB09B96DC99A /* WorkspaceCommandProtocol.swift */,
+				1A72E7ECE0270C0848C8D615 /* WorkspaceCommandRuntime.swift */,
+				D38D992CA821B5C117645183 /* WorkspaceCommandRuntime+Listing.swift */,
+				E41C71854C68C85690793427 /* WorkspaceCommandRuntime+Resolution.swift */,
 				D91C4B07F7CA247F3E95F11A /* WorkspaceManager.swift */,
 				B46C97F9FA44DC08473F8ED2 /* WorkspaceManager+Collections.swift */,
 				C20F83AF521A162C854D1D55 /* WorkspaceManager+Navigation.swift */,
 				9444730F6777142B0328C4AF /* WorkspaceManager+Projects.swift */,
 				B8008B75AC97822EFF6C3FE8 /* WorkspaceManager+PullRequestStatus.swift */,
 				898E8C7AEA7C4F68E0459162 /* WorkspaceManager+Stacks.swift */,
+				C1ACA8589ADC038CDD1183A8 /* WorkspaceManager+WorktreeAttachment.swift */,
 				1E45E51DE999EF67A4AC5038 /* WorkspaceManager+WorktreeSetup.swift */,
 				6043F6D86FDDF36460856A66 /* WorkspacePullRequestLocalInputs.swift */,
 				23A0C3FBC86ABC165464D970 /* WorkspacePullRequestStatusModel.swift */,
@@ -695,6 +760,7 @@
 			children = (
 				38DCF298AC0714118EE1F5BC /* ArgusPiAgentStatusPlugin-1.13.0.js */,
 				EBFBCD01970CD5AD9C39793D /* ArgusPiAgentStatusPlugin-1.13.2.js */,
+				40334572574BA40417DE0ACC /* ArgusPiAgentStatusPlugin-1.15.0.js */,
 			);
 			path = Fixtures;
 			sourceTree = "<group>";
@@ -708,6 +774,17 @@
 				BF53172B91C7A98FE555BB50 /* AgentStatusUIContractTests.swift */,
 			);
 			path = AgentStatusTests;
+			sourceTree = "<group>";
+		};
+		1FA3C75E980316C6B4F04BDF /* __pycache__ */ = {
+			isa = PBXGroup;
+			children = (
+				4072B6C75D724CA88EEED63E /* synthetic_pi_stand_in.cpython-314.pyc */,
+				C606483AAA27EB321741ABCF /* test_launcher.cpython-314.pyc */,
+				A06AC1BC7EF1C774C902D400 /* test_lifecycle.cpython-314.pyc */,
+				45C341561E793A8AE9D1AC0D /* test_writer_provenance.cpython-314.pyc */,
+			);
+			path = __pycache__;
 			sourceTree = "<group>";
 		};
 		234C02C2B7CA13C56AF9B10C /* WorkspaceTests */ = {
@@ -730,6 +807,7 @@
 				0D13D93F55EB4E125C14ACAA /* SidebarNavigationDraggingTests.swift */,
 				3A92C35C28C472DB330BB838 /* SidebarNavigationDropDeliveryTests.swift */,
 				B85B710CD787E14321AB971B /* SidebarStatePersistenceTests.swift */,
+				E91AE5F5A0080B0BAA411546 /* TerminalEnvironmentTests.swift */,
 				5FDD710DA80C6A08EDC5A86D /* TerminalFileDropTargetTests.swift */,
 				131D9C2E0E23FC1E68151005 /* TerminalSurfaceGeometryTests.swift */,
 				4EC88B0BFC64101A7C347EDB /* WindowFocusAppearanceTests.swift */,
@@ -742,7 +820,7 @@
 				CC68E5584DED0324E81CEF34 /* WorkspaceStackNavigationTests.swift */,
 				48D51FA32A28AC4619FBC667 /* WorkspaceStackObservationTests.swift */,
 				367F2C98E2416C8C6EBCA0F6 /* WorkspaceStackUIContractTests.swift */,
-				AB739136C32C4C10AC183844 /* WorkspaceStackUIContractTests+Creation.swift */,
+				1852F87E503B25B5EF5630EC /* WorkspaceStackUIContractTests+Creation.swift */,
 				50C95ED19A79999FCE8827F9 /* WorkspaceStackUIContractTests+Relationships.swift */,
 				95D7FCE69AC486FA39A5DFBA /* WorkspaceTabNavigationTests.swift */,
 				E9BCAEFE4ACA1C2C2E921A6A /* WorkspaceTitleFormatterTests.swift */,
@@ -770,6 +848,7 @@
 			children = (
 				25C6AD3C8C294A2BC8A3BB19 /* CHANGELOG.md */,
 				5EBA3B7DBE997BEE1E0BC4D6 /* Argus */,
+				66FEA217943576826008CE23 /* ArgusIPC */,
 				FF1EA9BFA94072E6B134224B /* Tests */,
 				47BC0BB82D5E0F1DEC663EAD /* Products */,
 			);
@@ -782,7 +861,7 @@
 				A4805B3F026B11429DBC9070 /* CloseWorkspaceConfirmationView.swift */,
 				704AC69ACE9114900992E244 /* NewProjectSheet.swift */,
 				8C01FB15CE585853A5C6581E /* NewWorkspaceSheet.swift */,
-				D03A01000000000000000002 /* NewWorkspaceSheet+Choices.swift */,
+				74E3D505C68B4B3F47FF6B11 /* NewWorkspaceSheet+Choices.swift */,
 				4FA4A99862B8FD090D3E03DF /* OrphanedWorktreesSheet.swift */,
 				592791F9F27A74E3630CFBDE /* RunningProcessConfirmationView.swift */,
 				26A673793BA15A2530C9474F /* WorktreeSetupSheet.swift */,
@@ -793,12 +872,12 @@
 		3D941654DC03361D12ECA34D /* WorktreeTests */ = {
 			isa = PBXGroup;
 			children = (
+				E83D86AD318F310D531E89AA /* BaseBranchRecordingTests.swift */,
 				5F828578257356A65F90D274 /* BranchAvailabilityTests.swift */,
 				84191554144B687CFE12B3AE /* BranchNameSuggestionTests.swift */,
 				D81A0F7652F3030290E53436 /* CurrentBranchDetectionTests.swift */,
 				D681607918630CD263C690CE /* ExistingBranchPickerTests.swift */,
 				9C0107B8A19AEA8B1CDB683C /* ExistingBranchWorktreeTests.swift */,
-				AB739136C32C4C10AC183842 /* StackWorkspaceCreationTests.swift */,
 				D3FB117AE6DF223AE2B1A0A0 /* ExistingWorktreeBranchChoiceTests.swift */,
 				E7A44AD812BD8090BF9C57C5 /* ExternalProcessTests.swift */,
 				EDA50BB27255AFF560A99F86 /* LocalBranchPickerTests.swift */,
@@ -810,6 +889,7 @@
 				6FE2795A6AC9FCE5AEAF9257 /* PullRequestWorkspaceUIContractTests.swift */,
 				D1A031E57FC9BCBBCA5EDE23 /* RandomBranchNameGeneratorTests.swift */,
 				0A0B59D2D5F42C91DCDAECE1 /* RepositoryRootNormalizationTests.swift */,
+				FF5A5931709FD52185EFBF7A /* StackWorkspaceCreationTests.swift */,
 				33DD4836E8671FB5492642EE /* WorkspacePullRequestLocalInputTests.swift */,
 				DF6871C0DAE0801D9EAB7457 /* WorkspacePullRequestStatusBatchTests.swift */,
 				5AAB858D417F64FAAE7EA512 /* WorkspacePullRequestStatusFixtures.swift */,
@@ -846,6 +926,14 @@
 				240114454020A167A4D5C6A4 /* ArgusTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		4C1140D2A483D64A1EC80EFA /* swift */ = {
+			isa = PBXGroup;
+			children = (
+				9030A03E015070F1D734474C /* __pycache__ */,
+			);
+			path = swift;
 			sourceTree = "<group>";
 		};
 		598F65DDB5FF917F250CA120 /* Sidebar */ = {
@@ -944,12 +1032,25 @@
 			path = Argus;
 			sourceTree = "<group>";
 		};
+		66FEA217943576826008CE23 /* ArgusIPC */ = {
+			isa = PBXGroup;
+			children = (
+				80F61CD808317F709A4E88A5 /* ArgusSocketLineBuffer.swift */,
+				753854D7F099D8497E727D7B /* ArgusSocketProtocol.swift */,
+				5D1A3065B0B5364A5D74FAA8 /* WorkspaceCommandPayloads.swift */,
+				F03E7AF8CBE7F10A30D69E60 /* WorkspaceListSection.swift */,
+			);
+			path = ArgusIPC;
+			sourceTree = "<group>";
+		};
 		68236742397A1CDE1D8CB9B5 /* PiIntegrationTests */ = {
 			isa = PBXGroup;
 			children = (
 				C3425033A6F482EDB6ECD3B8 /* pi-plugin-events.mjs */,
 				D11FECAF443D881B88A5FD48 /* PiIntegrationServiceTests.swift */,
 				194866910E1AF93B3BB64F74 /* Fixtures */,
+				701373E3856AFCE5E8E19564 /* lifecycle */,
+				4C1140D2A483D64A1EC80EFA /* swift */,
 			);
 			path = PiIntegrationTests;
 			sourceTree = "<group>";
@@ -962,6 +1063,14 @@
 				D64C5F69041FA0257B462DF6 /* Fixtures */,
 			);
 			path = KiloIntegrationTests;
+			sourceTree = "<group>";
+		};
+		701373E3856AFCE5E8E19564 /* lifecycle */ = {
+			isa = PBXGroup;
+			children = (
+				1FA3C75E980316C6B4F04BDF /* __pycache__ */,
+			);
+			path = lifecycle;
 			sourceTree = "<group>";
 		};
 		7DD632E6ABDB2D5A6202B887 /* DiffRendering */ = {
@@ -983,6 +1092,17 @@
 				80EE2E74B39FEB342DB83A41 /* WorkspaceStackPersistenceTests.swift */,
 			);
 			path = SessionTests;
+			sourceTree = "<group>";
+		};
+		9030A03E015070F1D734474C /* __pycache__ */ = {
+			isa = PBXGroup;
+			children = (
+				03AF9B35C2FC36882BFB549C /* check_backend_pty.cpython-314.pyc */,
+				04772374136B87D47384F9F0 /* check_stop_recovery.cpython-314.pyc */,
+				B8C771D45CD0857E6EF52951 /* check_writer_expiry.cpython-314.pyc */,
+				EC2677B4336D0765347A99D9 /* writer_publication_failure.cpython-314.pyc */,
+			);
+			path = __pycache__;
 			sourceTree = "<group>";
 		};
 		93BAB8A8D25F41D7072B4882 /* Views */ = {
@@ -1011,6 +1131,7 @@
 				93A28C47CFFC35C8515E0B8F /* GhosttyConfig.swift */,
 				6AAE1F6D2D88EDCBC72EA3AF /* GhosttyInput.swift */,
 				6D768BF4B1DD82D18B53E28F /* TerminalClipboardConfirmation.swift */,
+				18CEC2C4ABBB5016B268EEA9 /* TerminalEnvironment.swift */,
 				EF781F36ADED8076735767AF /* TerminalNSView.swift */,
 				B70FB104B47A1F61D7AA5A8C /* TerminalNSView+FileDrop.swift */,
 				24CFEA98D48AB58A04B6D707 /* TerminalNSViewSupport.swift */,
@@ -1018,6 +1139,19 @@
 				2A66AF57A5A40B3722A56592 /* TerminalView.swift */,
 			);
 			path = Ghostty;
+			sourceTree = "<group>";
+		};
+		B67DE8C2767A8FCCD46E1021 /* WorkspaceCommandTests */ = {
+			isa = PBXGroup;
+			children = (
+				5F509AAAEF59301767234CF4 /* WorkspaceCommandCreateTests.swift */,
+				11F757D4A2BF2E70CF7014BE /* WorkspaceCommandListTests.swift */,
+				925F7CDE6C95D2792B854A22 /* WorkspaceCommandRejectionTests.swift */,
+				49D1B3C4AB28842A19C16717 /* WorkspaceCommandSetupIntegrationTests.swift */,
+				8EF512E5AB557B4CCBA878F8 /* WorkspaceCommandSetupOrderingTests.swift */,
+				CD6E577B11B2604373AFFB8D /* WorkspaceCommandSocketTests.swift */,
+			);
+			path = WorkspaceCommandTests;
 			sourceTree = "<group>";
 		};
 		B6D99B851648B6FDD663F055 /* SettingsTests */ = {
@@ -1111,6 +1245,7 @@
 				B6D99B851648B6FDD663F055 /* SettingsTests */,
 				0589F6E1A15387D609C393C2 /* TestSupport */,
 				3F305EBA3BDB3C7215CBB937 /* TurnCompletionTests */,
+				B67DE8C2767A8FCCD46E1021 /* WorkspaceCommandTests */,
 				234C02C2B7CA13C56AF9B10C /* WorkspaceTests */,
 				3D941654DC03361D12ECA34D /* WorktreeTests */,
 			);
@@ -1219,8 +1354,17 @@
 				5BD7689CFC2FDEE71D53E5A0 /* ArgusKiloTurnCompletionPlugin-1.13.0.js in Resources */,
 				72400ECC9ABB0DEDBDB578CA /* ArgusPiAgentStatusPlugin-1.13.0.js in Resources */,
 				1D0A442D039D75704DE38487 /* ArgusPiAgentStatusPlugin-1.13.2.js in Resources */,
+				91E2F1D54DBF9F417990EAB6 /* ArgusPiAgentStatusPlugin-1.15.0.js in Resources */,
+				E18387F135D3DCC4ED190FCF /* check_backend_pty.cpython-314.pyc in Resources */,
+				15902E9BAA38F163B406EA80 /* check_stop_recovery.cpython-314.pyc in Resources */,
+				E0601A3CBF467D0991C1DE30 /* check_writer_expiry.cpython-314.pyc in Resources */,
 				F4D2852568492A9BA56DC428 /* pi-plugin-events.mjs in Resources */,
 				425A9B597D2205A427ADBF35 /* plugin-events.mjs in Resources */,
+				676770A32E2E91D886FC28D7 /* synthetic_pi_stand_in.cpython-314.pyc in Resources */,
+				38BBBDA03419B3C98D09C960 /* test_launcher.cpython-314.pyc in Resources */,
+				9B717FAC2641108CBEDC3343 /* test_lifecycle.cpython-314.pyc in Resources */,
+				9A0C5FA25210B03FD5507AA0 /* test_writer_provenance.cpython-314.pyc in Resources */,
+				0B288531A6384AB3BE0B427F /* writer_publication_failure.cpython-314.pyc in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1231,6 +1375,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DA8EBDE3D9615CFFC4070291 /* AgentSocketFraming.swift in Sources */,
 				0BA0CCB0D419D3E91B7DD0DB /* AgentSocketProtocol.swift in Sources */,
 				10B09CE9364DF1549BB1A7B2 /* AgentSocketServer.swift in Sources */,
 				946582F28CCD417A6C8F33F3 /* AgentStatus.swift in Sources */,
@@ -1241,6 +1386,8 @@
 				50F6B25472890B2CE7A86800 /* ArgusApp.swift in Sources */,
 				30CB5BDF7A31DE52A0BA63D8 /* ArgusDiffInput.swift in Sources */,
 				934A5237A84E1FFF6CE0571D /* ArgusDiffView.swift in Sources */,
+				0AD9524D83A220F3109144DA /* ArgusSocketLineBuffer.swift in Sources */,
+				5A5F7EA35A41207E047B8910 /* ArgusSocketProtocol.swift in Sources */,
 				BF2202FFE0CAFA09111B2127 /* BrowserPanel.swift in Sources */,
 				4A4B99DDC421F63FA251D902 /* BrowserPanelConfiguration.swift in Sources */,
 				780958478201BE29D14FDE1D /* BrowserView.swift in Sources */,
@@ -1290,8 +1437,8 @@
 				D5D88A30AFF2FCF06E6A710C /* KiloIntegrationService.swift in Sources */,
 				2401E44539747B1C9FDBC5E9 /* MainWindowView.swift in Sources */,
 				E3FCCA98DDAA416589EF30A8 /* NewProjectSheet.swift in Sources */,
+				7E83959394E94BA0EEE4ED9D /* NewWorkspaceSheet+Choices.swift in Sources */,
 				4B7BD698C037E123F109CA97 /* NewWorkspaceSheet.swift in Sources */,
-				D03A01000000000000000001 /* NewWorkspaceSheet+Choices.swift in Sources */,
 				92C213F4093831E8F18EAD07 /* OrphanedWorktreesSheet.swift in Sources */,
 				EF04235849461CCB3B6C16E5 /* Panel.swift in Sources */,
 				2BBA95463C2B5209FB51F312 /* PiIntegrationService.swift in Sources */,
@@ -1333,6 +1480,7 @@
 				01330EDDF1BD8FFBBA86E045 /* SidebarView.swift in Sources */,
 				6A4C05C340641327AC48E31D /* TabBarView.swift in Sources */,
 				0C51FCA86CA2FF57B0C80037 /* TerminalClipboardConfirmation.swift in Sources */,
+				BAC47294DC7B50006EC97E97 /* TerminalEnvironment.swift in Sources */,
 				E1F1C4573873B10B34181A71 /* TerminalNSView+FileDrop.swift in Sources */,
 				731C90BF98E20510EDF3C7AB /* TerminalNSView.swift in Sources */,
 				19931B12DE9DC4CF1FAE8180 /* TerminalNSViewSupport.swift in Sources */,
@@ -1344,12 +1492,19 @@
 				291BF0B79E950A102DF2A76D /* WindowFocusAppearance.swift in Sources */,
 				5833B09BEC6F2B997D15F4BF /* Workspace+Panels.swift in Sources */,
 				7881D1501D4005FC0371E618 /* Workspace.swift in Sources */,
+				104DBD0D752766F49BB55424 /* WorkspaceCommandPayloads.swift in Sources */,
+				B6C65098303B0ED42C81ECC1 /* WorkspaceCommandProtocol.swift in Sources */,
+				ADDF78BDB70E74C239D0564C /* WorkspaceCommandRuntime+Listing.swift in Sources */,
+				D894F4208A18705850E30F10 /* WorkspaceCommandRuntime+Resolution.swift in Sources */,
+				AE933A31DD55C4EB434D5729 /* WorkspaceCommandRuntime.swift in Sources */,
 				6AD570442875DC6B2D9D6581 /* WorkspaceItemDeletionConfirmation.swift in Sources */,
+				A97A00C03009427D6DAC2A06 /* WorkspaceListSection.swift in Sources */,
 				A13DBDF93630FF93663B0998 /* WorkspaceManager+Collections.swift in Sources */,
 				77FD46F97F5A4D65CB9B0FED /* WorkspaceManager+Navigation.swift in Sources */,
 				7D8EED9F1473ED9C8C39AB19 /* WorkspaceManager+Projects.swift in Sources */,
 				A266645E13361239CB453105 /* WorkspaceManager+PullRequestStatus.swift in Sources */,
 				A7400256EFE1F19367C2CBB3 /* WorkspaceManager+Stacks.swift in Sources */,
+				C1C15BD7A41E5FD8DF82A7CA /* WorkspaceManager+WorktreeAttachment.swift in Sources */,
 				EBD78ABBAF499A8A3E1C6BCF /* WorkspaceManager+WorktreeSetup.swift in Sources */,
 				6F37A27F399CF7C90403678B /* WorkspaceManager.swift in Sources */,
 				6CA1AFFE453B09D54FE29053 /* WorkspacePullRequestLocalInputs.swift in Sources */,
@@ -1389,6 +1544,7 @@
 				3E972FEB8E4E16C79E4DC7AD /* AppSettingsSessionTests.swift in Sources */,
 				6B2966BA3AC4CBB303041FF7 /* AppSettingsTests.swift in Sources */,
 				C2E5687B5858D87FC40BAA9E /* ArgusDiffRenderingTests.swift in Sources */,
+				D88755FDB8B9E2D07D54D4DF /* BaseBranchRecordingTests.swift in Sources */,
 				D8D1DE19F62552C5501E47BD /* BranchAvailabilityTests.swift in Sources */,
 				6107C062A10FDF40A50DC40E /* BranchNameSuggestionTests.swift in Sources */,
 				C43B7F5D9A46D2D07CE6668D /* BrowserPanelConfigurationTests.swift in Sources */,
@@ -1401,7 +1557,6 @@
 				0CB71789E21CE29F968F9AEC /* EmptyWorkspaceUIContractTests.swift in Sources */,
 				344B25CC7C2ADD72466CD792 /* ExistingBranchPickerTests.swift in Sources */,
 				F46179E18E48775C783E104A /* ExistingBranchWorktreeTests.swift in Sources */,
-				AB739136C32C4C10AC183841 /* StackWorkspaceCreationTests.swift in Sources */,
 				5B4BB7179424815BEF595AF7 /* ExistingWorktreeBranchChoiceTests.swift in Sources */,
 				56D23E481BAE7617C4CE54B1 /* ExternalProcessTests.swift in Sources */,
 				21B3E316D345B5A2038674EF /* GitBaseBranchMetadataTests.swift in Sources */,
@@ -1461,13 +1616,22 @@
 				B87E14DF8A9A133F597BC3E9 /* SidebarStatePersistenceTests.swift in Sources */,
 				04DCE84FEB30B0CE57BD6213 /* SourceContract.swift in Sources */,
 				D62DC52C2FFDA79E060D8BB4 /* StackRepositoryFixture.swift in Sources */,
+				B04274C27D50C8DF233A77D5 /* StackWorkspaceCreationTests.swift in Sources */,
 				4D1C3908D831F340E8ACEED0 /* TerminalDirectorySnapshotTests.swift in Sources */,
+				4FB1F7AB0C18AAFB1B052D55 /* TerminalEnvironmentTests.swift in Sources */,
 				030AB7C01C25E197E6611D16 /* TerminalFileDropTargetTests.swift in Sources */,
 				020374B2B9276CBEB5F5EC62 /* TerminalSurfaceGeometryTests.swift in Sources */,
 				56965721E49B425A57D89D0C /* TurnCompletionAttentionTests.swift in Sources */,
 				60D35C0C98C048D83AB865C7 /* TurnCompletionUIContractTests.swift in Sources */,
 				E31199E901E44BB6846B8A56 /* WindowFocusAppearanceTests.swift in Sources */,
 				2AAEE988A36D64FD4A61E314 /* WorkspaceCapacityTests.swift in Sources */,
+				2419E166F5544D3F337D4E54 /* WorkspaceCommandCreateTests.swift in Sources */,
+				ECABDEE17F7E6E7FA8F828B8 /* WorkspaceCommandFixture.swift in Sources */,
+				FDAF2BA4BD7232E38852BE37 /* WorkspaceCommandListTests.swift in Sources */,
+				B5B9C70020D71F30834C9B8C /* WorkspaceCommandRejectionTests.swift in Sources */,
+				B59A35BD776DD09F557169D1 /* WorkspaceCommandSetupIntegrationTests.swift in Sources */,
+				1F62348C8D02DDA7DC6B385F /* WorkspaceCommandSetupOrderingTests.swift in Sources */,
+				6A0CEB70A8189209C46FB3A4 /* WorkspaceCommandSocketTests.swift in Sources */,
 				F5AA9A3F590E254CC6F1F5CB /* WorkspaceFilesViewModelTests.swift in Sources */,
 				53722EBA713F08A90ADEE1A5 /* WorkspacePresentationUIContractTests.swift in Sources */,
 				009EDD4EF70E0ECD40403AFD /* WorkspacePullRequestLocalInputTests.swift in Sources */,
@@ -1489,9 +1653,9 @@
 				B16BA47DF803A21B3E1A5E37 /* WorkspaceStackPersistenceTests.swift in Sources */,
 				643D13B7D8C09DA92418288A /* WorkspaceStackServiceTests.swift in Sources */,
 				2266303ED8AE744D12B4504F /* WorkspaceStackTestFixture.swift in Sources */,
+				7E722FBD805FC0C118A44490 /* WorkspaceStackUIContractTests+Creation.swift in Sources */,
 				0232A72E68DA07BD35F5A87D /* WorkspaceStackUIContractTests+Relationships.swift in Sources */,
 				286635CF0AF7DA6124171BA0 /* WorkspaceStackUIContractTests.swift in Sources */,
-				AB739136C32C4C10AC183843 /* WorkspaceStackUIContractTests+Creation.swift in Sources */,
 				247685C4A4ECA874C1C850AD /* WorkspaceTabNavigationTests.swift in Sources */,
 				A65C95F2982AA18D7D80D785 /* WorkspaceTitleFormatterTests.swift in Sources */,
 				19F52C9DA9B94C0CB6CBAA7C /* WorkspaceUIContractTests.swift in Sources */,

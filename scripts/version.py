@@ -12,7 +12,7 @@ from typing import Any, NoReturn
 ROOT = Path(__file__).resolve().parent.parent
 MANIFEST_PATH = ROOT / "VERSION"
 PROJECT_PATH = ROOT / "project.yml"
-CLI_PATH = ROOT / "ArgusCLI" / "main.swift"
+CLI_PATH = ROOT / "ArgusCLICore" / "ArgusCommand.swift"
 PBXPROJ_PATH = ROOT / "Argus.xcodeproj" / "project.pbxproj"
 
 
@@ -62,8 +62,8 @@ def synchronize(version: str, build: int) -> None:
     )
     replace_exact(
         CLI_PATH,
-        r'^(\s*version:\s*)"argus [^"]+"$',
-        rf'\g<1>"argus {version}"',
+        r'^(\s*version:\s*)"argus [^"]+",$',
+        rf'\g<1>"argus {version}",',
         "Companion CLI version",
     )
 
@@ -97,7 +97,7 @@ def verify(version: str, build: int) -> None:
     )
     require_matches(
         CLI_PATH,
-        rf'^\s*version:\s*"argus {re.escape(version)}"$',
+        rf'^\s*version:\s*"argus {re.escape(version)}",$',
         1,
         f"Companion CLI version {version}",
     )

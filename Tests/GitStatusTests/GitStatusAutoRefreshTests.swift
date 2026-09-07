@@ -250,7 +250,7 @@ struct GitStatusAutoRefreshTests {
         let recorder = FSEventTestRecorder()
         let watcher = FSEventsFileWatcher()
         watcher.start(paths: [directory.path]) { paths in
-            recorder.paths.append(contentsOf: paths)
+            recorder.record(paths)
         }
         defer { watcher.stop() }
 
@@ -259,10 +259,7 @@ struct GitStatusAutoRefreshTests {
             atomically: true,
             encoding: .utf8
         )
-        let deadline = ContinuousClock.now + .seconds(3)
-        while recorder.paths.isEmpty && ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(50))
-        }
+        await recorder.waitForEvent()
 
         #expect(!recorder.paths.isEmpty)
         #expect(
@@ -270,6 +267,13 @@ struct GitStatusAutoRefreshTests {
                 $0 == directory.standardizedFileURL.path
                     || $0.hasSuffix("/changed.txt")
             })
+
+        watcher.stop()
+        let countAfterStop = recorder.paths.count
+        try "later change".write(
+            to: directory.appendingPathComponent("after-stop.txt"), atomically: true, encoding: .utf8)
+        await recorder.waitForEvent(after: countAfterStop)
+        #expect(recorder.paths.count == countAfterStop)
     }
 
     private func assertEqual<T: Equatable>(_ actual: T, _ expected: T, _ message: String) {
@@ -279,7 +283,54 @@ struct GitStatusAutoRefreshTests {
 
 @MainActor
 private final class FSEventTestRecorder {
-    var paths: [String] = []
+    private(set) var paths: [String] = []
+    private var waiter: FSEventTestWaiter?
+
+    func record(_ paths: [String]) {
+        guard !paths.isEmpty else { return }
+        self.paths.append(contentsOf: paths)
+        waiter?.finish()
+    }
+
+    func waitForEvent(after count: Int = 0) async {
+        guard paths.count <= count, !Task.isCancelled else { return }
+        let waiter = FSEventTestWaiter()
+        self.waiter = waiter
+        defer { self.waiter = nil }
+        // Native delivery reaches MainActor at utility priority. High-priority
+        // polling can overtake a queued event after actor saturation. Deliver
+        // the unchanged three-second timeout below native callback priority.
+        // Actor saturation may delay both; this is not a hard wall-clock limit.
+        let timeout = Task.detached(priority: .background) {
+            do { try await Task.sleep(for: .seconds(3)) } catch { return }
+            await waiter.finish()
+        }
+        defer { timeout.cancel() }
+        await withTaskCancellationHandler {
+            await waiter.wait()
+        } onCancel: {
+            Task { @MainActor in waiter.finish() }
+        }
+    }
+}
+
+@MainActor
+private final class FSEventTestWaiter {
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var isFinished = false
+
+    func wait() async {
+        await withCheckedContinuation {
+            if isFinished { $0.resume() } else { continuation = $0 }
+        }
+    }
+
+    func finish() {
+        guard !isFinished else { return }
+        isFinished = true
+        continuation?.resume()
+        continuation = nil
+    }
 }
 
 final class RecordingFileSystemEventWatcher: FileSystemEventWatching, @unchecked Sendable {

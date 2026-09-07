@@ -22,6 +22,8 @@ struct ProjectCollectionUITests {
             .environmentObject(manager.settings)
             .environment(WindowFocusState())
             .environment(\.sidebarWidthMetrics, SidebarWidthMetrics(width: width))
+        let restoreAccessibility = try enableNativeAccessibility()
+        defer { restoreAccessibility() }
         let host = NSHostingView(rootView: header)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: width, height: 60),
@@ -65,6 +67,8 @@ struct ProjectCollectionUITests {
         .environment(WindowFocusState())
         .environment(\.sidebarWidthMetrics, SidebarWidthMetrics(width: width))
         .environment(\.sidebarCollectionContentInset, width < 160 ? 0 : 8)
+        let restoreAccessibility = try enableNativeAccessibility()
+        defer { restoreAccessibility() }
         let host = NSHostingView(rootView: row)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: width, height: 100),
@@ -105,6 +109,8 @@ struct ProjectCollectionUITests {
         .environmentObject(manager.settings)
         .environmentObject(attention)
         .environment(WindowFocusState())
+        let restoreAccessibility = try enableNativeAccessibility()
+        defer { restoreAccessibility() }
         let host = NSHostingView(rootView: summary)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 240, height: 80),
@@ -127,6 +133,9 @@ struct ProjectCollectionUITests {
         #expect(manager.selectedWorkspaceId == fixture.child.id)
     }
 
+}
+
+extension ProjectCollectionUITests {
     @Test
     func creationAndExplicitMoveActionsAreWiredToNativeSheetsAndManager() throws {
         let app = try SourceContract("Argus/App/ArgusApp.swift")
@@ -265,5 +274,19 @@ struct ProjectCollectionUITests {
 
     private func accessibilityDescendants(_ object: AnyObject) -> [AnyObject] {
         [object] + (object.accessibilityChildren?() ?? []).flatMap { accessibilityDescendants($0 as AnyObject) }
+    }
+}
+
+extension ProjectCollectionUITests {
+    /// AppKit lazily enables its native AX tree when an accessibility client requests it.
+    /// Unit tests are not an AX client: enable the advertised process-local attribute,
+    /// then restore it. No system preference or Accessibility permission is changed.
+    private func enableNativeAccessibility() throws -> () -> Void {
+        let attribute = NSAccessibility.Attribute(rawValue: "AXEnhancedUserInterface")
+        let application = NSApplication.shared
+        try #require(application.accessibilityIsAttributeSettable(attribute))
+        let previous = application.accessibilityAttributeValue(attribute)
+        application.accessibilitySetValue(true, forAttribute: attribute)
+        return { application.accessibilitySetValue(previous, forAttribute: attribute) }
     }
 }

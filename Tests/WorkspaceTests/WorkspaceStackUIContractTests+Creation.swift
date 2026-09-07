@@ -80,7 +80,7 @@ extension WorkspaceStackUIContractTests {
             [
                 "parentBranch: String? = nil",
                 "parentBranch: parentBranch"
-            ], "addWorkspaceToProject accepts and threads parentBranch to createWorktree")
+            ], "addWorkspaceToProject accepts and threads parentBranch to prepareWorktree")
         let service = try SourceContract("Argus/Services/WorktreeService+Operations.swift")
         service.containsAll(
             [
@@ -93,7 +93,7 @@ extension WorkspaceStackUIContractTests {
                 "Could not record stack parent"
             ], "createWorktree implements stack branch creation with start-point, no-track, and config recording")
         service.contains(
-            "if parentBranch != nil, !createNewBranch {",
-            "service boundary rejects existing-branch mode when parentBranch is supplied")
+            "if parentBranch != nil || startPoint != nil, !createNewBranch {",
+            "service boundary rejects existing-branch mode for both parentBranch and CLI startPoint")
     }
 }

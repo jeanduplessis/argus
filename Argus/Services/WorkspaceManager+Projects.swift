@@ -163,13 +163,17 @@ extension WorkspaceManager {
         }
     }
 
+    /// `startPoint` leaves parent recording to the caller. CLI creation does not select.
     func addWorkspaceToProject(
         _ projectId: UUID,
         branchName: String,
         createNewBranch: Bool = true,
         customTitle: String? = nil,
         parentBranch: String? = nil,
-        collectionId: UUID? = nil
+        collectionId: UUID? = nil,
+        startPoint: String? = nil,
+        selectsNewWorkspace: Bool = true,
+        beforeAutomaticSetup: (@MainActor (Workspace) async -> Void)? = nil
     ) async -> Workspace? {
         lastWorkspaceCreationError = nil
         guard validateCreationDestination(collectionId), workspaces.count < Self.maxWorkspaces,
@@ -180,17 +184,15 @@ extension WorkspaceManager {
         let setupCommand = project.worktreeSetupCommand
         do {
             if createNewBranch {
-                try await worktreeService.ensureBranchNameAvailable(
-                    branchName,
-                    repositoryPath: project.repositoryPath
-                )
+                try await worktreeService.ensureBranchNameAvailable(branchName, repositoryPath: repositoryPath)
             }
             let prepared = try await worktreeService.prepareWorktree(
                 projectId: projectId,
                 repositoryPath: project.repositoryPath,
                 branchName: branchName,
                 createNewBranch: createNewBranch,
-                parentBranch: parentBranch
+                parentBranch: parentBranch,
+                startPoint: startPoint
             )
             return await attachPreparedWorktree(
                 PreparedWorktreeAttachment(
@@ -201,7 +203,9 @@ extension WorkspaceManager {
                     repositoryPath: repositoryPath,
                     reusedExistingWorktree: prepared.reusedExistingWorktree,
                     setupCommand: setupCommand,
-                    collectionId: collectionId
+                    collectionId: collectionId,
+                    selectsNewWorkspace: selectsNewWorkspace,
+                    beforeAutomaticSetup: beforeAutomaticSetup
                 ))
         } catch let error as WorktreeError {
             lastWorkspaceCreationError = error
@@ -211,51 +215,6 @@ extension WorkspaceManager {
             print("Failed to create worktree workspace: \(error.localizedDescription)")
             return nil
         }
-    }
-
-    private struct PreparedWorktreeAttachment {
-        let path: String
-        let branchName: String
-        let customTitle: String?
-        let projectId: UUID
-        let repositoryPath: String
-        let reusedExistingWorktree: Bool
-        let setupCommand: String?
-        let collectionId: UUID?
-    }
-
-    private func attachPreparedWorktree(_ attachment: PreparedWorktreeAttachment) async -> Workspace? {
-        guard validateCreationDestination(attachment.collectionId),
-            let project = projects.first(where: { $0.id == attachment.projectId }),
-            !closingSetupProjectIDs.contains(project.id), !isStoppingAllWorktreeSetups,
-            canonicalPath(project.repositoryPath) == canonicalPath(attachment.repositoryPath),
-            workspaces.count < Self.maxWorkspaces, canClaimWorkspaceRoot(attachment.path)
-        else {
-            let error = lastWorkspaceCreationError
-            await cleanupUnattachedWorktree(
-                path: attachment.path, repositoryPath: attachment.repositoryPath,
-                reusedExistingWorktree: attachment.reusedExistingWorktree)
-            lastWorkspaceCreationError = error
-            return nil
-        }
-
-        let workspace = Workspace(
-            title: attachment.branchName,
-            workingDirectory: attachment.path,
-            projectId: attachment.projectId,
-            branchName: attachment.branchName,
-            workspaceType: .worktree,
-            worktreePath: attachment.path
-        )
-        if let customTitle = attachment.customTitle {
-            workspace.setCustomTitle(customTitle)
-        }
-        workspaces.append(workspace)
-        appendPlacement(workspace.id, to: attachment.collectionId)
-        selectWorkspace(workspace.id)
-        checkpointAndStartSetup(
-            in: workspace, command: attachment.reusedExistingWorktree ? nil : attachment.setupCommand)
-        return workspace
     }
 
     /// Resolves one Pull Request through the active GitHub CLI and attaches

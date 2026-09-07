@@ -7,11 +7,12 @@ extension WorktreeService {
         repositoryPath: String,
         branchName: String,
         createNewBranch: Bool = true,
-        parentBranch: String? = nil
+        parentBranch: String? = nil,
+        startPoint: String? = nil
     ) async throws -> String {
         try await prepareWorktree(
             projectId: projectId, repositoryPath: repositoryPath, branchName: branchName,
-            createNewBranch: createNewBranch, parentBranch: parentBranch
+            createNewBranch: createNewBranch, parentBranch: parentBranch, startPoint: startPoint
         ).path
     }
 
@@ -25,20 +26,21 @@ extension WorktreeService {
         repositoryPath: String,
         branchName: String,
         createNewBranch: Bool = true,
-        parentBranch: String? = nil
+        parentBranch: String? = nil,
+        startPoint: String? = nil
     ) async throws -> PreparedWorktree {
         // Stack creation requires a new branch; reject existing-branch mode at the service boundary.
-        if parentBranch != nil, !createNewBranch {
+        if parentBranch != nil || startPoint != nil, !createNewBranch {
             throw WorktreeError.worktreeCreationFailed("Stack creation requires a new branch")
+        }
+        if parentBranch != nil, startPoint != nil {
+            throw WorktreeError.worktreeCreationFailed("A worktree cannot use both a parent branch and a start point")
         }
         let configuredRemotes = (try? await remoteNames(repositoryPath: repositoryPath)) ?? []
         let remoteNames = Set(configuredRemotes + ["origin"])
         if !createNewBranch,
             let existingPath = try await existingWorktreePath(
-                for: branchName,
-                repositoryPath: repositoryPath,
-                remoteNames: remoteNames
-            )
+                for: branchName, repositoryPath: repositoryPath, remoteNames: remoteNames)
         {
             return PreparedWorktree(path: existingPath, reusedExistingWorktree: true)
         }
@@ -51,9 +53,7 @@ extension WorktreeService {
             .appendingPathComponent(projectId.uuidString, isDirectory: true)
             .appendingPathComponent(uniqueSlug(resolvedBranchName, projectId: projectId), isDirectory: true)
         try FileManager.default.createDirectory(
-            at: worktreeURL.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
+            at: worktreeURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         do {
             var arguments = ["-C", repositoryPath, "worktree", "add"]
             if createNewBranch {
@@ -63,6 +63,9 @@ extension WorktreeService {
                     arguments += ["--no-track", "-b", resolvedBranchName, worktreeURL.path, "refs/heads/\(parent)"]
                 } else {
                     arguments += ["-b", resolvedBranchName, worktreeURL.path]
+                    if let startPoint, !startPoint.isEmpty {
+                        arguments.append(startPoint)
+                    }
                 }
             } else {
                 arguments += [worktreeURL.path, resolvedBranchName]
@@ -288,6 +291,43 @@ extension WorktreeService {
         guard !baseName.isEmpty else { return }
         if existingBranches.contains(baseName) {
             throw WorktreeError.branchAlreadyExists(baseName)
+        }
+    }
+
+    /// Records `baseBranch` as `branch`'s parent in the repository's shared
+    /// local Git configuration — the same declaration Stack discovery reads.
+    ///
+    /// Only branches Argus creates are recorded, and only at creation time, so
+    /// this never rewrites a parent another tool owns.
+    func recordBaseBranch(
+        _ baseBranch: String,
+        forBranch branch: String,
+        repositoryPath: String
+    ) async throws {
+        guard branch != baseBranch,
+            GitReferenceValidation.isValidBranchName(branch),
+            GitReferenceValidation.isValidBranchName(baseBranch)
+        else {
+            throw WorktreeError.baseBranchRecordingFailed(
+                "Invalid branch names: '\(branch)' based on '\(baseBranch)'"
+            )
+        }
+        let key = RecordedBaseBranchConfiguration.key(for: branch)
+        do {
+            do {
+                _ = try await runGit(
+                    args: ["-C", repositoryPath, "config", "--get-all", key],
+                    workingDirectory: repositoryPath)
+                throw WorktreeError.baseBranchRecordingFailed("A parent is already recorded for '\(branch)'")
+            } catch WorktreeError.gitCommandFailed(_, 1) {
+                // Exit 1 means this key is absent. Other read failures must not authorize a write.
+            }
+            _ = try await runGit(
+                args: ["-C", repositoryPath, "config", "--local", key, baseBranch],
+                workingDirectory: repositoryPath
+            )
+        } catch {
+            throw WorktreeError.baseBranchRecordingFailed(error.localizedDescription)
         }
     }
 

@@ -1,11 +1,13 @@
 import Foundation
 
 extension WorkspaceManager {
-    func checkpointAndStartSetup(in workspace: Workspace, command: String?) {
+    func checkpointAndStartSetup(
+        in workspace: Workspace, command: String?, after preparation: Task<Void, Never>? = nil
+    ) {
         guard setupPanel(in: workspace)?.isRunning != true else { return }
         do {
             try saveSession(to: sessionSnapshotURL)
-            startWorktreeSetup(command: command, in: workspace)
+            startWorktreeSetup(command: command, in: workspace, after: preparation)
         } catch {
             // Retain the Workspace, but never execute code before a successful checkpoint.
             if command != nil {
@@ -63,7 +65,9 @@ extension WorkspaceManager {
     }
 
     /// Called only after successful durable attachment of an actually new worktree, or explicit retry.
-    func startWorktreeSetup(command: String?, in workspace: Workspace) {
+    func startWorktreeSetup(
+        command: String?, in workspace: Workspace, after preparation: Task<Void, Never>? = nil
+    ) {
         guard !isStoppingAllWorktreeSetups, !closingSetupWorkspaceIDs.contains(workspace.id),
             let command, (try? WorktreeSetupCommand.validated(command)) != nil,
             let owner = setupOwner(for: workspace), setupPanel(in: workspace)?.isRunning != true
@@ -75,6 +79,9 @@ extension WorkspaceManager {
         let runner = worktreeSetupRunner
         panel.begin(command: command, owner: owner) { [weak self, weak panel] generation, cancellation in
             guard let self, let panel else { return }
+            // Keep the pending Panel/owner synchronous, but serialize app-owned metadata
+            // preparation before any setup process can mutate that same configuration.
+            await preparation?.value
             guard await self.validateSetupOwner(owner), !cancellation.isCancelled,
                 panel.generation == generation, self.setupOwner(for: workspace) == owner,
                 self.project(for: workspace.id)?.worktreeSetupCommand == command,

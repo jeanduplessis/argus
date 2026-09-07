@@ -39,6 +39,9 @@ targets:
             UTTypeConformsTo: [public.data]
             UTTypeDescription: Argus Collection
     sources:
+      - path: ArgusIPC
+        excludes:
+          - "**/.DS_Store"
       - path: Argus
         excludes:
           - "**/.DS_Store"
