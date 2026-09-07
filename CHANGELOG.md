@@ -2,6 +2,20 @@
 
 This file records changes pushed for local Argus releases. New entries use a `YYYY-MM-DD` heading and link to their commit or commits.
 
+## 2026-09-06
+
+- `argus workspace create` now refuses an over-long `--branch` or `--name` up front with a clear invalid parameters message, instead of passing it to Git and reporting a confusing creation failure. ([06e9c53](https://github.com/eshurakov/argus/commit/06e9c53119f7cc70c3215acf12eee8e965603512))
+- When Argus cannot search a Project's branches to pick a name for you, `argus workspace create` now reports that failure. It previously fell back to an unchecked generated name, which could collide with an existing branch and blame you for a name you never chose. ([06e9c53](https://github.com/eshurakov/argus/commit/06e9c53119f7cc70c3215acf12eee8e965603512))
+- Argus and the `argus` command line tool now share one implementation of Socket frame reassembly, and resolving which Project holds a directory no longer rescans every Workspace for each Project. Behavior is unchanged. ([06e9c53](https://github.com/eshurakov/argus/commit/06e9c53119f7cc70c3215acf12eee8e965603512))
+
+## 2026-09-04
+
+- The `argus` command line tool now lists and creates Workspaces in a running Argus. `argus workspace list` prints Projects and their Workspaces in sidebar order, with each Workspace's number, type, and branch, and shows Stack Groups as parent-to-dependent trees including branches that have no open Workspace. `--json` prints the same information for scripts. ([69d3adf](https://github.com/eshurakov/argus/commit/69d3adfbe7dfab5c15d91b101bbe92a9f84359ed))
+- `argus workspace create` adds a Worktree Workspace to a Project. Without options it uses the Project of the terminal you run it in and generates an available branch name; `--project`, `--branch`, and `--name` set those explicitly. Creating a Workspace this way does not move your place in the sidebar, so it is safe to run from an agent's terminal. ([69d3adf](https://github.com/eshurakov/argus/commit/69d3adfbe7dfab5c15d91b101bbe92a9f84359ed))
+- `argus workspace create --from <workspace>` starts the new branch from that Workspace's branch and records it as the parent, so both Workspaces appear together in a Stack Group in the sidebar and Changes compares against the right branch. Use `--from .` for the Workspace you are running in. ([69d3adf](https://github.com/eshurakov/argus/commit/69d3adfbe7dfab5c15d91b101bbe92a9f84359ed))
+- `argus` now works without setup inside an Argus terminal: the bundled command is first on the `PATH` of every shell Argus starts, alongside the existing Argus environment variables. From an ordinary terminal, call it at `Argus.app/Contents/Resources/bin/argus` or symlink it onto your own `PATH`. ([69d3adf](https://github.com/eshurakov/argus/commit/69d3adfbe7dfab5c15d91b101bbe92a9f84359ed))
+- The tool asks Argus for everything and decides nothing itself: names, branches, and `.` are resolved by the app against its live state, and an ambiguous name is refused with the matching candidates instead of a guess. It exits 0 on success, 1 when Argus refuses a request, and 3 when Argus is not running. ([69d3adf](https://github.com/eshurakov/argus/commit/69d3adfbe7dfab5c15d91b101bbe92a9f84359ed))
+
 ## 2026-09-03
 
 - Right-click a Stack Group and choose New Workspace in Stack… to use the existing New Workspace sheet. The new branch starts from the last Workspace branch in the stack's displayed order, and Argus automatically records that parent with `git config --local branch.<new>.base <parent>`. Configuration failures show an error and preserve the branch and any modified worktree. ([ed812e7](https://github.com/jeanduplessis/argus/commit/ed812e79f05352f2419a7270f1b151a4f51a4ec6))
