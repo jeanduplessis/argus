@@ -2,6 +2,12 @@
 
 This file records changes pushed for local Argus releases. New entries use a `YYYY-MM-DD` heading and link to their commit or commits.
 
+## 2026-09-07
+
+- Released Argus 1.16.0 with Workspace-centric Collections, opt-in Worktree Setup, new Workspace creation from Stack Groups, and Companion CLI commands to list and create Workspaces without changing selection. ([1f61534](https://github.com/jeanduplessis/argus/commit/1f615345bfedc5c5a853f50b3d8eb898820f21b6))
+- CLI lists now follow Collection and ungrouped sidebar sections, including Standalone Workspaces and Stacks split across Collections. JSON output uses `sections` instead of the unreleased `projects` format. CLI creation records its branch parent before Worktree Setup runs, preserving setup-written metadata. ([1f61534](https://github.com/jeanduplessis/argus/commit/1f615345bfedc5c5a853f50b3d8eb898820f21b6))
+- Includes the Pi prompt-delay fix, cached Pull Request icon behavior, and Collection drag-and-drop fixes. ([1f61534](https://github.com/jeanduplessis/argus/commit/1f615345bfedc5c5a853f50b3d8eb898820f21b6))
+
 ## 2026-09-06
 
 - Fixed dragging a Workspace onto a Collection header, including empty and collapsed Collections. The header shows a highlight and outline before release, and dropping moves only that Workspace without changing its repository or open content. ([a891418](https://github.com/jeanduplessis/argus/commit/a891418a0a07b548bcca85627e50143e82dda537))
