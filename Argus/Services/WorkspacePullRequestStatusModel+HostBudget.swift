@@ -81,6 +81,7 @@ extension WorkspacePullRequestStatusModel {
             publishHostPauses()
         case .unauthenticated:
             guard let host else { return }
+            invalidateHostEvidence(host)
             var budget = hostBudgets.hosts[host] ?? PullRequestStatusHostBudgetStore.Budget()
             if budget.authenticationRetryAt.map({ $0 > now() }) != true {
                 budget.authenticationFailures = min(budget.authenticationFailures + 1, 3)

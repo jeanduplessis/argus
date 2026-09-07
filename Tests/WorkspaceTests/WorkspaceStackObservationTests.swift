@@ -7,7 +7,7 @@ import Testing
 @MainActor
 struct WorkspaceStackObservationTests {
     @Test
-    func initialReadIsReplacedByPostWatchInventoryWithoutAnotherEvent() async {
+    func initialReadIsReplacedByPostWatchInventoryWithoutAnotherEvent() async throws {
         let fixture = StackObservationFixture()
         defer { fixture.stop() }
         fixture.start()
@@ -17,13 +17,21 @@ struct WorkspaceStackObservationTests {
             worktrees: [WorkspaceStackWorktree(path: "/checkout", branch: "changed-before-watch")],
             parents: ["changed-before-watch": "main", "dependent": "changed-before-watch"]
         )
+        let refresh = StackRefreshRequest {
+            try await fixture.observation.refreshAndWait()
+            #expect(fixture.results == [changed])
+            #expect(fixture.refreshing.last == false)
+        }
+        await waitForStackState { refresh.hasStarted }
         #expect(fixture.watcher.startedPaths.isEmpty)
         await fixture.complete(0, with: fixture.snapshot)
         await waitForStackState { fixture.reader.requests.count == 2 }
         #expect(fixture.watcher.startedPaths == [fixture.snapshot.gitCommonDirectory])
         #expect(fixture.results.isEmpty)
+        #expect(refresh.result == nil)
         #expect(fixture.refreshing.allSatisfy { $0 })
         await fixture.complete(1, with: changed)
+        try await refresh.waitForCompletion()
         #expect(fixture.results == [changed])
         #expect(fixture.refreshing.last == false)
         #expect(fixture.reader.requests.count == 2)
@@ -55,13 +63,17 @@ struct WorkspaceStackObservationTests {
         #expect(fixture.results.count == 2)
     }
 
-    @Test
-    func eventsAndExplicitRequestsCoalesceDuringAnInFlightLoad() async {
+    @Test(arguments: [false, true])
+    func eventsAndExplicitRequestsCoalesceDuringAnInFlightLoad(_ olderReadFails: Bool) async throws {
         let fixture = StackObservationFixture()
         defer { fixture.stop() }
         await fixture.startAndLoad()
         fixture.observation.refresh()
         await waitForStackState { fixture.reader.requests.count == 3 }
+        let refreshes = (0..<2).map { _ in
+            StackRefreshRequest { try await fixture.observation.refreshAndWait() }
+        }
+        await waitForStackState { refreshes.allSatisfy(\.hasStarted) }
         for _ in 0..<4 {
             fixture.watcher.emit([fixture.snapshot.gitCommonDirectory + "/gh-stack"])
             fixture.observation.refresh()
@@ -72,15 +84,70 @@ struct WorkspaceStackObservationTests {
             worktrees: fixture.snapshot.worktrees, parents: fixture.snapshot.parents,
             diagnostics: ["Superseded result"]
         )
-        await fixture.complete(2, with: obsolete)
+        fixture.reader.complete(
+            2, with: olderReadFails ? .failure(StackObservationError.unavailable) : .success(obsolete))
         await waitForStackState { fixture.reader.requests.count == 4 }
         #expect(fixture.results == [fixture.snapshot])
+        #expect(refreshes.allSatisfy { $0.result == nil })
         #expect(fixture.refreshing.last == true)
         await fixture.complete(3, with: fixture.snapshot)
+        for refresh in refreshes { try await refresh.waitForCompletion() }
         await fixture.scheduler.runScheduled()
         #expect(fixture.reader.requests.count == 4)
         #expect(fixture.results == [fixture.snapshot, fixture.snapshot])
         #expect(fixture.refreshing.last == false)
+    }
+
+    @Test(arguments: [0, 1])
+    func cancellingOneAwaiterPreservesSharedFreshRead(_ cancelledIndex: Int) async throws {
+        let fixture = StackObservationFixture()
+        defer { fixture.stop() }
+        await fixture.startAndLoad()
+        let first = StackRefreshRequest { try await fixture.observation.refreshAndWait() }
+        await waitForStackState { fixture.reader.requests.count == 3 }
+        let second = StackRefreshRequest { try await fixture.observation.refreshAndWait() }
+        await waitForStackState { second.hasStarted }
+        let refreshes = [first, second]
+        refreshes[cancelledIndex].cancel()
+        await #expect(throws: CancellationError.self) {
+            try await refreshes[cancelledIndex].waitForCompletion()
+        }
+        let remaining = refreshes[1 - cancelledIndex]
+        #expect(remaining.result == nil)
+        #expect(!fixture.reader.completed.contains(2))
+        await fixture.complete(2, with: fixture.snapshot)
+        await waitForStackState { fixture.reader.requests.count == 4 }
+        #expect(remaining.result == nil)
+        await fixture.complete(3, with: fixture.snapshot)
+        try await remaining.waitForCompletion()
+        #expect(fixture.reader.requests.count == 4)
+        #expect(fixture.results == [fixture.snapshot, fixture.snapshot])
+        #expect(fixture.refreshing.last == false)
+    }
+
+    @Test
+    func cancellationBeforeAwaitedRefreshDoesNotScheduleRead() async {
+        let fixture = StackObservationFixture()
+        defer { fixture.stop() }
+        await fixture.startAndLoad()
+        let refresh = StackRefreshRequest { try await fixture.observation.refreshAndWait() }
+        refresh.cancel()
+        await #expect(throws: CancellationError.self) { try await refresh.waitForCompletion() }
+        #expect(fixture.reader.requests.count == 2)
+        #expect(fixture.refreshing.last == false)
+    }
+
+    @Test(arguments: [false, true])
+    func awaitedRefreshRejectsInactiveObservation(_ previouslyStarted: Bool) async {
+        let fixture = StackObservationFixture()
+        defer { fixture.stop() }
+        if previouslyStarted {
+            await fixture.startAndLoad()
+            fixture.observation.stop()
+        }
+        let refresh = StackRefreshRequest { try await fixture.observation.refreshAndWait() }
+        await #expect(throws: CancellationError.self) { try await refresh.waitForCompletion() }
+        #expect(fixture.reader.requests.count == (previouslyStarted ? 2 : 0))
     }
 
     @Test
@@ -112,165 +179,5 @@ struct WorkspaceStackObservationTests {
         #expect(fixture.reader.requests.count == 5)
         #expect(fixture.scheduler.operation == nil)
         #expect(fixture.watcher.stopCount == 1)
-    }
-}
-
-extension WorkspaceStackObservationTests {
-    @Test
-    func managerStartsExplicitlyAndDiscardsRemovedProjectResults() async throws {
-        let reader = ControlledWorkspaceStackReader()
-        let fixture = try WorkspaceStackTestFixture(reader: reader)
-        defer {
-            fixture.cleanup()
-            reader.cancelAll()
-        }
-        #expect(reader.requests.isEmpty)
-        fixture.manager.startWorkspaceStackObservations()
-        await waitForStackState { reader.requests.count == 1 }
-        #expect(reader.requests == [fixture.project.repositoryPath])
-        #expect(fixture.manager.refreshingWorkspaceStackProjectIds == [fixture.project.id])
-        _ = try fixture.adoptGapWorkspace()
-        #expect(fixture.manager.pendingWorkspaceStackReveal != nil)
-        for workspace in fixture.manager.workspaces { workspace.worktreePath = nil }
-        await fixture.manager.removeProject(fixture.project.id)
-        #expect(fixture.manager.pendingWorkspaceStackReveal == nil)
-        reader.complete(0, with: .success(fixture.snapshot))
-        await waitForStackState { reader.completed.contains(0) }
-        #expect(fixture.manager.workspaceStackSnapshots[fixture.project.id] == nil)
-        #expect(fixture.manager.workspaceStackErrors[fixture.project.id] == nil)
-        #expect(fixture.manager.refreshingWorkspaceStackProjectIds.isEmpty)
-        #expect(fixture.manager.workspaceStackObservations[fixture.project.id] == nil)
-        let addedProject = Project(
-            repositoryPath: fixture.root.appendingPathComponent("added").path, mainBranch: "main")
-        fixture.manager.projects.insert(addedProject, at: 0)
-        await waitForStackState { reader.requests.count == 2 }
-        #expect(reader.requests.last == addedProject.repositoryPath)
-        #expect(fixture.manager.refreshingWorkspaceStackProjectIds == [addedProject.id])
-    }
-
-    @Test
-    func restoredProjectIdentityAndStopRejectOldCompletions() async throws {
-        let reader = ControlledWorkspaceStackReader()
-        let fixture = try WorkspaceStackTestFixture(reader: reader)
-        defer {
-            fixture.cleanup()
-            reader.cancelAll()
-        }
-        let manager = fixture.manager
-        manager.startWorkspaceStackObservations()
-        await waitForStackState { reader.requests.count == 1 }
-        #expect(manager.restoreSession(from: manager.makeSessionSnapshot()))
-        await waitForStackState { reader.requests.count == 2 }
-        #expect(manager.projects.first !== fixture.project)
-        let current = WorkspaceStackSnapshot(
-            gitCommonDirectory: fixture.snapshot.gitCommonDirectory,
-            worktrees: fixture.snapshot.worktrees, parents: fixture.snapshot.parents,
-            diagnostics: ["Replacement Project"]
-        )
-        reader.complete(1, with: .success(current))
-        await waitForStackState { reader.requests.count == 3 }
-        #expect(manager.workspaceStackSnapshots[fixture.project.id] == nil)
-        reader.complete(2, with: .success(current))
-        await waitForStackState { manager.workspaceStackSnapshots[fixture.project.id] == current }
-        reader.complete(0, with: .success(fixture.snapshot))
-        await waitForStackState { reader.completed.contains(0) }
-        #expect(manager.workspaceStackSnapshots[fixture.project.id] == current)
-        let workspace = try #require(
-            manager.adoptOrphanedWorktree(
-                OrphanedWorktreeInfo(
-                    path: fixture.root.appendingPathComponent("gap").path,
-                    branchName: "feature/gap", projectId: fixture.project.id)
-            ))
-        await waitForStackState { reader.requests.count == 4 }
-        #expect(manager.pendingWorkspaceStackReveal?.workspaceId == workspace.id)
-        manager.stopWorkspaceStackObservations()
-        #expect(manager.pendingWorkspaceStackReveal == nil)
-        reader.complete(3, with: .success(fixture.snapshot))
-        await waitForStackState { reader.completed.contains(3) }
-        manager.refreshWorkspaceStacks(in: fixture.project.id)
-        #expect(manager.workspaceStackSnapshots.isEmpty)
-        #expect(manager.workspaceStackErrors.isEmpty)
-        #expect(manager.refreshingWorkspaceStackProjectIds.isEmpty)
-        #expect(reader.requests.count == 4)
-    }
-
-    @Test
-    func refreshKeepsOrderDisclosureAndSelectionAndFallsBackOnIssues() async throws {
-        let reader = ControlledWorkspaceStackReader()
-        let fixture = try WorkspaceStackTestFixture(reader: reader)
-        defer {
-            fixture.cleanup()
-            reader.cancelAll()
-        }
-        let manager = fixture.manager
-        let project = fixture.project
-        let group = try #require(manager.stackGroup(for: fixture.child.id, in: project.id))
-        fixture.collapsedStackIds = [group.id]
-        fixture.isExpanded = false
-        fixture.child.customTitle = "Keep this title"
-        let order = fixture.manualOrder
-        let selection = manager.selectedWorkspaceId
-        let revision = manager.workspaceRevealRevision
-        await reader.startAndLoad(fixture)
-        #expect(fixture.parent.branchName == "feature/parent")
-        #expect(fixture.child.branchName == "feature/child")
-        #expect(fixture.child.customTitle == "Keep this title")
-        #expect(fixture.child.title == "stored-child")
-        manager.refreshWorkspaceStacks(in: project.id)
-        await waitForStackState { reader.requests.count == 3 }
-        #expect(manager.stackGroup(for: fixture.child.id, in: project.id) == group)
-        let unavailable = WorkspaceStackSnapshot(
-            gitCommonDirectory: fixture.snapshot.gitCommonDirectory,
-            worktrees: fixture.snapshot.worktrees, parents: [:],
-            conflicts: ["feature/parent": "Conflicting local tracking"]
-        )
-        reader.complete(2, with: .success(unavailable))
-        await waitForStackState { manager.workspaceStackErrors[project.id] == unavailable.issue }
-        #expect(manager.sidebarItems(for: project) == order.map { .workspace($0) })
-        manager.refreshWorkspaceStacks(in: project.id)
-        await waitForStackState { reader.requests.count == 4 }
-        reader.complete(3, with: .failure(StackObservationError.unavailable))
-        await waitForStackState { manager.workspaceStackSnapshots[project.id] == nil }
-        #expect(manager.workspaceStackErrors[project.id] == "Stack discovery unavailable")
-        #expect(manager.sidebarItems(for: project) == order.map { .workspace($0) })
-        manager.refreshWorkspaceStacks(in: project.id)
-        await waitForStackState { reader.requests.count == 5 }
-        reader.complete(4, with: .success(fixture.snapshot))
-        await waitForStackState { manager.workspaceStackErrors[project.id] == nil }
-        #expect(manager.stackGroup(for: fixture.child.id, in: project.id) == group)
-        #expect(fixture.manualOrder == order)
-        #expect(fixture.collapsedStackIds == [group.id])
-        #expect(!fixture.isExpanded)
-        #expect(manager.selectedWorkspaceId == selection)
-        #expect(manager.workspaceRevealRevision == revision)
-    }
-
-    @Test(arguments: [false, true])
-    func unavailableInventoryCancelsPendingRevealBeforeRetry(_ metadataIssue: Bool) async throws {
-        let reader = ControlledWorkspaceStackReader()
-        let fixture = try WorkspaceStackTestFixture(reader: reader)
-        defer {
-            fixture.cleanup()
-            reader.cancelAll()
-        }
-        await reader.startAndLoad(fixture)
-        let manager = fixture.manager
-        _ = try fixture.adoptGapWorkspace()
-        await waitForStackState { reader.requests.count == 3 }
-        let unavailable = WorkspaceStackSnapshot(
-            gitCommonDirectory: fixture.snapshot.gitCommonDirectory,
-            worktrees: fixture.snapshotIncludingGap.worktrees, parents: [:],
-            diagnostics: ["Unavailable local tracking"]
-        )
-        reader.complete(2, with: metadataIssue ? .success(unavailable) : .failure(StackObservationError.unavailable))
-        await waitForStackState { manager.workspaceStackErrors[fixture.project.id] != nil }
-        #expect(manager.pendingWorkspaceStackReveal == nil)
-        let revision = manager.workspaceRevealRevision
-        manager.refreshWorkspaceStacks(in: fixture.project.id)
-        await waitForStackState { reader.requests.count == 4 }
-        reader.complete(3, with: .success(fixture.snapshotIncludingGap))
-        await waitForStackState { !manager.refreshingWorkspaceStackProjectIds.contains(fixture.project.id) }
-        #expect(fixture.collapsedStackIds == [fixture.stackId])
-        #expect(manager.workspaceRevealRevision == revision)
     }
 }

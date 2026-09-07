@@ -118,20 +118,33 @@ final class WorkspacePullRequestStatusModel: ObservableObject {
     }
 
     func refresh(workspaceID: UUID) {
-        guard isEnabled, isActive, let entry = entries[workspaceID],
-            let project = projects[entry.target.projectID],
-            pending[workspaceID] != .manual,
-            prepared[workspaceID]?.kind != .manual,
-            running[workspaceID].map({ !$0.invalidated && $0.request.kind == .manual }) != true
-        else { return }
-        guard hostPause(project) == nil else {
-            publishBlocked(workspaceID, project: project)
-            return
+        refresh(workspaceIDs: [workspaceID])
+    }
+
+    func refresh(workspaceIDs: [UUID]) {
+        guard isEnabled, isActive else { return }
+        let requestedIDs = Set(workspaceIDs)
+        var projectRequests: [UUID: [UUID]] = [:]
+        for id in targetOrder where requestedIDs.contains(id) {
+            guard let entry = entries[id], let project = projects[entry.target.projectID],
+                pending[id] != .manual, prepared[id]?.kind != .manual,
+                running[id].map({ !$0.invalidated && $0.request.kind == .manual }) != true
+            else { continue }
+            guard hostPause(project) == nil else {
+                publishBlocked(id, project: project)
+                continue
+            }
+            projectRequests[entry.target.projectID, default: []].append(id)
         }
-        invalidateRepository(project)
-        invalidateRequest(workspaceID)
-        enqueue(workspaceID, kind: .manual)
-        drainQueue()
+        for (projectID, ids) in projectRequests {
+            guard let project = projects[projectID] else { continue }
+            invalidateRepository(project)
+            for id in ids {
+                invalidateRequest(id)
+                enqueue(id, kind: .manual)
+            }
+        }
+        if !projectRequests.isEmpty { drainQueue() }
     }
 
     func refreshProject(projectID: UUID) {
@@ -162,6 +175,7 @@ final class WorkspacePullRequestStatusModel: ObservableObject {
     }
 
     func publish(_ state: WorkspacePullRequestState, for workspaceID: UUID) {
+        if state.error != nil || state.status == nil { invalidateEvidence(workspaceID) }
         guard entries[workspaceID] != nil, states[workspaceID] != state else { return }
         states[workspaceID] = state
     }

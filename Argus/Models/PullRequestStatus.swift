@@ -147,6 +147,22 @@ struct PullRequestBranchContext: Equatable, Sendable {
     let branchName: String
     let headCommitObjectID: String
     let upstreamRepository: RepositoryIdentity?
+    let upstreamRemoteName: String?
+    let upstreamMergeReference: String?
+
+    init(
+        branchName: String,
+        headCommitObjectID: String,
+        upstreamRepository: RepositoryIdentity?,
+        upstreamRemoteName: String? = nil,
+        upstreamMergeReference: String? = nil
+    ) {
+        self.branchName = branchName
+        self.headCommitObjectID = headCommitObjectID
+        self.upstreamRepository = upstreamRepository
+        self.upstreamRemoteName = upstreamRemoteName
+        self.upstreamMergeReference = upstreamMergeReference
+    }
 }
 
 enum PullRequestStatusError: Error, LocalizedError, Equatable, Sendable {

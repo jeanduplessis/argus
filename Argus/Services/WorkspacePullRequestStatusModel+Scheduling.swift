@@ -6,6 +6,7 @@ extension WorkspacePullRequestStatusModel {
         let owner = UUID()
         var observation = UUID()
         var branch: PullRequestBranchContext?
+        var evidence: WorkspacePullRequestEvidence?
         var nextDiscovery = Date.distantPast
         var nextRefresh = Date.distantPast
     }
@@ -52,6 +53,7 @@ extension WorkspacePullRequestStatusModel {
         let owner: UUID
         let projectOwner: UUID
         let revision: UUID
+        let observation: UUID
         let branch: PullRequestBranchContext
         let fetchRemotes: [GitFetchRemote]
         let kind: RequestKind
@@ -220,6 +222,7 @@ extension WorkspacePullRequestStatusModel {
         project.resolutionID = nil
         for id in targetOrder where entries[id]?.target.repositoryPath == project.repositoryPath {
             guard let projectID = entries[id]?.target.projectID, projects[projectID] === project else { continue }
+            invalidateEvidence(id)
             if running[id] != nil || prepared[id] != nil {
                 let kind = pending[id] ?? prepared[id]?.kind ?? running[id]?.request.kind ?? .discover
                 invalidateRequest(id)

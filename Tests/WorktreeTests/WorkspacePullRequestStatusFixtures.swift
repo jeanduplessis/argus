@@ -64,14 +64,15 @@ final class PullRequestRuntimeFixture {
 
     nonisolated static func status(
         branch: String, repository: RepositoryIdentity, number: Int = 1,
-        head: String = String(repeating: "a", count: 40), lifecycle: PullRequestLifecycle = .open
+        head: String = String(repeating: "a", count: 40), base: String = "main",
+        lifecycle: PullRequestLifecycle = .open
     ) -> PullRequestStatus {
         PullRequestStatus(
             identity: PullRequestIdentity(repository: repository, number: number),
             url: URL(
                 string: "https://\(repository.host)/\(repository.owner)/\(repository.repositoryName)/pull/\(number)")!,
             title: "Pull Request for \(branch)", headBranchName: branch, headCommitObjectID: head,
-            headRepository: repository, baseBranchName: "main", lifecycle: lifecycle, review: .required,
+            headRepository: repository, baseBranchName: base, lifecycle: lifecycle, review: .required,
             checks: PullRequestChecks(pending: 1)
         )
     }

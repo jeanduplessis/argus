@@ -68,7 +68,7 @@ extension GitStatusPresentationTests {
     }
 
     @Test
-    func unresolvableRecordedStackBaseFallsBackToTheConfiguredBase() async throws {
+    func missingRecordedStackBaseMakesOnlyAgainstBaseUnavailable() async throws {
         let repo = try stackedRepository(prefix: "argus-presentation-stack-unresolvable")
         defer { repo.remove() }
         try run(
@@ -79,12 +79,12 @@ extension GitStatusPresentationTests {
 
         let summary = try await stackedSummary(repo: repo, configuredBaseBranch: "main")
 
-        assertEqual(summary.sections.last?.title, "Against main", "an unresolvable recorded base is ignored")
-        assertEqual(
-            summary.againstBaseFiles.map(\.path),
-            ["child.txt", "parent.txt"],
-            "the configured base comparison keeps the parent branch's commits"
-        )
+        #expect(summary.sections.last?.title == "Against merged-and-deleted")
+        #expect(!summary.againstBaseState.isAvailable)
+        #expect(summary.againstBaseFiles.isEmpty)
+        #expect(summary.sections.dropLast().allSatisfy { $0.state.isAvailable })
+        #expect(summary.sections.last?.comparisonContext?.recordedParentBranch == "merged-and-deleted")
+        #expect(summary.sections.last?.comparisonContext?.resolvedRef == nil)
     }
 
     @Test

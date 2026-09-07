@@ -137,6 +137,18 @@ extension WorkspaceManager {
         entry.observation.refresh()
     }
 
+    func refreshWorkspaceStacksAndWait(in projectId: UUID) async throws {
+        try Task.checkCancellation()
+        guard let entry = workspaceStackObservations[projectId],
+            ownsWorkspaceStackObservation(entry.observation, for: entry.project)
+        else { throw CancellationError() }
+        try await entry.observation.refreshAndWait()
+        try Task.checkCancellation()
+        guard ownsWorkspaceStackObservation(entry.observation, for: entry.project) else {
+            throw CancellationError()
+        }
+    }
+
     func reconcileWorkspaceStackObservations() {
         guard isObservingWorkspaceStacks else { return }
         for (projectId, entry) in workspaceStackObservations

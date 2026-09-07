@@ -60,6 +60,7 @@ extension WorkspacePullRequestStatusModel {
                 owner: entry.owner,
                 projectOwner: project.owner,
                 revision: project.revision,
+                observation: entry.observation,
                 branch: branch,
                 fetchRemotes: project.fetchRemotes ?? [],
                 kind: kind,
@@ -107,8 +108,7 @@ extension WorkspacePullRequestStatusModel {
     }
 
     func normalizedRemotes(_ remotes: [GitFetchRemote]) -> [GitFetchRemote] {
-        remotes.map { GitFetchRemote(name: $0.name, fetchURLs: $0.fetchURLs.sorted()) }
-            .sorted { $0.name < $1.name }
+        GitFetchRemote.normalized(remotes)
     }
 
     func observe(_ branch: PullRequestBranchContext, workspaceID: UUID) {
@@ -117,6 +117,9 @@ extension WorkspacePullRequestStatusModel {
         let associationChanged =
             previous?.branchName != branch.branchName
             || previous?.upstreamRepository != branch.upstreamRepository
+            || previous?.upstreamRemoteName != branch.upstreamRemoteName
+            || previous?.upstreamMergeReference != branch.upstreamMergeReference
+        if previous != branch { invalidateEvidence(workspaceID) }
         if associationChanged { clearAssociation(workspaceID) }
         entries[workspaceID]?.branch = branch
         var state = states[workspaceID] ?? WorkspacePullRequestState()

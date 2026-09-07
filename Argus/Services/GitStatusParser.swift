@@ -54,7 +54,10 @@ struct GitStatusPorcelainParser: Sendable {
     }
 
     private static func parseBranch(_ line: String, into status: inout GitStatusRawSnapshot) {
-        if line.hasPrefix("# branch.head ") {
+        if line.hasPrefix("# branch.oid ") {
+            let value = String(line.dropFirst("# branch.oid ".count))
+            status.headCommitID = value == "(initial)" ? nil : value
+        } else if line.hasPrefix("# branch.head ") {
             let value = String(line.dropFirst("# branch.head ".count))
             status.branchName = value == "(detached)" ? nil : value
         } else if line.hasPrefix("# branch.upstream ") {
@@ -195,6 +198,7 @@ struct GitStatusPorcelainParser: Sendable {
 
 struct GitStatusRawSnapshot: Equatable, Sendable {
     var branchName: String?
+    var headCommitID: String?
     var upstreamName: String?
     var aheadCount = 0
     var behindCount = 0

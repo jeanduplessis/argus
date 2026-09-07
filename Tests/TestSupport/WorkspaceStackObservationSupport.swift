@@ -38,6 +38,34 @@ final class ControlledWorkspaceStackReader: WorkspaceStackReading {
     }
 }
 
+@MainActor
+final class StackRefreshRequest {
+    private(set) var hasStarted = false
+    private(set) var result: Result<Void, Error>?
+    private var task: Task<Void, Never>?
+
+    init(_ operation: @escaping @MainActor @Sendable () async throws -> Void) {
+        task = Task { [weak self] in
+            self?.hasStarted = true
+            do {
+                try await operation()
+                self?.result = .success(())
+            } catch {
+                self?.result = .failure(error)
+            }
+        }
+    }
+
+    deinit { task?.cancel() }
+
+    func cancel() { task?.cancel() }
+
+    func waitForCompletion() async throws {
+        await waitForStackState { self.result != nil }
+        try #require(result).get()
+    }
+}
+
 enum StackObservationError: LocalizedError {
     case unavailable
     var errorDescription: String? { "Stack discovery unavailable" }

@@ -52,8 +52,16 @@ struct RecordedBaseBranchReaderTests {
         let snapshot = try fixture.read()
         #expect(snapshot.parents == (try fixture.read(checkout: linked)).parents)
         #expect(snapshot.parents == ["main": "main-parent", "topic/child": "linked-parent", "unchecked": "common-only"])
-        #expect(snapshot.worktrees.contains(GitWorktreeBranch(path: fixture.repository.path, branch: "main")))
-        #expect(snapshot.worktrees.contains(GitWorktreeBranch(path: linked.path, branch: "topic/child")))
+        #expect(
+            snapshot.worktrees.contains(
+                GitWorktreeBranch(
+                    path: fixture.repository.path, branch: "main",
+                    headCommitID: try fixture.git(["rev-parse", "HEAD"]))))
+        #expect(
+            snapshot.worktrees.contains(
+                GitWorktreeBranch(
+                    path: linked.path, branch: "topic/child",
+                    headCommitID: try fixture.git(["rev-parse", "HEAD"], checkout: linked))))
         #expect(snapshot.issue == nil)
         try fixture.git(["config", "branch.topic/child.base", "bad..parent"])
         #expect(try fixture.read() == snapshot)
@@ -78,11 +86,20 @@ struct RecordedBaseBranchReaderTests {
         let rootSnapshot = try fixture.read()
         #expect(
             rootSnapshot.worktrees == [
-                GitWorktreeBranch(path: fixture.repository.path, branch: "main"),
-                GitWorktreeBranch(path: linked.path, branch: "child")
+                GitWorktreeBranch(
+                    path: fixture.repository.path, branch: "main",
+                    headCommitID: try fixture.git(["rev-parse", "HEAD"])),
+                GitWorktreeBranch(
+                    path: linked.path, branch: "child",
+                    headCommitID: try fixture.git(["rev-parse", "HEAD"], checkout: linked))
             ])
         let linkedSnapshot = try fixture.read(checkout: linked)
-        #expect(linkedSnapshot.worktrees == [GitWorktreeBranch(path: linked.path, branch: "child")])
+        #expect(
+            linkedSnapshot.worktrees == [
+                GitWorktreeBranch(
+                    path: linked.path, branch: "child",
+                    headCommitID: try fixture.git(["rev-parse", "HEAD"], checkout: linked))
+            ])
         #expect(linkedSnapshot.parents == rootSnapshot.parents)
         #expect(linkedSnapshot.parents == ["main": "main-parent", "child": "linked-parent"])
         let nested = fixture.repository.appendingPathComponent("nested directory")
@@ -109,7 +126,11 @@ struct RecordedBaseBranchReaderTests {
         let before = try fixture.files()
         let snapshot = try fixture.read(checkout: linked)
         #expect(snapshot.parents == ["child": "linked-parent", "independent": "other"])
-        #expect(snapshot.worktrees.contains(GitWorktreeBranch(path: linked.path, branch: "child")))
+        #expect(
+            snapshot.worktrees.contains(
+                GitWorktreeBranch(
+                    path: linked.path, branch: "child",
+                    headCommitID: try fixture.git(["rev-parse", "HEAD"], checkout: linked))))
         #expect(!snapshot.diagnostics.isEmpty)
         #expect(try fixture.files() == before)
     }

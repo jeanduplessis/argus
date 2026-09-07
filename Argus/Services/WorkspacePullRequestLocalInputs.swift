@@ -128,20 +128,24 @@ struct WorktreePullRequestLocalInputProvider: WorkspacePullRequestLocalInputProv
         else {
             throw PullRequestStatusError.repositoryUnavailable("The worktree has no readable branch and HEAD commit.")
         }
+        let remoteName = try await configuration("branch.\(branch).remote", path: path)
+        let mergeReference = try await configuration("branch.\(branch).merge", path: path)
         return PullRequestBranchContext(
             branchName: branch,
             headCommitObjectID: head.lowercased(),
-            upstreamRepository: try await upstreamRepository(path: path, branch: branch)
+            upstreamRepository: try await upstreamRepository(
+                path: path, remoteName: remoteName, mergeReference: mergeReference),
+            upstreamRemoteName: remoteName,
+            upstreamMergeReference: mergeReference
         )
     }
 
     private func upstreamRepository(
         path: String,
-        branch: String
+        remoteName: String?,
+        mergeReference: String?
     ) async throws -> RepositoryIdentity? {
-        guard let remoteName = try await configuration("branch.\(branch).remote", path: path),
-            remoteName != ".",
-            let mergeReference = try await configuration("branch.\(branch).merge", path: path),
+        guard let remoteName, remoteName != ".", let mergeReference,
             mergeReference.hasPrefix("refs/heads/")
         else { return nil }
         let fetchURLs = try await configuration("remote.\(remoteName).url", path: path, all: true)

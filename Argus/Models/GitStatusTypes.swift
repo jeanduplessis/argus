@@ -144,8 +144,25 @@ struct GitChangeSection: Equatable, Sendable, Identifiable {
     let totalCount: Int
     let files: [GitFileChange]
     let state: GitChangeSectionState
+    let comparisonContext: GitBaseComparisonContext?
 
     var id: GitChangeSectionKind { kind }
+
+    init(
+        kind: GitChangeSectionKind,
+        title: String,
+        totalCount: Int,
+        files: [GitFileChange],
+        state: GitChangeSectionState,
+        comparisonContext: GitBaseComparisonContext? = nil
+    ) {
+        self.kind = kind
+        self.title = title
+        self.totalCount = totalCount
+        self.files = files
+        self.state = state
+        self.comparisonContext = comparisonContext
+    }
 }
 
 /// Changes View presentation settings carried by a Git status request.

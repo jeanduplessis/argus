@@ -21,6 +21,7 @@ extension RecordedBaseBranchReaderTests {
         let fixture = try RecordedParentRepository(objectFormat: objectFormat)
         let parents = Dictionary(uniqueKeysWithValues: (0..<20).map { ("child-\($0)", "parent-\($0)") })
         for (branch, parent) in parents { try fixture.graphite(branch, parent: parent) }
+        let checkoutHead = try fixture.git(["rev-parse", "HEAD"])
         let trace = fixture.directory.appendingPathComponent("git-trace.jsonl")
 
         let snapshot = try fixture.read(environmentOverrides: ["GIT_TRACE2_EVENT": trace.path])
@@ -29,11 +30,25 @@ extension RecordedBaseBranchReaderTests {
             return event?["event"] as? String == "start" ? event?["argv"] as? [String] : nil
         }
 
+        let headValidationCommands = commands.filter {
+            $0.dropFirst().elementsEqual(["rev-parse", "--verify", "--quiet", "HEAD^{commit}"])
+        }
+        let objectCommands = commands.filter { $0.dropFirst().first == "cat-file" }.map { Array($0.dropFirst()) }
+
         #expect(snapshot.parents == parents)
         #expect(snapshot.issue == nil)
+        #expect(snapshot.worktrees.first?.headCommitID == checkoutHead)
         #expect(!commands.isEmpty)
-        let commandLimit = objectFormat == "sha1" ? 12 : 14
-        #expect(commands.count <= commandLimit)
+        #expect(headValidationCommands.count == 1)
+        let objectIDBytes = objectFormat == "sha1" ? 40 : 64
+        let referencesPerBatch = ExternalProcess.maximumInputBytes / (objectIDBytes + 1)
+        let batchCount = (parents.count + referencesPerBatch - 1) / referencesPerBatch
+        let expectedObjectCommands = Array(
+            repeating: [["cat-file", "--batch-check"], ["cat-file", "--batch"]], count: batchCount
+        ).flatMap { $0 }
+        #expect(objectCommands == expectedObjectCommands)
+        let nonHeadCommandLimit = objectFormat == "sha1" ? 12 : 14
+        #expect(commands.count - headValidationCommands.count <= nonHeadCommandLimit)
     }
 
     @Test

@@ -544,28 +544,7 @@ final class WorkspaceManager: ObservableObject {
 
     @discardableResult
     func removeWorkspaceFromState(_ workspaceId: UUID) -> Bool {
-        guard let index = workspaces.firstIndex(where: { $0.id == workspaceId }) else { return false }
-
-        let workspace = workspaces[index]
-        guard workspace.runningSetupCount == 0, canRemoveWorkspaces([workspaceId]) else { return false }
-        let previousOrder = sidebarOrderedWorkspaces.map(\.workspace.id)
-
-        turnCompletionRuntime?.removeAttention(forWorkspace: workspaceId)
-        agentStatusRuntime?.removeStatuses(forWorkspace: workspaceId)
-
-        // Close all panels in the workspace before removal.
-        for panelId in workspace.panelOrder {
-            workspace.closeTab(panelId)
-        }
-
-        workspace.worktreeSetupPanel = nil
-
-        removePlacement(workspaceId)
-
-        workspaces.remove(at: index)
-
-        restoreSelectionAfterRemovingWorkspaces([workspaceId], previousOrder: previousOrder)
-        return true
+        removeWorkspacesFromState([workspaceId])
     }
 
     func notifyWorkspaceContextChanged() {

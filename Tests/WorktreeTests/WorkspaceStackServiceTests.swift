@@ -13,7 +13,12 @@ struct WorkspaceStackServiceTests {
         let before = try fixture.files()
         let snapshot = try await fixture.service.load(repositoryPath: fixture.repository.path)
         #expect(snapshot.gitCommonDirectory == fixture.repository.appendingPathComponent(".git").path)
-        #expect(snapshot.worktrees == [GitWorktreeBranch(path: fixture.repository.path, branch: "main")])
+        #expect(
+            snapshot.worktrees == [
+                GitWorktreeBranch(
+                    path: fixture.repository.path, branch: "main",
+                    headCommitID: try TestGit.run(["rev-parse", "HEAD"], in: fixture.repository))
+            ])
         #expect(snapshot.parents.isEmpty)
         #expect(snapshot.issue == nil)
         #expect(try fixture.files() == before)
@@ -62,9 +67,21 @@ struct WorkspaceStackServiceTests {
         #expect(snapshot == (try fixture.reader.read(repositoryPath: source.path)))
         #expect(snapshot.issue == nil)
         #expect(snapshot.parents == ["feature/one": "develop", "feature/two": "feature/one"])
-        #expect(snapshot.worktrees.contains(GitWorktreeBranch(path: source.path, branch: "checkout-moved")))
-        #expect(snapshot.worktrees.contains(GitWorktreeBranch(path: first.path, branch: "feature/one")))
-        #expect(snapshot.worktrees.contains(GitWorktreeBranch(path: second.path, branch: "feature/two")))
+        #expect(
+            snapshot.worktrees.contains(
+                GitWorktreeBranch(
+                    path: source.path, branch: "checkout-moved",
+                    headCommitID: try TestGit.run(["rev-parse", "HEAD"], in: source))))
+        #expect(
+            snapshot.worktrees.contains(
+                GitWorktreeBranch(
+                    path: first.path, branch: "feature/one",
+                    headCommitID: try TestGit.run(["rev-parse", "HEAD"], in: first))))
+        #expect(
+            snapshot.worktrees.contains(
+                GitWorktreeBranch(
+                    path: second.path, branch: "feature/two",
+                    headCommitID: try TestGit.run(["rev-parse", "HEAD"], in: second))))
     }
 
     @Test(arguments: [
@@ -81,7 +98,12 @@ struct WorkspaceStackServiceTests {
         #expect(snapshot.parents.isEmpty)
         #expect(snapshot.issue == "Local gh-stack metadata is malformed.")
         #expect(snapshot.gitCommonDirectory == fixture.repository.appendingPathComponent(".git").path)
-        #expect(snapshot.worktrees == [GitWorktreeBranch(path: fixture.repository.path, branch: "main")])
+        #expect(
+            snapshot.worktrees == [
+                GitWorktreeBranch(
+                    path: fixture.repository.path, branch: "main",
+                    headCommitID: try TestGit.run(["rev-parse", "HEAD"], in: fixture.repository))
+            ])
     }
 
     @Test(arguments: [-1, 0, 2])
@@ -225,11 +247,21 @@ extension WorkspaceStackServiceTests {
         #expect(snapshot.gitCommonDirectory == directory.path)
         #expect(snapshot.issue == nil)
         #expect(snapshot.parents.isEmpty)
-        #expect(snapshot.worktrees == [GitWorktreeBranch(path: fixture.repository.path, branch: "main")])
+        #expect(
+            snapshot.worktrees == [
+                GitWorktreeBranch(
+                    path: fixture.repository.path, branch: "main",
+                    headCommitID: try TestGit.run(["rev-parse", "HEAD"], in: fixture.repository))
+            ])
         let linked = try fixture.addWorktree(branch: "child")
         let linkedSnapshot = try await fixture.service.load(repositoryPath: linked.path)
         #expect(linkedSnapshot.gitCommonDirectory == directory.path)
-        #expect(linkedSnapshot.worktrees == [GitWorktreeBranch(path: linked.path, branch: "child")])
+        #expect(
+            linkedSnapshot.worktrees == [
+                GitWorktreeBranch(
+                    path: linked.path, branch: "child",
+                    headCommitID: try TestGit.run(["rev-parse", "HEAD"], in: linked))
+            ])
         #expect(linkedSnapshot.parents.isEmpty)
     }
 
@@ -262,8 +294,16 @@ extension WorkspaceStackServiceTests {
         #expect(snapshot.issue == nil)
         #expect(snapshot.gitCommonDirectory == fixture.repository.appendingPathComponent(".git").path)
         #expect(snapshot.worktrees.count == 3)
-        #expect(snapshot.worktrees.contains(GitWorktreeBranch(path: spaced.path, branch: "topic/one")))
-        #expect(snapshot.worktrees.contains(GitWorktreeBranch(path: detached.path, branch: nil)))
+        #expect(
+            snapshot.worktrees.contains(
+                GitWorktreeBranch(
+                    path: spaced.path, branch: "topic/one",
+                    headCommitID: try TestGit.run(["rev-parse", "HEAD"], in: spaced))))
+        #expect(
+            snapshot.worktrees.contains(
+                GitWorktreeBranch(
+                    path: detached.path, branch: nil,
+                    headCommitID: try TestGit.run(["rev-parse", "HEAD"], in: detached))))
         #expect(!snapshot.worktrees.contains { $0.path == removed.path || $0.path == unregistered.path })
     }
 

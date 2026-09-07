@@ -55,11 +55,11 @@ enum PullRequestStatusSignal: Equatable {
 }
 
 extension PullRequestLifecycle {
-    var symbolName: String {
+    var systemSymbolName: String? {
         switch self {
         case .open: "arrow.triangle.branch"
         case .draft: "circle.dotted"
-        case .merged: "arrow.triangle.merge"
+        case .merged: nil
         case .closed: "xmark.circle"
         }
     }
@@ -71,6 +71,49 @@ extension PullRequestLifecycle {
         case .merged: .purple
         case .closed: .red
         }
+    }
+}
+
+struct PullRequestLifecycleIcon: View {
+    let lifecycle: PullRequestLifecycle
+
+    var body: some View {
+        Group {
+            if lifecycle == .merged {
+                MergedPullRequestGlyph()
+            } else if let systemSymbolName = lifecycle.systemSymbolName {
+                Image(systemName: systemSymbolName)
+            }
+        }
+        .foregroundStyle(lifecycle.color)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct MergedPullRequestGlyph: View {
+    var body: some View {
+        ZStack {
+            Path { path in
+                path.move(to: CGPoint(x: 3, y: 5))
+                path.addCurve(
+                    to: CGPoint(x: 8, y: 11),
+                    control1: CGPoint(x: 3, y: 8),
+                    control2: CGPoint(x: 4, y: 10)
+                )
+                path.move(to: CGPoint(x: 13, y: 5))
+                path.addCurve(
+                    to: CGPoint(x: 8, y: 11),
+                    control1: CGPoint(x: 13, y: 8),
+                    control2: CGPoint(x: 12, y: 10)
+                )
+            }
+            .stroke(style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
+
+            Circle().frame(width: 4, height: 4).position(x: 3, y: 3)
+            Circle().frame(width: 4, height: 4).position(x: 13, y: 3)
+            Circle().frame(width: 4, height: 4).position(x: 8, y: 13)
+        }
+        .frame(width: 16, height: 16)
     }
 }
 
@@ -156,9 +199,7 @@ struct PullRequestStatusIcon: View {
                 .foregroundStyle(signal.color)
                 .accessibilityHidden(true)
         } else if let status = presentation.state.status {
-            Image(systemName: status.lifecycle.symbolName)
-                .foregroundStyle(status.lifecycle.color)
-                .accessibilityHidden(true)
+            PullRequestLifecycleIcon(lifecycle: status.lifecycle)
         } else {
             Image(systemName: "questionmark.circle")
                 .foregroundStyle(.secondary)
@@ -213,9 +254,7 @@ struct PullRequestStatusSummary: View {
     private func header(_ presentation: PullRequestStatusPresentation) -> some View {
         HStack(spacing: 8) {
             if let status = presentation.state.status {
-                Image(systemName: status.lifecycle.symbolName)
-                    .foregroundStyle(status.lifecycle.color)
-                    .accessibilityHidden(true)
+                PullRequestLifecycleIcon(lifecycle: status.lifecycle)
             }
             Text(presentation.title).font(.system(size: 12, weight: .semibold))
             Spacer(minLength: 0)

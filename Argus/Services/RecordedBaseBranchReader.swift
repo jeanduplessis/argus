@@ -190,7 +190,12 @@ struct RecordedBaseBranchReader: Sendable {
             branch = String(output.dropFirst("refs/heads/".count).dropLast())
         }
         if let branch { try Self.validateBranchName(branch, failure: .discovery) }
-        return (GitWorktreeBranch(path: topLevel.path, branch: branch), gitDirectory)
+        let head = try git(["rev-parse", "--verify", "--quiet", "HEAD^{commit}"], at: path)
+        let commitID =
+            head.terminationStatus == 0
+            ? Self.commitID(String(data: head.stdout, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines))
+            : nil
+        return (GitWorktreeBranch(path: topLevel.path, branch: branch, headCommitID: commitID), gitDirectory)
     }
 
     private func gitDirectoryOutput(_ argument: String, at path: String) throws -> URL {
@@ -222,10 +227,20 @@ struct RecordedBaseBranchReader: Sendable {
             let branchField = fields.first { $0.hasPrefix("branch refs/heads/") }
             let branch = branchField.map { String($0.dropFirst("branch refs/heads/".count)) }
             if let branch { try Self.validateBranchName(branch, failure: .discovery) }
-            let worktree = GitWorktreeBranch(path: url.path, branch: fields.contains("detached") ? nil : branch)
+            let head = fields.first { $0.hasPrefix("HEAD ") }.map { String($0.dropFirst("HEAD ".count)) }
+            let worktree = GitWorktreeBranch(
+                path: url.path, branch: fields.contains("detached") ? nil : branch, headCommitID: Self.commitID(head))
             if index == 0 { main = worktree } else { linked.append(worktree) }
         }
         return (main, linked)
+    }
+
+    private static func commitID(_ value: String?) -> String? {
+        guard let value, value.count == 40 || value.count == 64,
+            value.utf8.allSatisfy({ (48...57).contains($0) || (65...70).contains($0) || (97...102).contains($0) }),
+            value.contains(where: { $0 != "0" })
+        else { return nil }
+        return value.lowercased()
     }
 
     static func parentName(_ value: String, branch: String, failure: RecordedBaseBranchReadError) throws -> String? {

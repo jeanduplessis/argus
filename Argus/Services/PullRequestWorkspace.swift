@@ -344,6 +344,7 @@ struct PullRequestWorkspaceMetadata: Equatable, Sendable {
 enum GitReferenceValidation {
     static func isValidBranchName(_ value: String) -> Bool {
         guard !value.isEmpty,
+            value != "HEAD",
             value != ".",
             value != "..",
             !value.hasPrefix("-"),
@@ -378,6 +379,11 @@ enum GitReferenceValidation {
 struct GitFetchRemote: Equatable, Sendable {
     let name: String
     let fetchURLs: [String]
+
+    static func normalized(_ remotes: [GitFetchRemote]) -> [GitFetchRemote] {
+        remotes.map { GitFetchRemote(name: $0.name, fetchURLs: $0.fetchURLs.sorted()) }
+            .sorted { $0.name < $1.name }
+    }
 }
 
 /// Result of Pull Request head preparation.

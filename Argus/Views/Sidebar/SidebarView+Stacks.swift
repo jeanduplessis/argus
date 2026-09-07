@@ -29,6 +29,8 @@ extension ProjectSection {
                         Divider()
                     }
                     workspaceMoveActions(for: workspaceId, isStack: true)
+                    Divider()
+                    WorkspaceStackGroupMenuItems(group: group, projectID: project.id)
                 }
 
                 if workspaceManager.repositoryDisclosure(for: project.id, in: collectionId).collapsedStackIds.contains(
@@ -44,22 +46,51 @@ extension ProjectSection {
     }
 
     private func stackRows(_ group: WorkspaceStackGroup) -> some View {
-        VStack(spacing: 0) {
-            ForEach(group.rows) { row in
-                if let workspaceId = row.workspaceId {
-                    workspaceRow(workspaceId, stackRelationship: row)
-                } else {
-                    SidebarStackReferenceRow(row: row)
+        TimelineView(.periodic(from: .now, by: 1)) { clock in
+            let candidates = workspaceManager.mergedStackCandidates(
+                in: group.workspaceIds, statusModel: pullRequestStatusModel, at: clock.date
+            )
+            let protectedIDs = Set(
+                group.workspaceIds.filter { workspaceID in
+                    let workspace = workspaceManager.workspaces.first(where: { $0.id == workspaceID })
+                    let isSelected = workspaceID == workspaceManager.selectedWorkspaceId
+                    return isSelected || (workspace?.runningProcessCount ?? 0) > 0
+                })
+            let isExpanded = expandedMergedStackIds.contains(group.id)
+            let merged = WorkspaceStackMergedPresentation(
+                group: group, verifiedMergedWorkspaceIDs: Set(candidates.map(\.id)),
+                protectedWorkspaceIDs: protectedIDs, isExpanded: isExpanded
+            )
+            let foldableIDs = Set(merged.mergedWorkspaceIDs).subtracting(protectedIDs)
+            VStack(spacing: 0) {
+                if !foldableIDs.isEmpty {
+                    SidebarMergedStackDisclosure(count: foldableIDs.count, isExpanded: isExpanded) {
+                        if !expandedMergedStackIds.insert(group.id).inserted {
+                            expandedMergedStackIds.remove(group.id)
+                        }
+                    }
+                }
+                if !merged.hiddenWorkspaceIDs.isEmpty {
+                    SidebarCollapsedWorkspaceSummary(workspaceIds: Array(merged.hiddenWorkspaceIDs))
+                }
+                ForEach(group.rows) { row in
+                    if let workspaceId = row.workspaceId {
+                        if !merged.hiddenWorkspaceIDs.contains(workspaceId) {
+                            workspaceRow(workspaceId, stackRelationship: row)
+                        }
+                    } else {
+                        SidebarStackReferenceRow(row: row)
+                    }
                 }
             }
-        }
-        .environment(\.sidebarStackLaneCount, group.laneCount)
-        .overlayPreferenceValue(SidebarStackRowAnchors.self) { anchors in
-            SidebarStackRail(
-                rows: group.rows,
-                anchors: anchors,
-                selectedWorkspaceId: workspaceManager.selectedWorkspaceId
-            )
+            .environment(\.sidebarStackLaneCount, group.laneCount)
+            .overlayPreferenceValue(SidebarStackRowAnchors.self) { anchors in
+                SidebarStackRail(
+                    rows: group.rows,
+                    anchors: anchors,
+                    selectedWorkspaceId: workspaceManager.selectedWorkspaceId
+                )
+            }
         }
     }
 }

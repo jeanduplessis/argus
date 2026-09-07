@@ -7,9 +7,11 @@ private struct GitStatusDiffStats {
 }
 
 struct BaseComparisonResult: Sendable {
-    let baseName: String?
+    let context: GitBaseComparisonContext?
     let files: [GitFileChange]
     let state: GitChangeSectionState
+
+    var baseName: String? { context?.baseBranchName }
 }
 
 private struct GitStatusNetComparison {
@@ -100,9 +102,10 @@ private func buildPresentationSummary(
         ? buildAgainstBase(
             rootPath: rootPath,
             presentation: request.presentation,
-            currentBranch: rawStatus.branchName
+            currentBranch: rawStatus.branchName,
+            headCommitID: rawStatus.headCommitID
         )
-        : BaseComparisonResult(baseName: nil, files: [], state: .available)
+        : BaseComparisonResult(context: nil, files: [], state: .available)
     let sections = buildPresentationSections(
         fullWorking: fullWorking,
         uncommittedFiles: uncommittedFiles,
@@ -174,7 +177,8 @@ private func buildPresentationSections(
                     title: kind == .againstBase ? "Against \(base.baseName ?? "Base")" : kind.title,
                     totalCount: 0,
                     files: [],
-                    state: state
+                    state: state,
+                    comparisonContext: kind == .againstBase ? base.context : nil
                 ))
             return
         }
@@ -186,7 +190,8 @@ private func buildPresentationSections(
                 title: kind == .againstBase ? "Against \(base.baseName ?? "Base")" : kind.title,
                 totalCount: totalCount,
                 files: displayFiles,
-                state: state
+                state: state,
+                comparisonContext: kind == .againstBase ? base.context : nil
             ))
     }
 

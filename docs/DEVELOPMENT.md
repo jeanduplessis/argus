@@ -97,7 +97,9 @@ in one connected recorded-parent component across the repository. Each section
 then keeps its local header even with one member. Branch references from other
 sections are nonselectable and labeled truthfully. Forks retain their shared parent,
 while independent branches merely based on the unparented Project main branch
-remain separate. Argus never initializes, repairs, restacks, or merges Stacks.
+remain separate. Discovery never changes these declarations. Explicit local
+parent actions are separate from discovery; Argus does not run restacks, merges,
+pushes, or third-party Stack registration.
 
 The gh-stack format was audited against v0.1.0 and revision
 `2bd699a544a09cb5c45a013d03416e0894b0454e`. Linked worktrees have separate
@@ -120,6 +122,46 @@ registration data to recover the physical main checkout. Argus leaves that
 unknown binding unbound rather than mistaking metadata storage for a Workspace;
 starting from the actual Project Repository Root provides the verified binding.
 See [ADR 0009](adrs/0009-share-tool-agnostic-recorded-parents.md).
+
+### Guided Stack controls
+
+- **Create Dependent Workspace…** in a repository-backed Workspace's context menu
+  creates a Managed Worktree at that Workspace's verified committed HEAD and
+  records `branch.<child>.base`. Parent Working Changes stay untouched. The Stack
+  Group menu offers an explicit parent choice, including forks. This is local-only:
+  it neither queries remotes nor registers the branch with Graphite or gh-stack.
+  Checkouts that require external Git filters are refused; an unused global filter
+  definition does not block ordinary files. Use your normal Git tooling and then
+  Existing Branch attachment when content requires Git LFS or another external
+  conversion. Cleanup also avoids filters and retains newly added provider tracking.
+- **Stack Parent…** inspects the actual branch, recorded parent, and source. **Save
+  Local Parent** writes a repository-local override. Overrides take priority over
+  tool metadata, so **Remove Local Override** is needed to follow those tools again.
+  Removal may expose another parent; it does not detach the branch. Unsafe
+  external/included/Worktree configuration remains read-only. No action edits
+  provider files or rewrites commits.
+- **Review Sync Steps…** explains the post-merge workflow without running commands.
+  After a squash merge, a child targeting main may still contain the old parent's
+  commits. Verify the merge and target, restack with the correct old boundary in
+  your Git/stacking tool, inspect the diff, and only then repair stale local parent
+  metadata. Pushing and Pull Request target updates are separate steps. A local
+  ancestry check against stale main is not proof that synchronization completed.
+- **Review Merged Workspaces…** offers confirmed close-only cleanup. It keeps all
+  Worktrees, branches, and Working Changes and excludes running processes. It does
+  not invoke the separate Worktree deletion workflow.
+
+With Pull Request Status enabled, fresh exact-head merged ancestors can appear
+behind **N merged PRs**. Selection, running processes, expired evidence, and newer
+local commits keep a Workspace visible. The full navigation order is unchanged.
+Against Base can show a merged-parent or PR-target mismatch advisory without
+changing its local comparison. A valid recorded parent with no available local
+or origin-tracking ref now makes Against Base unavailable rather than silently
+falling back to main. Working Changes remain usable.
+
+These controls do not mutate a Stack merely because a parent Pull Request merged.
+`gh stack sync` can fetch, cascade-rebase, force-push, and update PRs; Argus does not
+execute it as a refresh or pretend that it is read-only. See
+[ADR 0012](adrs/0012-explicit-stack-maintenance-and-merge-evidence.md).
 
 ## Generate the Xcode project
 

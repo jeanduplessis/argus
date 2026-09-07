@@ -98,7 +98,7 @@ struct PullRequestStatusUIContractTests {
         let summary = try source.section(
             after: "struct PullRequestStatusSummary", before: "struct PullRequestStatusMenuItems")
         for fragment in [
-            "Text(presentation.title)", "Text(status.title)", "status.lifecycle.symbolName",
+            "Text(presentation.title)", "Text(status.title)", "PullRequestLifecycleIcon(lifecycle: status.lifecycle)",
             "Text(\"Review: \\(status.review.label)\")", "Text(\"Checks: \\(status.checks.summary)\")",
             "Text(error.localizedDescription)", "Stale — showing last known status", "Last checked",
             "Button(\"Open Pull Request\")", "Button(\"Copy URL\")", "Button(\"Refresh\")",

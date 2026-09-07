@@ -24,9 +24,10 @@ struct ProjectSection: View {
     var items: [WorkspaceSidebarItem]
     @EnvironmentObject var workspaceManager: WorkspaceManager
     @EnvironmentObject private var appSettings: AppSettings
-    @EnvironmentObject private var pullRequestStatusModel: WorkspacePullRequestStatusModel
+    @EnvironmentObject var pullRequestStatusModel: WorkspacePullRequestStatusModel
     @Environment(\.sidebarWidthMetrics) private var sidebarMetrics
     @Environment(\.sidebarCollectionContentInset) private var collectionContentInset
+    @State var expandedMergedStackIds: Set<String> = []
 
     private var disclosure: RepositoryDisclosure {
         workspaceManager.repositoryDisclosure(for: project.id, in: collectionId)
@@ -133,6 +134,10 @@ struct SidebarWorkspaceEntry: View {
         }
         WorkspaceCollectionMenu(workspaceId: workspace.id)
         workspaceMoveActions(for: workspace.id, isStack: isStack)
+        if let projectID = workspace.projectId, workspace.workspaceType != .external {
+            Divider()
+            WorkspaceStackMenuItems(workspaceID: workspace.id, projectID: projectID)
+        }
         if workspaceManager.setupPanel(in: workspace) != nil || workspaceManager.canRunWorktreeSetup(in: workspace) {
             Divider()
             Button("Show Worktree Setup") { workspaceManager.showWorktreeSetup(in: workspace) }

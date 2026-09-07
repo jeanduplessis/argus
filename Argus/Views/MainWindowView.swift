@@ -16,6 +16,7 @@ struct WorkspaceCreationRequest: Identifiable {
     var projectId: UUID?
     var collectionId: UUID?
     var stackParentBranch: String?
+    var parentWorkspaceId: UUID?
 }
 
 extension WorkspaceDeletionStage {
@@ -227,6 +228,7 @@ struct MainWindowView: View {  // swiftlint:disable:this type_body_length
             .allowsHitTesting(false)
             .accessibilityHidden(true)
         }
+        .modifier(StackMaintenanceSheets())
         .environment(windowFocus)
         .environmentObject(pullRequestStatusModel)
         .environmentObject(sidebarState)
@@ -260,11 +262,16 @@ struct MainWindowView: View {  // swiftlint:disable:this type_body_length
             }
             // Sheet: New Workspace
             .sheet(item: $newWorkspaceSheetRequest) { request in
-                NewWorkspaceSheet(
-                    projectId: request.projectId, collectionId: request.collectionId,
-                    stackParentBranch: request.stackParentBranch
-                )
-                .environmentObject(workspaceManager)
+                if let parentWorkspaceId = request.parentWorkspaceId, let projectId = request.projectId {
+                    DependentWorkspaceSheet(projectID: projectId, parentWorkspaceID: parentWorkspaceId)
+                        .environmentObject(workspaceManager)
+                } else {
+                    NewWorkspaceSheet(
+                        projectId: request.projectId, collectionId: request.collectionId,
+                        stackParentBranch: request.stackParentBranch
+                    )
+                    .environmentObject(workspaceManager)
+                }
             }
             .changeWorkspaceRootSheet(
                 request: $changeWorkspaceRootSheetRequest,
@@ -319,7 +326,8 @@ struct MainWindowView: View {  // swiftlint:disable:this type_body_length
                     notification.object as? WorkspaceCreationRequest
                     ?? WorkspaceCreationRequest(
                         projectId: notification.userInfo?["projectId"] as? UUID,
-                        collectionId: nil, stackParentBranch: notification.userInfo?["parentBranch"] as? String)
+                        collectionId: nil, stackParentBranch: notification.userInfo?["parentBranch"] as? String,
+                        parentWorkspaceId: notification.userInfo?["parentWorkspaceId"] as? UUID)
 
             }
             .onReceive(NotificationCenter.default.publisher(for: .showRenameProjectSheet)) { notification in

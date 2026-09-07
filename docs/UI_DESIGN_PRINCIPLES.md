@@ -346,6 +346,23 @@ and receive no shortcut. Unknown or conflicted parents MUST be described
 honestly, and help/accessibility MUST include all recorded direct dependents.
 Disclosure never selects content or acknowledges Turn Completion Attention.
 
+A leading sequence of Workspaces with freshly verified, exact-head merged Pull
+Requests MAY fold behind a compact **N merged PRs** disclosure. This is not a
+new dependency or Workspace owner. Selected Workspaces and Workspaces with
+running processes remain visible; hidden attention remains visible in the
+summary. Expired, failed, disabled, or mismatched evidence MUST reveal affected
+rows. Full navigation/shortcut order and actual parent help stay unchanged, and
+connectors MUST NOT invent endpoints for hidden parents.
+
+Stack actions belong in context menus and bounded native sheets, not permanent
+row controls or a Stack footer. Dependent creation MUST display its actual parent
+and committed starting point. Parent editing MUST distinguish local overrides
+from third-party tracking and say that it does not repair Git history. A sync
+guide MUST NOT execute commands; opening a new Terminal Tab is a separate,
+explicit action in the initiating Workspace. Merged-Workspace cleanup MUST name
+its selection, retain all Worktrees/branches/files, exclude running processes,
+and preserve user deselection through refresh.
+
 At narrow sidebar widths, decorative spacing and icons MAY give way to a
 compact layout. Discovery and Add actions MAY share a reserved control area
 when their context-menu alternatives remain available. Process badges MAY sit
@@ -431,6 +448,15 @@ the Staged, Unstaged, and Untracked sections and their existing layout. When
 combination is enabled, it MUST render one Uncommitted section; when Against
 Base is enabled, it MUST append the read-only Against Base section after all
 Working Changes sections. Working sections MUST always precede Against Base.
+
+When Against Base is enabled, a narrow Stack advisory MAY appear below the
+branch summary and outside file-section disclosure/clean-state replacement.
+It MUST distinguish a verified merged parent from a differing Pull Request
+target, retain the actual comparison label, and expose captured ref/commit
+context in help or the sync guide. It MUST NOT become a general Pull Request
+module or silently replace the comparison. A valid missing recorded-parent ref
+makes Against Base unavailable; it MUST NOT silently select main. The advisory
+uses existing fresh Pull Request Evidence without networking from rendering.
 
 Each available section shows its entry count and exposes only operations valid
 for its typed kind. Empty available sections remain visible and collapsible. An

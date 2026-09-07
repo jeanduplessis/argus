@@ -23,6 +23,8 @@ struct WorkspacePullRequestLocalInputTests {
         #expect(branch.branchName == "feature")
         #expect(branch.headCommitObjectID == (try TestGit.run(["rev-parse", "HEAD"], in: fixture.worktree)))
         #expect(branch.upstreamRepository?.owner == "fork")
+        #expect(branch.upstreamRemoteName == "fork")
+        #expect(branch.upstreamMergeReference == "refs/heads/feature")
         #expect(try await service.readWorktree(target: fixture.target).branch == branch)
         #expect(try TestGit.run(["config", "--local", "--list"], in: fixture.repository) == configuration)
         #expect(try TestGit.run(["show-ref"], in: fixture.repository) == references)
@@ -38,6 +40,28 @@ struct WorkspacePullRequestLocalInputTests {
         #expect(observed.branchName == "renamed")
         #expect(observed.headCommitObjectID != branch.headCommitObjectID)
         #expect(observed.upstreamRepository == nil)
+    }
+
+    @Test
+    func upstreamReferenceChangesRemainObservableWithinTheSameRepository() async throws {
+        let fixture = try PullRequestLocalGitFixture()
+        defer { fixture.temporaryDirectory.remove() }
+        try TestGit.run(["config", "branch.feature.remote", "origin"], in: fixture.repository)
+        try TestGit.run(["config", "branch.feature.merge", "refs/heads/feature"], in: fixture.repository)
+        let service = WorktreePullRequestLocalInputProvider()
+        let original = try await service.readWorktree(target: fixture.target)
+        try TestGit.run(["config", "branch.feature.merge", "refs/heads/other"], in: fixture.repository)
+
+        let changed = try await service.readWorktree(target: fixture.target)
+
+        #expect(changed.branch.branchName == original.branch.branchName)
+        #expect(changed.branch.headCommitObjectID == original.branch.headCommitObjectID)
+        #expect(changed.branch.upstreamRepository == original.branch.upstreamRepository)
+        #expect(changed.branch.upstreamRemoteName == "origin")
+        #expect(changed.branch.upstreamMergeReference == "refs/heads/other")
+        #expect(changed.branch != original.branch)
+        #expect(
+            !FileManager.default.fileExists(atPath: fixture.repository.appendingPathComponent(".git/FETCH_HEAD").path))
     }
 
     @Test

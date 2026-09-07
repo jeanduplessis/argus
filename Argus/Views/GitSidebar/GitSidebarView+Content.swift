@@ -61,6 +61,10 @@ extension GitSidebarView {
         VStack(alignment: .leading, spacing: 0) {
             branchBar(summary)
 
+            if owner.request.presentation.showBaseBranchChanges {
+                StackComparisonNotice(owner: owner, summary: summary)
+            }
+
             if summary.hasNoSectionContent {
                 cleanWorkingTreeContent()
             } else {

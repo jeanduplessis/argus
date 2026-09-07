@@ -2,6 +2,11 @@
 
 This file records changes pushed for local Argus releases. New entries use a `YYYY-MM-DD` heading and link to their commit or commits.
 
+## 2026-10-26
+
+- Added guided Stack maintenance. Create a dependent Workspace from a chosen committed HEAD, inspect or edit its local parent, and review sync instructions. ([commit](https://github.com/jeanduplessis/argus/commit/eshurakov%2Fhonest-glade))
+- Fresh Pull Request evidence supports comparison warnings, merged-row folding, and close-only cleanup. Cleanup retains worktrees, branches, and Working Changes. ([commit](https://github.com/jeanduplessis/argus/commit/eshurakov%2Fhonest-glade))
+
 ## 2026-10-21
 
 - Released Argus 1.19.0 with a Claude Code integration. Turn it on or off in Settings. It adds hooks to Claude Code's `settings.json` and leaves your other settings and hooks alone. Claude Code sessions in Argus terminals now show live Agent Status (running, needs input, idle, error) and alert you when a turn finishes. Restart running Claude Code sessions after a change. ([9c24f04](https://github.com/jeanduplessis/argus/commit/9c24f0479f8e652b60e904b4535f05da0c640aa6))

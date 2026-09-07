@@ -5,7 +5,7 @@ import Testing
 
 extension RecordedBaseBranchReaderTests {
     @Test(arguments: [
-        "", " \n", "child", "bad..name", "bad/name.lock", "bad name", "-option", "ref@{other}", "bad\nline"
+        "", " \n", "child", "HEAD", "bad..name", "bad/name.lock", "bad name", "-option", "ref@{other}", "bad\nline"
     ])
     func invalidEmptyOrSelfConfigDoesNotOverrideAValidToolRecord(_ value: String) throws {
         let fixture = try RecordedParentRepository()

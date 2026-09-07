@@ -65,6 +65,17 @@ final class GitStatusViewModel: ObservableObject {
         ownsSnapshot(owner) && !isRefreshing
     }
 
+    func refreshAfterLocalMetadataChange(workspaceId: UUID, rootPath: String) async {
+        guard let owner = snapshotOwner, owner.workspaceId == workspaceId,
+            URL(fileURLWithPath: owner.rootPath).standardizedFileURL.resolvingSymlinksInPath().path
+                == URL(fileURLWithPath: rootPath).standardizedFileURL.resolvingSymlinksInPath().path
+        else { return }
+        if activeRefreshRequests[owner] != nil {
+            requestGeneration &+= 1
+        }
+        await refresh(owner: owner, exposesWorkspaceId: true)
+    }
+
     func activate(_ owner: GitStatusSnapshotOwner) {
         guard snapshotOwner != owner else { return }
         requestGeneration &+= 1

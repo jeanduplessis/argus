@@ -133,7 +133,14 @@ struct GitStatusSummary: Equatable, Sendable {
         uncommittedStats: [String: GitDiffStat] = [:],
         againstBaseStats: [String: GitDiffStat] = [:]
     ) -> GitStatusSummary {
-        GitStatusSummary(
+        let sectionStats: [GitChangeSectionKind: [String: GitDiffStat]] = [
+            .staged: stagedStats,
+            .unstaged: unstagedStats,
+            .untracked: untrackedStats,
+            .uncommitted: uncommittedStats.merging(untrackedStats) { current, _ in current },
+            .againstBase: againstBaseStats
+        ]
+        return GitStatusSummary(
             rootPath: rootPath,
             branchName: branchName,
             upstreamName: upstreamName,
@@ -152,6 +159,7 @@ struct GitStatusSummary: Equatable, Sendable {
             againstBaseCount: againstBaseCount,
             againstBaseFiles: againstBaseFiles.map { $0.applying(stat: againstBaseStats[$0.path]) },
             againstBaseState: againstBaseState,
+            sections: sections.map { $0.applying(stats: sectionStats[$0.kind] ?? [:]) },
             combineWorkingChangeSections: combineWorkingChangeSections,
             showBaseBranchChanges: showBaseBranchChanges,
             isFileDisplayCapped: isFileDisplayCapped,
@@ -206,6 +214,16 @@ struct GitStatusSummary: Equatable, Sendable {
                 ))
         }
         return result
+    }
+}
+
+extension GitChangeSection {
+    func applying(stats: [String: GitDiffStat]) -> GitChangeSection {
+        GitChangeSection(
+            kind: kind, title: title, totalCount: totalCount,
+            files: files.map { $0.applying(stat: stats[$0.path]) },
+            state: state, comparisonContext: comparisonContext
+        )
     }
 }
 

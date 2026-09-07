@@ -23,10 +23,12 @@ enum RecordedBaseBranchConfiguration {
 struct GitWorktreeBranch: Equatable, Sendable {
     let path: String
     let branch: String?
+    let headCommitID: String?
 
-    init(path: String, branch: String? = nil) {
+    init(path: String, branch: String? = nil, headCommitID: String? = nil) {
         self.path = path
         self.branch = branch
+        self.headCommitID = headCommitID
     }
 }
 

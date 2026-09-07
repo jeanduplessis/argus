@@ -46,6 +46,13 @@ extension GitStatusPresentationTests {
         #expect(!GitReferenceValidation.isValidBranchName(name))
     }
 
+    @Test
+    func branchValidationReservesBareHeadWithoutRejectingOrdinaryBranchNames() {
+        #expect(!GitReferenceValidation.isValidBranchName("HEAD"))
+        #expect(GitReferenceValidation.isValidBranchName("head"))
+        #expect(GitReferenceValidation.isValidBranchName("feature/HEAD"))
+    }
+
     @Test(arguments: [false, true])
     func ghStackParentComparesOnlyCurrentBranchCommits(inSiblingWorktree: Bool) async throws {
         let repo = try stackedRepository(prefix: "argus-base-gh-stack")
@@ -235,6 +242,8 @@ extension GitStatusPresentationTests {
         #expect(summary.sections.last?.title == "Against main")
         #expect(summary.againstBaseState == .available)
         #expect(summary.againstBaseFiles.map(\.path) == ["child.txt", "parent.txt"])
+        #expect(summary.sections.last?.comparisonContext?.recordedParentBranch == nil)
+        #expect(summary.sections.last?.comparisonContext?.resolvedRef == "refs/heads/main")
     }
 
     @Test

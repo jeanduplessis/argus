@@ -2,91 +2,79 @@ import Foundation
 
 private struct BaseBranchResolution {
     let name: String?
-    let ref: String?
+    let reference: BaseBranchReference?
 }
 
-/// A Base Branch name a stacking tool recorded for the current branch.
-///
-/// A recorded stack parent is rewritten by every restack, so its local branch
-/// is the accurate side and `origin/<parent>` is routinely one restack behind.
-/// Resolving the stale origin-tracking reference would move the merge base
-/// backwards and pull the parent's own commits into Against Base, so recorded
-/// names invert the origin-first preference used for configured and inferred
-/// names.
-private struct RecordedBaseBranch {
-    let name: String
-
-    var refCandidates: [String] {
-        ["refs/heads/\(name)", "refs/remotes/origin/\(name)"]
-    }
+private struct BaseBranchReference {
+    let ref: String
+    let commitID: String
 }
 
 func buildAgainstBase(
     rootPath: String,
     presentation: GitStatusPresentation,
-    currentBranch: String?
+    currentBranch: String?,
+    headCommitID: String? = nil
 ) -> BaseComparisonResult {
-    var recordedParent: String?
-    if let currentBranch, !currentBranch.isEmpty, currentBranch != "(detached)" {
-        do {
-            let metadata = try RecordedBaseBranchReader().read(repositoryPath: rootPath)
-            if let conflict = metadata.conflicts[currentBranch] {
-                return unavailableBase(message: conflict)
-            }
-            recordedParent = metadata.parents[currentBranch]
-        } catch {
-            return unavailableBase(
-                message: "Could not read the recorded base branch: \(error.localizedDescription)"
-            )
-        }
+    let parent = readRecordedParent(rootPath: rootPath, currentBranch: currentBranch)
+    let resolution =
+        parent.issue == nil
+        ? resolveBaseBranch(
+            rootPath: rootPath, presentation: presentation, currentBranch: currentBranch, recordedParent: parent.name)
+        : BaseBranchResolution(name: nil, reference: nil)
+    let head = headCommitID ?? resolveBaseCommit(rootPath: rootPath, ref: "HEAD")
+    let mergeBase = resolution.reference.flatMap { reference in
+        head.flatMap { baseGitOutput(rootPath: rootPath, args: ["merge-base", reference.commitID, $0]) }
     }
-    let resolution = resolveBaseBranch(
-        rootPath: rootPath,
-        presentation: presentation,
-        currentBranch: currentBranch,
-        recordedParent: recordedParent
+    let context = GitBaseComparisonContext(
+        rootPath: rootPath, branchName: currentBranch, headCommitID: head,
+        recordedParentBranch: parent.name, baseBranchName: resolution.name,
+        resolvedRef: resolution.reference?.ref, baseCommitID: resolution.reference?.commitID,
+        mergeBaseCommitID: mergeBase
     )
+    if let issue = parent.issue { return unavailableBase(context: context, message: issue) }
     guard let baseName = resolution.name else {
-        return unavailableBase(message: "No base branch was found for this workspace.")
+        return unavailableBase(context: context, message: "No base branch was found for this workspace.")
     }
-    guard let resolvedRef = resolution.ref else {
+    guard resolution.reference != nil else {
         return unavailableBase(
-            name: baseName,
-            message: "The base branch \"\(baseName)\" is unavailable locally."
-        )
+            context: context, message: "The base branch \"\(baseName)\" is unavailable locally.")
     }
-    guard verifyGitRef(rootPath: rootPath, ref: "HEAD") else {
+    guard head != nil else {
         return unavailableBase(
-            name: baseName,
-            message: "The base branch \"\(baseName)\" cannot be compared before the first commit."
-        )
+            context: context, message: "The base branch \"\(baseName)\" cannot be compared before the first commit.")
     }
-    guard optionalGitOutput(args: ["-C", rootPath, "merge-base", resolvedRef, "HEAD"]) != nil else {
-        return unavailableBase(
-            name: baseName,
-            message: "Could not find a merge base with \"\(baseName)\"."
-        )
+    guard mergeBase != nil else {
+        return unavailableBase(context: context, message: "Could not find a merge base with \"\(baseName)\".")
     }
-
-    return loadAgainstBaseComparison(
-        rootPath: rootPath,
-        baseName: baseName,
-        resolvedRef: resolvedRef
-    )
+    return loadAgainstBaseComparison(context: context)
 }
 
-private func loadAgainstBaseComparison(
-    rootPath: String,
-    baseName: String,
-    resolvedRef: String
-) -> BaseComparisonResult {
+private func readRecordedParent(rootPath: String, currentBranch: String?) -> (name: String?, issue: String?) {
+    guard let currentBranch, !currentBranch.isEmpty, currentBranch != "(detached)" else { return (nil, nil) }
     do {
-        let names = try runGit(args: [
-            "-C", rootPath, "diff", "\(resolvedRef)...HEAD", "--name-status", "-z", "--find-renames"
-        ])
-        let stats = try runGit(args: [
-            "-C", rootPath, "diff", "\(resolvedRef)...HEAD", "--numstat", "-z", "--find-renames"
-        ])
+        let metadata = try RecordedBaseBranchReader().read(repositoryPath: rootPath)
+        return (metadata.parents[currentBranch], metadata.conflicts[currentBranch])
+    } catch {
+        return (nil, "Could not read the recorded base branch: \(error.localizedDescription)")
+    }
+}
+
+private func loadAgainstBaseComparison(context: GitBaseComparisonContext) -> BaseComparisonResult {
+    guard let baseName = context.baseBranchName, let resolvedRef = context.resolvedRef,
+        let mergeBase = context.mergeBaseCommitID, let head = context.headCommitID
+    else { return unavailableBase(context: context, message: "The committed comparison is unavailable.") }
+    do {
+        let names = try runBaseGit(
+            rootPath: context.rootPath,
+            args: [
+                "diff", mergeBase, head, "--name-status", "-z", "--find-renames", "--"
+            ])
+        let stats = try runBaseGit(
+            rootPath: context.rootPath,
+            args: [
+                "diff", mergeBase, head, "--numstat", "-z", "--find-renames", "--"
+            ])
         let parsedStats = GitDiffStatParser.parseNUL(stats.stdout)
         let files = GitDiffNameStatusParser.parse(names.stdout).map { record in
             let stat = parsedStats[record.path]
@@ -103,17 +91,14 @@ private func loadAgainstBaseComparison(
                 diffSource: .againstBase(baseName: baseName, resolvedRef: resolvedRef)
             )
         }
-        return BaseComparisonResult(baseName: baseName, files: files, state: .available)
+        return BaseComparisonResult(context: context, files: files, state: .available)
     } catch let error as GitStatusServiceError {
         return unavailableBase(
-            name: baseName,
-            message: "Could not compare this branch with \"\(baseName)\": \(error.message)"
-        )
+            context: context, message: "Could not compare this branch with \"\(baseName)\": \(error.message)")
     } catch {
         return unavailableBase(
-            name: baseName,
-            message: "Could not compare this branch with \"\(baseName)\": \(error.localizedDescription)"
-        )
+            context: context,
+            message: "Could not compare this branch with \"\(baseName)\": \(error.localizedDescription)")
     }
 }
 
@@ -123,64 +108,80 @@ private func resolveBaseBranch(
     currentBranch: String?,
     recordedParent: String?
 ) -> BaseBranchResolution {
-    if let recorded = recordedParent.map(RecordedBaseBranch.init(name:)),
-        let recordedRef = recorded.refCandidates.first(where: { verifyGitRef(rootPath: rootPath, ref: $0) })
-    {
-        return BaseBranchResolution(name: recorded.name, ref: recordedRef)
+    if let recordedParent, recordedParent != currentBranch, GitReferenceValidation.isValidBranchName(recordedParent) {
+        let reference = resolveBaseReference(
+            rootPath: rootPath, candidates: ["refs/heads/\(recordedParent)", "refs/remotes/origin/\(recordedParent)"])
+        return BaseBranchResolution(name: recordedParent, reference: reference)
     }
     let configuredName = presentation.configuredBaseBranch?
         .trimmingCharacters(in: .whitespacesAndNewlines)
     let normalizedConfiguredName = configuredName.flatMap { name in name.isEmpty ? nil : name }
-    guard normalizedConfiguredName == nil else {
-        return BaseBranchResolution(
-            name: normalizedConfiguredName,
-            ref: normalizedConfiguredName.flatMap { resolveBaseRef(rootPath: rootPath, name: $0) }
-        )
+    if let name = normalizedConfiguredName {
+        return BaseBranchResolution(name: name, reference: resolveBaseRef(rootPath: rootPath, name: name))
     }
     guard let inferredName = inferBaseBranchName(rootPath: rootPath, currentBranch: currentBranch) else {
-        return BaseBranchResolution(name: nil, ref: nil)
+        return BaseBranchResolution(name: nil, reference: nil)
     }
-    let preferredRef = inferredName.preferredRef
-    let ref = resolveBaseRef(rootPath: rootPath, name: inferredName.name, preferredRef: preferredRef)
-    return BaseBranchResolution(name: inferredName.name, ref: ref)
+    let reference = resolveBaseRef(
+        rootPath: rootPath, name: inferredName.name, preferredRef: inferredName.preferredRef)
+    return BaseBranchResolution(name: inferredName.name, reference: reference)
 }
 
 private func inferBaseBranchName(
     rootPath: String,
     currentBranch: String?
 ) -> (name: String, preferredRef: String?)? {
-    if let remoteHead = optionalGitOutput(
-        args: ["-C", rootPath, "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"]
+    if let remoteHead = baseGitOutput(
+        rootPath: rootPath, args: ["symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"]
     ), remoteHead.hasPrefix("refs/remotes/origin/") {
         let candidate = String(remoteHead.dropFirst("refs/remotes/origin/".count))
         if !candidate.isEmpty, candidate != currentBranch {
-            return (
-                name: candidate,
-                preferredRef: verifyGitRef(rootPath: rootPath, ref: "refs/remotes/origin/HEAD")
-                    ? "refs/remotes/origin/HEAD"
-                    : nil
-            )
+            return (name: candidate, preferredRef: "refs/remotes/origin/HEAD")
         }
     }
-    if currentBranch != "main", verifyGitRef(rootPath: rootPath, ref: "refs/heads/main") {
+    if currentBranch != "main", resolveBaseCommit(rootPath: rootPath, ref: "refs/heads/main") != nil {
         return (name: "main", preferredRef: nil)
     }
-    if currentBranch != "master", verifyGitRef(rootPath: rootPath, ref: "refs/heads/master") {
+    if currentBranch != "master", resolveBaseCommit(rootPath: rootPath, ref: "refs/heads/master") != nil {
         return (name: "master", preferredRef: nil)
     }
     return nil
 }
 
-private func resolveBaseRef(rootPath: String, name: String, preferredRef: String? = nil) -> String? {
-    if let preferredRef, verifyGitRef(rootPath: rootPath, ref: preferredRef) {
-        return preferredRef
-    }
-    return [
-        "refs/remotes/origin/\(name)",
-        "refs/heads/\(name)"
-    ].first(where: { verifyGitRef(rootPath: rootPath, ref: $0) })
+private func resolveBaseRef(rootPath: String, name: String, preferredRef: String? = nil) -> BaseBranchReference? {
+    resolveBaseReference(
+        rootPath: rootPath,
+        candidates: [preferredRef, "refs/remotes/origin/\(name)", "refs/heads/\(name)"].compactMap { $0 })
 }
 
-private func unavailableBase(name: String? = nil, message: String) -> BaseComparisonResult {
-    BaseComparisonResult(baseName: name, files: [], state: .unavailable(message: message))
+private func resolveBaseReference(rootPath: String, candidates: [String]) -> BaseBranchReference? {
+    for ref in candidates {
+        if let commitID = resolveBaseCommit(rootPath: rootPath, ref: ref) {
+            return BaseBranchReference(ref: ref, commitID: commitID)
+        }
+    }
+    return nil
+}
+
+private func resolveBaseCommit(rootPath: String, ref: String) -> String? {
+    baseGitOutput(rootPath: rootPath, args: ["rev-parse", "--verify", "--quiet", "\(ref)^{commit}"])
+}
+
+private func baseGitOutput(rootPath: String, args: [String]) -> String? {
+    guard let result = try? runBaseGit(rootPath: rootPath, args: args) else { return nil }
+    let output = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+    return output.isEmpty ? nil : output
+}
+
+private func runBaseGit(rootPath: String, args: [String]) throws -> GitCommandResult {
+    try runGit(
+        args: ["-C", rootPath] + args,
+        environment: GitCommandEnvironment.standard.merging([
+            "GIT_NO_LAZY_FETCH": "1", "GIT_NO_REPLACE_OBJECTS": "1"
+        ]) { _, new in new }
+    )
+}
+
+private func unavailableBase(context: GitBaseComparisonContext, message: String) -> BaseComparisonResult {
+    BaseComparisonResult(context: context, files: [], state: .unavailable(message: message))
 }

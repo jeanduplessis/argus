@@ -84,13 +84,16 @@ final class WorktreeService: Sendable {
     /// Path to the git binary.
     private static let gitPath = "/usr/bin/git"
     let managedWorktreeBaseURL: URL
+    let stackParentService: StackParentService
 
     init(
         gitCommandTimeout: TimeInterval = 30,
-        worktreeBaseURL: URL = WorktreeService.worktreeBaseURL
+        worktreeBaseURL: URL = WorktreeService.worktreeBaseURL,
+        stackParentService: StackParentService = StackParentService()
     ) {
         self.gitCommandTimeout = gitCommandTimeout
         self.managedWorktreeBaseURL = worktreeBaseURL.standardizedFileURL
+        self.stackParentService = stackParentService
     }
     // MARK: - Private Helpers
 

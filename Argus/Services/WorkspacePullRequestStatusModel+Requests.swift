@@ -155,6 +155,7 @@ extension WorkspacePullRequestStatusModel {
             && entries[request.target.workspaceID]?.target == request.target
             && projects[request.target.projectID]?.owner == request.projectOwner
             && projects[request.target.projectID]?.revision == request.revision
+            && entries[request.target.workspaceID]?.observation == request.observation
             && entries[request.target.workspaceID]?.branch == request.branch
     }
 
@@ -183,7 +184,7 @@ extension WorkspacePullRequestStatusModel {
     func publishSuccess(_ status: PullRequestStatus?, operation: RunningRequest) {
         let request = operation.request
         let id = request.target.workspaceID
-        guard let project = projects[request.target.projectID] else { return }
+        guard isCurrent(operation), let project = projects[request.target.projectID] else { return }
         let completedAt = now()
         if project.failureGeneration == request.failureGeneration
             || project.retryAt.map({ $0 <= completedAt }) == true
@@ -199,6 +200,7 @@ extension WorkspacePullRequestStatusModel {
                 error: hostPause(project), hasLoaded: true
             ), for: id
         )
+        publishEvidence(status, operation: operation, validatedAt: completedAt)
         entries[id]?.nextRefresh = completedAt.addingTimeInterval(status == nil ? 600 : 60)
         if operation.discovered { entries[id]?.nextDiscovery = completedAt.addingTimeInterval(600) }
     }
@@ -243,6 +245,7 @@ extension WorkspacePullRequestStatusModel {
             project.retryAt = now().addingTimeInterval([30, 60, 120][project.failureCount - 1])
         }
         project.error = error
+        invalidateProjectEvidence(request.target.projectID)
         if error == .githubCLIUnavailable {
             missingCLIUntil = now().addingTimeInterval(30)
             providerIsAvailable = false

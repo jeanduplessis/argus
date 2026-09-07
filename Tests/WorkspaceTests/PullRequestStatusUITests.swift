@@ -223,14 +223,19 @@ struct PullRequestStatusPresentationTests {
     }
 
     @Test
-    func everyLifecycleAndSignalUsesAnAvailableSystemSymbol() {
-        let lifecycles: [PullRequestLifecycle] = [.open, .draft, .merged, .closed]
+    func everySystemBackedLifecycleAndSignalUsesAnAvailableSystemSymbol() {
+        let lifecycles: [PullRequestLifecycle] = [.open, .draft, .closed]
         let signals: [PullRequestStatusSignal] = [
             .failedChecks, .changesRequested, .pendingChecks, .approved, .unavailable, .stale
         ]
-        for symbol in lifecycles.map(\.symbolName) + signals.map(\.symbolName) {
+        for symbol in lifecycles.compactMap(\.systemSymbolName) + signals.map(\.symbolName) {
             #expect(NSImage(systemSymbolName: symbol, accessibilityDescription: nil) != nil, Comment(rawValue: symbol))
         }
+    }
+
+    @Test
+    func mergedLifecycleUsesCustomGlyphInsteadOfASystemSymbol() {
+        #expect(PullRequestLifecycle.merged.systemSymbolName == nil)
     }
 
     @Test(arguments: [PullRequestLifecycle.open, .draft, .merged, .closed])

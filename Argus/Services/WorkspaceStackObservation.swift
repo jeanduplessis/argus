@@ -11,6 +11,7 @@ final class WorkspaceStackObservation {
     private var onRefreshing: (@MainActor @Sendable (Bool) -> Void)?
     private var onResult: (@MainActor @Sendable (Result<WorkspaceStackSnapshot, Error>) -> Void)?
     private var loadTask: Task<Void, Never>?
+    private var refreshWaiters: [UUID: CheckedContinuation<Void, Error>] = [:]
     private var gitCommonDirectory: String?
     private var isRunning = false
     private var pendingRefresh = false
@@ -59,6 +60,7 @@ final class WorkspaceStackObservation {
         loadTask?.cancel()
         loadTask = nil
         pendingRefresh = false
+        finishRefreshWaiters(with: .failure(CancellationError()))
         onRefreshing?(false)
         onRefreshing = nil
         onResult = nil
@@ -87,15 +89,40 @@ final class WorkspaceStackObservation {
         onRefreshing?(true)
     }
 
+    func refreshAndWait() async throws {
+        let requestId = UUID()
+        let requestGeneration = generation
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                guard isRunning, generation == requestGeneration, !Task.isCancelled else {
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+                refreshWaiters[requestId] = continuation
+                refresh()
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.refreshWaiters.removeValue(forKey: requestId)?.resume(throwing: CancellationError())
+            }
+        }
+        try Task.checkCancellation()
+        guard isRunning, generation == requestGeneration else { throw CancellationError() }
+    }
+
     private func finish(_ result: Result<WorkspaceStackSnapshot, Error>, generation requestGeneration: UInt64) {
         guard isRunning, generation == requestGeneration else { return }
         if case .success(let snapshot) = result {
             watch(commonDirectory: snapshot.gitCommonDirectory)
         }
-        if !pendingRefresh {
+        let publishesResult = !pendingRefresh
+        if publishesResult {
             onResult?(result)
         }
         guard isRunning, generation == requestGeneration else { return }
+        if publishesResult {
+            finishRefreshWaiters(with: result.map { _ in () })
+        }
         loadTask = nil
         if pendingRefresh {
             pendingRefresh = false
@@ -103,6 +130,12 @@ final class WorkspaceStackObservation {
         } else {
             onRefreshing?(false)
         }
+    }
+
+    private func finishRefreshWaiters(with result: Result<Void, Error>) {
+        let waiters = refreshWaiters.values
+        refreshWaiters.removeAll()
+        for waiter in waiters { waiter.resume(with: result) }
     }
 
     private func watch(commonDirectory: String) {

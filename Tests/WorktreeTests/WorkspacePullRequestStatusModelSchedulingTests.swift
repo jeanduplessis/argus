@@ -46,6 +46,45 @@ extension WorkspacePullRequestStatusModelTests {
         #expect(await fixture.provider.calls.count == initial + 1)
     }
 
+    @Test(arguments: [false, true])
+    func manualBatchRefreshBypassesCachesAndCoalescesProjectInvalidation(initiallyNoMatch: Bool) async throws {
+        let fixture = PullRequestRuntimeFixture(workspaceCount: 3)
+        let requested = Array(fixture.targets.prefix(2))
+        if initiallyNoMatch {
+            for index in 0..<2 {
+                await fixture.provider.setDiscovery(.success(nil), branch: "feature-\(index)")
+            }
+        }
+        await fixture.load()
+        let untouched = fixture.targets[2]
+        let repository = try #require(fixture.model.state(for: untouched.workspaceID)?.status?.identity.repository)
+        for index in 0..<2 {
+            let merged = PullRequestRuntimeFixture.status(
+                branch: "feature-\(index)", repository: repository, number: index + 1, lifecycle: .merged)
+            await fixture.provider.setDiscovery(.success(merged), branch: "feature-\(index)")
+        }
+        let initialCalls = await fixture.provider.calls.count
+        fixture.clock.advance(1)
+        let ids = requested.map(\.workspaceID)
+        fixture.model.refresh(workspaceIDs: ids + [ids[0]])
+        let revision = fixture.model.projects[requested[0].projectID]?.revision
+        fixture.model.refresh(workspaceIDs: ids)
+        #expect(fixture.model.projects[requested[0].projectID]?.revision == revision)
+        await fixture.model.waitForIdle()
+        for target in requested {
+            #expect(fixture.model.state(for: target.workspaceID)?.status?.lifecycle == .merged)
+            #expect(fixture.model.evidence(for: target.workspaceID, at: fixture.clock.date) != nil)
+            #expect(fixture.model.state(for: target.workspaceID)?.lastSuccess == fixture.clock.date)
+        }
+        #expect(fixture.model.state(for: untouched.workspaceID)?.status?.lifecycle == .open)
+        let calls = await fixture.provider.calls.dropFirst(initialCalls)
+        #expect(calls.filter { $0.method == .resolve }.count == 1)
+        #expect(
+            Set(calls.filter { $0.method == .discover }.compactMap { $0.branch?.branchName }) == [
+                "feature-0", "feature-1"
+            ])
+    }
+
     @Test
     func confirmedNoMatchHasA600SecondCacheButManualRefreshBypassesIt() async {
         let fixture = PullRequestRuntimeFixture()

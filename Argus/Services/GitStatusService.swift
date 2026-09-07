@@ -331,13 +331,15 @@ struct GitCommandResult: Sendable {
     let stderr: String
 }
 
-func runGit(args: [String]) throws -> GitCommandResult {
+func runGit(
+    args: [String], environment: [String: String] = GitCommandEnvironment.standard
+) throws -> GitCommandResult {
     let result: ExternalProcessResult
     do {
         result = try ExternalProcess.runSynchronously(
             executableURL: URL(fileURLWithPath: "/usr/bin/git"),
             arguments: args,
-            environment: GitCommandEnvironment.standard,
+            environment: environment,
             timeout: 30,
             commandDescription: "git \(args.joined(separator: " "))"
         )
