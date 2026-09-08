@@ -272,11 +272,30 @@ application's text and density metrics, with more space before the header than
 below it.
 
 With Collections present, section content MUST have one 8-point leading
-inset at normal widths and no additional inset below 160 points. This inset MUST
-remain inside full-width Workspace selection fills and hit regions. It MUST NOT
+Collection inset at normal widths, removed below 160 points. This inset MUST
+remain inside full-width Workspace selection fills and hit regions. Project
+headings MUST show a muted folder SF Symbol after the disclosure chevron and
+before the name, sized and spaced like the Stack icon at normal widths. Existing
+optional Project color markers MUST remain separate from this hierarchy cue.
+Project-associated Workspace content, Stack headers, and branch references MUST
+share one shallow fixed leading inset beneath that heading. Standalone Workspace
+rows MUST remain direct section children without the Project inset.
+
+An expanded Project MUST show a thin, neutral vertical scope guide beneath the
+folder, aligned with its center and ending at the last visible descendant. The
+guide MUST remain visible over selection fills, be noninteractive and hidden
+from accessibility, and stay outside the Stack connector gutter. It MUST NOT
+use arrows, dots, forks, or Project colors. Stack connectors retain their recorded
+relationship meaning. No Project scope guide extends into a following Standalone
+Workspace or another Project.
+
+Both insets MUST stay inside full-width row fills and hit regions. They MUST NOT
 change Stack gutter/connector geometry, icon/process slots, or introduce
-recursive indentation. Collection disclosure MUST only expand/collapse. A
-collapsed Collection MUST retain readable Selected Workspace context as
+recursive indentation. At narrow widths, Project inset and folder spacing MUST
+shrink without removing the folder or scope guide, while preserving action and
+status targets at the supported 80-point sidebar width. Collection disclosure
+MUST only expand/collapse. A collapsed Collection MUST retain readable Selected
+Workspace context as
 Project / Workspace and undimmed Turn Completion Attention without acknowledging
 it. Explicit selection MUST reveal every ancestor, including same-ID reselection.
 

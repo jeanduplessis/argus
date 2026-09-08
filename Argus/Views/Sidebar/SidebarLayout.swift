@@ -24,6 +24,13 @@ struct SidebarWidthMetrics: Equatable, Sendable {
     var headerSpacing: CGFloat { isCompact ? 2 : 6 }
     var disclosureWidth: CGFloat { isCompact ? 8 : 12 }
     var stackGutterWidth: CGFloat { isCompact ? 6 : 12 }
+    var projectIconWidth: CGFloat { isCompact ? 12 : 14 }
+    var projectContentInset: CGFloat { isCompact ? 22 : 32 }
+
+    /// Relative to the section edge; the Collection inset is applied by the view.
+    var projectGuideOffset: CGFloat {
+        rowPadding + disclosureWidth + headerSpacing + projectIconWidth / 2
+    }
 
     func stackGutterWidth(laneCount: Int) -> CGFloat {
         min(isCompact ? 12 : 20, stackGutterWidth + CGFloat(max(1, laneCount) - 1) * (isCompact ? 4 : 8))

@@ -72,6 +72,7 @@ private struct SidebarStackHeader: View {
     @EnvironmentObject private var appSettings: AppSettings
     @Environment(\.sidebarWidthMetrics) private var sidebarMetrics
     @Environment(\.sidebarCollectionContentInset) private var collectionContentInset
+    @Environment(\.sidebarProjectContentInset) private var projectContentInset
     @Environment(WindowFocusState.self) private var windowFocus
     @State private var isHovered = false
     @FocusState private var isFocused: Bool
@@ -142,6 +143,7 @@ private struct SidebarStackHeader: View {
             .foregroundStyle(.secondary)
             .windowFocusChrome()
             .padding(.leading, collectionContentInset)
+            .padding(.leading, projectContentInset)
             .padding(.horizontal, sidebarMetrics.rowPadding)
             .padding(.vertical, appSettings.presentationMetrics.workspaceRowVerticalPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -280,6 +282,7 @@ private struct SidebarStackReferenceRow: View {
     @EnvironmentObject private var appSettings: AppSettings
     @Environment(\.sidebarWidthMetrics) private var sidebarMetrics
     @Environment(\.sidebarCollectionContentInset) private var collectionContentInset
+    @Environment(\.sidebarProjectContentInset) private var projectContentInset
 
     private var workspaceLocation: String {
         row.workspaceIsElsewhere ? "Workspace in another section" : "Workspace not open"
@@ -306,6 +309,7 @@ private struct SidebarStackReferenceRow: View {
             }
         }
         .padding(.leading, collectionContentInset)
+        .padding(.leading, projectContentInset)
         .padding(.horizontal, sidebarMetrics.rowPadding)
         .padding(.vertical, appSettings.presentationMetrics.workspaceRowVerticalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)

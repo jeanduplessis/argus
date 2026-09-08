@@ -50,14 +50,19 @@ struct ProjectCollectionUITests {
         #expect(manager.workspaceRevealRevision == 0)
     }
 
-    @Test(arguments: [80.0, 200.0])
-    func collectionInsetDoesNotShrinkWorkspaceSelectionHitArea(width: Double) async throws {
+    @Test(arguments: [80.0, 159.0, 160.0, 200.0], [false, true])
+    func hierarchyInsetsKeepWorkspaceSelectionFullWidth(width: Double, isStackMember: Bool) async throws {
         let fixture = try WorkspaceStackTestFixture()
         defer { fixture.cleanup() }
         let manager = fixture.manager
         let row = SidebarWorkspaceRow(
             workspace: fixture.child, globalIndex: 2, shortcutDigit: 2,
-            isSelected: true, onSelect: { manager.selectWorkspace(fixture.child.id) }
+            isSelected: true, onSelect: { manager.selectWorkspace(fixture.child.id) },
+            stackRelationship: isStackMember
+                ? WorkspaceStackRow(
+                    branch: "feature/child", parentBranch: "feature/parent", dependentBranches: [],
+                    workspaceId: fixture.child.id, lane: 2) : nil,
+            showsStackGutter: isStackMember
         )
         .environmentObject(manager)
         .environmentObject(manager.settings)
@@ -67,6 +72,8 @@ struct ProjectCollectionUITests {
         .environment(WindowFocusState())
         .environment(\.sidebarWidthMetrics, SidebarWidthMetrics(width: width))
         .environment(\.sidebarCollectionContentInset, width < 160 ? 0 : 8)
+        .environment(\.sidebarProjectContentInset, SidebarWidthMetrics(width: width).projectContentInset)
+        .environment(\.sidebarStackLaneCount, 3)
         let restoreAccessibility = try enableNativeAccessibility()
         defer { restoreAccessibility() }
         let host = NSHostingView(rootView: row)
@@ -288,5 +295,58 @@ extension ProjectCollectionUITests {
         let previous = application.accessibilityAttributeValue(attribute)
         application.accessibilitySetValue(true, forAttribute: attribute)
         return { application.accessibilitySetValue(previous, forAttribute: attribute) }
+    }
+}
+
+extension ProjectCollectionUITests {
+    @Test(arguments: [80.0, 159.0, 160.0, 200.0], [false, true])
+    func projectDisclosureWithFolderAndColorFitsAndRemainsSectionLocal(width: Double, hasColor: Bool) async throws {
+        let fixture = try WorkspaceStackTestFixture()
+        defer { fixture.cleanup() }
+        let manager = fixture.manager
+        fixture.project.color = hasColor ? .purple : nil
+        let collection = try #require(manager.createCollection(name: "Other section"))
+        manager.moveWorkspace(fixture.ordinary.id, toCollection: collection.id)
+        manager.workspaceStackErrors[fixture.project.id] = "Local test diagnostic"
+        let otherDisclosure = manager.repositoryDisclosure(for: fixture.project.id, in: collection.id)
+        let selectedId = manager.selectedWorkspaceId
+        let items = try #require(manager.navigationSections.last?.blocks.first?.items)
+        let content = ProjectSection(project: fixture.project, items: items)
+            .environmentObject(manager)
+            .environmentObject(manager.settings)
+            .environmentObject(TurnCompletionAttentionStore())
+            .environmentObject(AgentStatusStore())
+            .environmentObject(WorkspacePullRequestStatusModel())
+            .environmentObject(SidebarNavigationDropFeedback())
+            .environment(WindowFocusState())
+            .environment(\.sidebarWidthMetrics, SidebarWidthMetrics(width: width))
+        let restoreAccessibility = try enableNativeAccessibility()
+        defer { restoreAccessibility() }
+        let host = NSHostingView(rootView: content)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: width, height: 500),
+            styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        defer {
+            window.contentView = nil
+            window.close()
+        }
+        host.layoutSubtreeIfNeeded()
+        await Task.yield()
+        let controls = accessibilityDescendants(host)
+        let disclosure = try #require(
+            controls.first { $0.accessibilityLabel?() == "\(fixture.project.displayName), Project" })
+        let retry = try #require(controls.first { $0.accessibilityLabel?() == "Retry Stack discovery" })
+        let disclosureFrame = try #require(disclosure.accessibilityFrame?())
+        let retryFrame = try #require(retry.accessibilityFrame?())
+        #expect(disclosureFrame.width >= 20 && disclosureFrame.height >= 20)
+        #expect(retryFrame.width >= 20 && retryFrame.height >= 20)
+        #expect(disclosureFrame.maxX <= retryFrame.minX)
+        #expect(retryFrame.maxX - disclosureFrame.minX <= width)
+        #expect(disclosure.accessibilityPerformPress?() == true)
+        #expect(!fixture.isExpanded)
+        #expect(manager.repositoryDisclosure(for: fixture.project.id, in: collection.id) == otherDisclosure)
+        #expect(manager.selectedWorkspaceId == selectedId)
     }
 }

@@ -3,6 +3,17 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+private struct SidebarProjectContentInsetKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 0
+}
+
+extension EnvironmentValues {
+    var sidebarProjectContentInset: CGFloat {
+        get { self[SidebarProjectContentInsetKey.self] }
+        set { self[SidebarProjectContentInsetKey.self] = newValue }
+    }
+}
+
 // MARK: - ProjectSection
 
 /// A collapsible project section containing a header row and its child
@@ -14,6 +25,8 @@ struct ProjectSection: View {
     @EnvironmentObject var workspaceManager: WorkspaceManager
     @EnvironmentObject private var appSettings: AppSettings
     @EnvironmentObject private var pullRequestStatusModel: WorkspacePullRequestStatusModel
+    @Environment(\.sidebarWidthMetrics) private var sidebarMetrics
+    @Environment(\.sidebarCollectionContentInset) private var collectionContentInset
 
     private var disclosure: RepositoryDisclosure {
         workspaceManager.repositoryDisclosure(for: project.id, in: collectionId)
@@ -27,17 +40,31 @@ struct ProjectSection: View {
                 .padding(.top, 4)
 
             if disclosure.isExpanded {
-                ForEach(items) { item in
-                    switch item {
-                    case .workspace(let workspaceId):
-                        workspaceRow(workspaceId)
-                    case .stack(let group):
-                        stackSection(group)
-                            .id(group.id)
+                VStack(spacing: 0) {
+                    ForEach(items) { item in
+                        switch item {
+                        case .workspace(let workspaceId):
+                            workspaceRow(workspaceId)
+                        case .stack(let group):
+                            stackSection(group)
+                                .id(group.id)
+                        }
                     }
+                }
+                .environment(\.sidebarProjectContentInset, sidebarMetrics.projectContentInset)
+                .overlay(alignment: .leading) {
+                    // Overlay keeps the scope visible across full-width selection fills.
+                    Rectangle()
+                        .fill(Color.secondary.opacity(0.35))
+                        .frame(width: 1)
+                        .offset(x: collectionContentInset + sidebarMetrics.projectGuideOffset - 0.5)
+                        .windowFocusChrome()
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                 }
             } else {
                 SidebarCollapsedWorkspaceSummary(workspaceIds: items.flatMap(\.workspaceIds))
+                    .environment(\.sidebarProjectContentInset, sidebarMetrics.projectContentInset)
             }
         }
         .onChange(of: disclosure.isExpanded) { _, isExpanded in
@@ -176,7 +203,7 @@ struct SidebarWorkspaceEntry: View {
 
 // MARK: - ProjectHeaderRow
 
-/// Disclosure-triangle header for a project. Shows color dot, display name,
+/// Disclosure-triangle header for a project. Shows folder, optional color dot, display name,
 /// and provides a context menu for project operations.
 private struct ProjectHeaderRow: View {
     @ObservedObject var project: Project
@@ -267,6 +294,12 @@ private struct ProjectHeaderRow: View {
                     .rotationEffect(.degrees(disclosure.isExpanded ? 90 : 0))
                     .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: disclosure.isExpanded)
                     .frame(width: sidebarMetrics.disclosureWidth)
+
+                Image(systemName: "folder")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .frame(width: sidebarMetrics.projectIconWidth)
+                    .accessibilityHidden(true)
 
                 if let color = project.color {
                     Circle()

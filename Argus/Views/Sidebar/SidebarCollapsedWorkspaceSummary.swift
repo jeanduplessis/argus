@@ -8,6 +8,7 @@ struct SidebarCollapsedWorkspaceSummary: View {
     @EnvironmentObject private var appSettings: AppSettings
     @Environment(\.sidebarWidthMetrics) private var sidebarMetrics
     @Environment(\.sidebarCollectionContentInset) private var collectionContentInset
+    @Environment(\.sidebarProjectContentInset) private var projectContentInset
 
     private var selectedWorkspace: Workspace? {
         guard let workspace = workspaceManager.selectedWorkspace,
@@ -43,6 +44,7 @@ struct SidebarCollapsedWorkspaceSummary: View {
             .font(.system(size: appSettings.presentationMetrics.textSize(forBaseSize: 10)))
             .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             .padding(.leading, (sidebarMetrics.isCompact ? sidebarMetrics.rowPadding : 26) + collectionContentInset)
+            .padding(.leading, projectContentInset)
             .padding(.trailing, sidebarMetrics.rowPadding)
             .padding(.bottom, 4)
             .accessibilityElement(children: .combine)

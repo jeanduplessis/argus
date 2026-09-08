@@ -15,6 +15,7 @@ struct SidebarWorkspaceRow: View {
     @Environment(\.isCommandKeyHeld) private var isCommandKeyHeld
     @Environment(\.sidebarWidthMetrics) private var sidebarMetrics
     @Environment(\.sidebarCollectionContentInset) private var collectionContentInset
+    @Environment(\.sidebarProjectContentInset) private var projectContentInset
     @Environment(WindowFocusState.self) private var windowFocus
     let globalIndex: Int
     let shortcutDigit: Int?
@@ -106,6 +107,7 @@ struct SidebarWorkspaceRow: View {
                 }
             }
             .padding(.leading, collectionContentInset)
+            .padding(.leading, projectContentInset)
             .padding(.horizontal, sidebarMetrics.rowPadding)
             .padding(.vertical, appSettings.presentationMetrics.workspaceRowVerticalPadding)
             .background(
