@@ -2,6 +2,10 @@
 
 This file records changes pushed for local Argus releases. New entries use a `YYYY-MM-DD` heading and link to their commit or commits.
 
+## 2026-09-08
+
+- Project headings now show a folder icon, with indented Workspace rows and a vertical guide that ends at the Project's last visible item. Standalone Workspaces stay outside the guide, making their placement clearer within Collections. The layout keeps full-width selection and separate Stack connectors, including in narrow sidebars. ([4c3fc1b](https://github.com/jeanduplessis/argus/commit/4c3fc1bfb0f9270e9f8eb294f4bcb318012342a2))
+
 ## 2026-09-07
 
 - Released Argus 1.16.0 with Workspace-centric Collections, opt-in Worktree Setup, new Workspace creation from Stack Groups, and Companion CLI commands to list and create Workspaces without changing selection. ([1f61534](https://github.com/jeanduplessis/argus/commit/1f615345bfedc5c5a853f50b3d8eb898820f21b6))
