@@ -160,7 +160,7 @@ selection, or existing Git Preview Tabs.
 4. Terminal surfaces MUST retain user Ghostty configuration except for the Argus-owned background and background-opacity values.
 5. Spawned shells MUST receive `ARGUS_SOCKET_PATH`, `ARGUS_WORKSPACE_ID`, and `ARGUS_SURFACE_ID`. When the running application bundles the Companion CLI, they MUST also receive a `PATH` whose first entry is the bundled tools directory, so `argus` resolves by name. That value MUST preserve every inherited entry and the application binary directory Ghostty appends, because Argus-supplied variables replace Ghostty's `PATH`. A build without a bundled CLI MUST leave `PATH` untouched.
 6. These variables identify the application socket, Workspace, and Terminal Surface for supported integrations. Their presence MUST NOT be treated as proof that a particular Agent Integration is enabled.
-7. Argus MUST set terminal-identifying environment values and prepend existing supported Homebrew binary directories to `PATH`.
+7. Argus MUST set terminal-identifying environment values and prepend existing supported Homebrew binary directories to `PATH`. Argus MUST NOT set `GHOSTTY_RESOURCES_DIR` unless the application bundle contains Ghostty's terminfo layout, because libghostty then advertises `TERM=xterm-ghostty` without a usable terminfo entry.
 8. Terminal title and working-directory callbacks MUST update their Terminal Panel state on the main thread.
 9. Inactive terminal surfaces SHOULD remain mounted during Top-level Tab changes. They MUST be occluded and prevented from stealing focus or accessibility interaction.
 10. Terminal Working Directory MUST remain distinct from Workspace Root and Git Status Root.

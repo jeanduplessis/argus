@@ -51,7 +51,8 @@ struct ArgusApp: App {
         )
 
         // Initialize GhosttyApp singleton — this triggers ghostty_init and
-        // configures the terminal environment (TERM, PATH, GHOSTTY_RESOURCES_DIR).
+        // configures the terminal environment (TERM, PATH, and a real
+        // GHOSTTY_RESOURCES_DIR only).
         _ = GhosttyApp.shared
     }
 

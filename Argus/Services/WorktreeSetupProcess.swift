@@ -30,8 +30,16 @@ final class WorktreeSetupProcess: @unchecked Sendable {
         try Self.check(posix_spawn_file_actions_adddup2(&actions, descriptors[1], STDERR_FILENO))
         try Self.check(posix_spawn_file_actions_addclose(&actions, descriptors[0]))
         try Self.check(posix_spawn_file_actions_addclose(&actions, descriptors[1]))
-        let arguments = [executablePath, "-c", request.command].map { strdup($0) } + [nil]
-        let variables = environment.map { strdup("\($0.key)=\($0.value)") } + [nil]
+        let arguments: [UnsafeMutablePointer<CChar>?] =
+            [executablePath, "-c", request.command]
+            .map { value in
+                value.withCString { strdup($0) }
+            } + [nil]
+        let variables: [UnsafeMutablePointer<CChar>?] =
+            environment
+            .map {
+                "\($0.key)=\($0.value)".withCString { strdup($0) }
+            } + [nil]
         defer {
             arguments.forEach { free($0) }
             variables.forEach { free($0) }
