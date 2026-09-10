@@ -50,13 +50,15 @@ final class GhosttyApp: ObservableObject {
 
     /// Configure environment variables Ghostty expects before initialization.
     private func configureGhosttyEnvironment() {
-        // GHOSTTY_RESOURCES_DIR: Point to the framework's resources if needed.
-        // Ghostty looks for this to find themes and shaders.
-        if let resourcesPath = Bundle.main.resourcePath {
-            setenv("GHOSTTY_RESOURCES_DIR", resourcesPath, 0)
+        if let resourcesDirectory = GhosttyResources.directoryForEnvironment(
+            bundleResourcePath: Bundle.main.resourcePath,
+            inherited: ProcessInfo.processInfo.environment[GhosttyResources.resourcesDirectoryKey]
+        ) {
+            setenv(GhosttyResources.resourcesDirectoryKey, resourcesDirectory, 1)
+        } else {
+            unsetenv(GhosttyResources.resourcesDirectoryKey)
         }
 
-        // Terminal identification
         setenv("TERM", "xterm-256color", 0)
         setenv("TERM_PROGRAM", "Argus", 1)
         setenv("COLORTERM", "truecolor", 0)

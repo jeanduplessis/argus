@@ -2,6 +2,10 @@
 
 This file records changes pushed for local Argus releases. New entries use a `YYYY-MM-DD` heading and link to their commit or commits.
 
+## 2026-09-09
+
+- Argus now advertises Ghostty resources only when a matching terminfo bundle is present, so terminals keep a valid `xterm-256color` environment otherwise. Worktree Setup's spawned arguments and environment now build cleanly under Swift 6, and stale generated Python bytecode references are removed from the Xcode project. ([7e20bb9](https://github.com/jeanduplessis/argus/commit/7e20bb9))
+
 ## 2026-09-08
 
 - Project headings now show a folder icon, with indented Workspace rows and a vertical guide that ends at the Project's last visible item. Standalone Workspaces stay outside the guide, making their placement clearer within Collections. The layout keeps full-width selection and separate Stack connectors, including in narrow sidebars. ([4c3fc1b](https://github.com/jeanduplessis/argus/commit/4c3fc1bfb0f9270e9f8eb294f4bcb318012342a2))

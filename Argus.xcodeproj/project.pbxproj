@@ -25,7 +25,6 @@
 		0A3E6960DEB14D2769E4775A /* ContentAreaView+FilePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD50F7E8079BEC5DEA0DC523 /* ContentAreaView+FilePanel.swift */; };
 		0A9174FAA98F116001D65A47 /* WorkspacePullRequestStatusModel+Requests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E306A62F476E14142539F06 /* WorkspacePullRequestStatusModel+Requests.swift */; };
 		0AD9524D83A220F3109144DA /* ArgusSocketLineBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F61CD808317F709A4E88A5 /* ArgusSocketLineBuffer.swift */; };
-		0B288531A6384AB3BE0B427F /* writer_publication_failure.cpython-314.pyc in Resources */ = {isa = PBXBuildFile; fileRef = EC2677B4336D0765347A99D9 /* writer_publication_failure.cpython-314.pyc */; };
 		0B8AAB5E791399EA83F83F18 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF5C0E9D5F6638CD5FEFE123 /* Project.swift */; };
 		0BA0CCB0D419D3E91B7DD0DB /* AgentSocketProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A9A2C48FE8D4F787DCC3CB7 /* AgentSocketProtocol.swift */; };
 		0C51FCA86CA2FF57B0C80037 /* TerminalClipboardConfirmation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D768BF4B1DD82D18B53E28F /* TerminalClipboardConfirmation.swift */; };
@@ -39,7 +38,6 @@
 		125426EC576B3F2B180385BD /* RecordedBaseBranchReader+Graphite.swift in Sources */ = {isa = PBXBuildFile; fileRef = A170B01F39BB2D7F5D058D43 /* RecordedBaseBranchReader+Graphite.swift */; };
 		12D7A8C68E6686B8EB0BF266 /* SidebarState.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0B9ECA31DC779CDC60C200 /* SidebarState.swift */; };
 		158E0537E195ED287B7C90D0 /* SwiftDiffs in Frameworks */ = {isa = PBXBuildFile; productRef = AD384A8B8CD031E4BE9CB4AB /* SwiftDiffs */; };
-		15902E9BAA38F163B406EA80 /* check_stop_recovery.cpython-314.pyc in Resources */ = {isa = PBXBuildFile; fileRef = 04772374136B87D47384F9F0 /* check_stop_recovery.cpython-314.pyc */; };
 		15DFA75952566E938AECED46 /* GitPreviewPanelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D74EFE13FBE5E49414DB592 /* GitPreviewPanelTests.swift */; };
 		17BFCE03C38DDA36E1922CE9 /* BuildScriptTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E1E08E66AF3EA0DE27005CF /* BuildScriptTests.swift */; };
 		19931B12DE9DC4CF1FAE8180 /* TerminalNSViewSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24CFEA98D48AB58A04B6D707 /* TerminalNSViewSupport.swift */; };
@@ -77,12 +75,12 @@
 		35E93CC71885A962F87B4C38 /* AgentStatusRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE9456CE11D12038D4B1F242 /* AgentStatusRuntime.swift */; };
 		379B1034885C2D88CA1DCAA1 /* RecordedBaseBranchReaderTests+Validation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0A255A12996ADC4CB007D60 /* RecordedBaseBranchReaderTests+Validation.swift */; };
 		37DCAA487A2EA6A8E73E8A71 /* DestructiveConfirmation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C769DEBE4174CF967355B999 /* DestructiveConfirmation.swift */; };
-		38BBBDA03419B3C98D09C960 /* test_launcher.cpython-314.pyc in Resources */ = {isa = PBXBuildFile; fileRef = C606483AAA27EB321741ABCF /* test_launcher.cpython-314.pyc */; };
 		395203F465B0D6EDBD1BC9E3 /* GitStatusParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9E7D7DCF97A300FE8386B3A /* GitStatusParserTests.swift */; };
 		3981D357A580D757AF507411 /* GitHubPullRequestStatusDecoder+Batch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92C39B1185261DF074BBA419 /* GitHubPullRequestStatusDecoder+Batch.swift */; };
 		3A06E393704C710E7A736961 /* PullRequestStatusNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B6EB45942AB2C93E80121B /* PullRequestStatusNavigationTests.swift */; };
 		3BF986DB37B05D310DE5BCA4 /* WorkspaceStackNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC68E5584DED0324E81CEF34 /* WorkspaceStackNavigationTests.swift */; };
 		3C5B55414E28CCA1E02CA3CC /* GitStatusSafetyRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C16CF6DCF77D4D9C9FAC64B0 /* GitStatusSafetyRegressionTests.swift */; };
+		3DAC03967628ECE5672CA55A /* GhosttyResourcesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90665F33AB2C287231468D34 /* GhosttyResourcesTests.swift */; };
 		3E972FEB8E4E16C79E4DC7AD /* AppSettingsSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1B1E1D880023440A0258DC /* AppSettingsSessionTests.swift */; };
 		425A9B597D2205A427ADBF35 /* plugin-events.mjs in Resources */ = {isa = PBXBuildFile; fileRef = A6EE63B105AB0009F170DE52 /* plugin-events.mjs */; };
 		42A8CC9F70D0EB2AFC1DFBC4 /* ArgusTerminalTheme.ghostty in Resources */ = {isa = PBXBuildFile; fileRef = A7BFE3635908AAEF89CC326C /* ArgusTerminalTheme.ghostty */; };
@@ -126,7 +124,6 @@
 		6107C062A10FDF40A50DC40E /* BranchNameSuggestionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84191554144B687CFE12B3AE /* BranchNameSuggestionTests.swift */; };
 		610D4501B3ABABFC57F88B64 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0418377FEC3C8161DF8DF2FA /* SettingsWindowController.swift */; };
 		643D13B7D8C09DA92418288A /* WorkspaceStackServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C6AADA94A16D9CF95F1663 /* WorkspaceStackServiceTests.swift */; };
-		676770A32E2E91D886FC28D7 /* synthetic_pi_stand_in.cpython-314.pyc in Resources */ = {isa = PBXBuildFile; fileRef = 4072B6C75D724CA88EEED63E /* synthetic_pi_stand_in.cpython-314.pyc */; };
 		6931D0DEA3B30E42F90CD235 /* ContentAreaView+MarkdownRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E54D933E45F24687492BD0F /* ContentAreaView+MarkdownRenderer.swift */; };
 		69936086FA79B07F586B6E81 /* GitStatusPresentationLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66ABF976438B37B162B557DA /* GitStatusPresentationLayoutTests.swift */; };
 		69C6149225D1CC2622FE1896 /* WorktreeSetupProcess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D39CD1533A8E49D49F71ADB /* WorktreeSetupProcess.swift */; };
@@ -192,9 +189,7 @@
 		99A95A1025DD39E36D5230F2 /* SidebarView+Stacks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B29F9564856A8AC25C2468F /* SidebarView+Stacks.swift */; };
 		99AE3FC1AB4F412A618B127C /* ProjectAndWorktreeUIContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFE0FA88546FBFAD28E1D952 /* ProjectAndWorktreeUIContractTests.swift */; };
 		99BC021C9C0803B1481C13A2 /* WorkspacePullRequestStatusModel+LocalContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ACADA277A151829471507F9 /* WorkspacePullRequestStatusModel+LocalContext.swift */; };
-		9A0C5FA25210B03FD5507AA0 /* test_writer_provenance.cpython-314.pyc in Resources */ = {isa = PBXBuildFile; fileRef = 45C341561E793A8AE9D1AC0D /* test_writer_provenance.cpython-314.pyc */; };
 		9A2F8235FB0F7ABE0FED56D9 /* GitSidebarView+RowsAndOperations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C754D8247CA7B2E66E7545A /* GitSidebarView+RowsAndOperations.swift */; };
-		9B717FAC2641108CBEDC3343 /* test_lifecycle.cpython-314.pyc in Resources */ = {isa = PBXBuildFile; fileRef = A06AC1BC7EF1C774C902D400 /* test_lifecycle.cpython-314.pyc */; };
 		9BFCE5E9F8D561CAA0CA6E19 /* ChromeColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F4253A4E13FA79C8E83E7C1 /* ChromeColors.swift */; };
 		9CA1890389D4C351FEC46DC7 /* WorkspaceStackObservationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48D51FA32A28AC4619FBC667 /* WorkspaceStackObservationTests.swift */; };
 		9DCC517DC3E2A4A2CE542BA7 /* PiIntegrationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11FECAF443D881B88A5FD48 /* PiIntegrationServiceTests.swift */; };
@@ -237,6 +232,7 @@
 		BF2202FFE0CAFA09111B2127 /* BrowserPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA7D0BBA1C3E522DF924BE31 /* BrowserPanel.swift */; };
 		C1C15BD7A41E5FD8DF82A7CA /* WorkspaceManager+WorktreeAttachment.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1ACA8589ADC038CDD1183A8 /* WorkspaceManager+WorktreeAttachment.swift */; };
 		C2E5687B5858D87FC40BAA9E /* ArgusDiffRenderingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75E5C691A8EE5685548AEBE8 /* ArgusDiffRenderingTests.swift */; };
+		C3446FE97721F41C8524CF60 /* GhosttyResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62F7B6068F80A51E27FF6D23 /* GhosttyResources.swift */; };
 		C43B7F5D9A46D2D07CE6668D /* BrowserPanelConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE2DC12E91B4CA4BEC4B9EC /* BrowserPanelConfigurationTests.swift */; };
 		C4A9324060645CEEF6BF36ED /* GitStatusTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35911854664604B1690D6DD4 /* GitStatusTypes.swift */; };
 		C5034845ED2A4C411E1AA5EA /* TerminalSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0DE49DF785BEEBDEBA739E8 /* TerminalSurface.swift */; };
@@ -280,8 +276,6 @@
 		DE0DA25EC939706E5F217976 /* WorktreeService+PullRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125D3A1015BB9B1284254961 /* WorktreeService+PullRequest.swift */; };
 		DF5782CB9AA7E014F6F68AC4 /* GitSidebarView+Sections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39B7F4539F94C01EAA98ADC9 /* GitSidebarView+Sections.swift */; };
 		DF61F03B0291C4801D0BA0FF /* GitStatusService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B9FAB1109B3A420ADD6DC4 /* GitStatusService.swift */; };
-		E0601A3CBF467D0991C1DE30 /* check_writer_expiry.cpython-314.pyc in Resources */ = {isa = PBXBuildFile; fileRef = B8C771D45CD0857E6EF52951 /* check_writer_expiry.cpython-314.pyc */; };
-		E18387F135D3DCC4ED190FCF /* check_backend_pty.cpython-314.pyc in Resources */ = {isa = PBXBuildFile; fileRef = 03AF9B35C2FC36882BFB549C /* check_backend_pty.cpython-314.pyc */; };
 		E1F1C4573873B10B34181A71 /* TerminalNSView+FileDrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = B70FB104B47A1F61D7AA5A8C /* TerminalNSView+FileDrop.swift */; };
 		E20DFC66EAE40A5C68EC4F09 /* SidebarLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D753CE6E1FFD67B19A85930F /* SidebarLayoutTests.swift */; };
 		E31199E901E44BB6846B8A56 /* WindowFocusAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EC88B0BFC64101A7C347EDB /* WindowFocusAppearanceTests.swift */; };
@@ -326,9 +320,7 @@
 /* Begin PBXFileReference section */
 		0163CE072B8461A861431A19 /* GitTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitTestSupport.swift; sourceTree = "<group>"; };
 		021986DA7812FCB17C12FC29 /* GitPreviewErrorPropagationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitPreviewErrorPropagationTests.swift; sourceTree = "<group>"; };
-		03AF9B35C2FC36882BFB549C /* check_backend_pty.cpython-314.pyc */ = {isa = PBXFileReference; path = "check_backend_pty.cpython-314.pyc"; sourceTree = "<group>"; };
 		0418377FEC3C8161DF8DF2FA /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
-		04772374136B87D47384F9F0 /* check_stop_recovery.cpython-314.pyc */ = {isa = PBXFileReference; path = "check_stop_recovery.cpython-314.pyc"; sourceTree = "<group>"; };
 		04A77AE31C15EB2829A05321 /* MacOS27UIContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacOS27UIContractTests.swift; sourceTree = "<group>"; };
 		063FB1ED7149ED958918434B /* AgentStatusSocketTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentStatusSocketTests.swift; sourceTree = "<group>"; };
 		0874A663598ED4B3DC8DDCB0 /* AppSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsTests.swift; sourceTree = "<group>"; };
@@ -402,10 +394,8 @@
 		3D74EFE13FBE5E49414DB592 /* GitPreviewPanelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitPreviewPanelTests.swift; sourceTree = "<group>"; };
 		3E9B5A9FCD2CC6DE79DDC392 /* WorkspacePullRequestStatusModelQuotaTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePullRequestStatusModelQuotaTests.swift; sourceTree = "<group>"; };
 		40334572574BA40417DE0ACC /* ArgusPiAgentStatusPlugin-1.15.0.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "ArgusPiAgentStatusPlugin-1.15.0.js"; sourceTree = "<group>"; };
-		4072B6C75D724CA88EEED63E /* synthetic_pi_stand_in.cpython-314.pyc */ = {isa = PBXFileReference; path = "synthetic_pi_stand_in.cpython-314.pyc"; sourceTree = "<group>"; };
 		42040B76D2872AC71249796C /* GitStatusParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusParser.swift; sourceTree = "<group>"; };
 		4522B14CD49E7A2F3CC4AD86 /* BrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserView.swift; sourceTree = "<group>"; };
-		45C341561E793A8AE9D1AC0D /* test_writer_provenance.cpython-314.pyc */ = {isa = PBXFileReference; path = "test_writer_provenance.cpython-314.pyc"; sourceTree = "<group>"; };
 		470C27E1E483568C99FF880E /* GitPreviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitPreviewService.swift; sourceTree = "<group>"; };
 		472043D4B02CE69C1201A0D8 /* GitHubPullRequestStatusResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubPullRequestStatusResponse.swift; sourceTree = "<group>"; };
 		485F571F1FA56170BBCB7BDF /* ExternalProcess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalProcess.swift; sourceTree = "<group>"; };
@@ -447,6 +437,7 @@
 		6043F6D86FDDF36460856A66 /* WorkspacePullRequestLocalInputs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePullRequestLocalInputs.swift; sourceTree = "<group>"; };
 		60943ED18C50AF13F94B9691 /* RightSidebarView+WorkspaceFilesRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RightSidebarView+WorkspaceFilesRows.swift"; sourceTree = "<group>"; };
 		621BDE2A45BFFDC6F008EE55 /* RightSidebarView+WorkspaceFileLabels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RightSidebarView+WorkspaceFileLabels.swift"; sourceTree = "<group>"; };
+		62F7B6068F80A51E27FF6D23 /* GhosttyResources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhosttyResources.swift; sourceTree = "<group>"; };
 		6462454D71110068A439108A /* GitHubPullRequestStatusDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubPullRequestStatusDecoder.swift; sourceTree = "<group>"; };
 		66ABF976438B37B162B557DA /* GitStatusPresentationLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusPresentationLayoutTests.swift; sourceTree = "<group>"; };
 		67AA67ACDD9DBF4C86C13295 /* GitStatusService+Operations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GitStatusService+Operations.swift"; sourceTree = "<group>"; };
@@ -496,6 +487,7 @@
 		8E1B1E1D880023440A0258DC /* AppSettingsSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsSessionTests.swift; sourceTree = "<group>"; };
 		8E306A62F476E14142539F06 /* WorkspacePullRequestStatusModel+Requests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspacePullRequestStatusModel+Requests.swift"; sourceTree = "<group>"; };
 		8EF512E5AB557B4CCBA878F8 /* WorkspaceCommandSetupOrderingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceCommandSetupOrderingTests.swift; sourceTree = "<group>"; };
+		90665F33AB2C287231468D34 /* GhosttyResourcesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhosttyResourcesTests.swift; sourceTree = "<group>"; };
 		90EDB050956169889F8EF128 /* GitPreviewService+Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GitPreviewService+Models.swift"; sourceTree = "<group>"; };
 		916EC158787B40AD0A9CC20D /* AgentStatusStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentStatusStore.swift; sourceTree = "<group>"; };
 		925161D329354881878FAB0E /* WorktreeService+Discovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorktreeService+Discovery.swift"; sourceTree = "<group>"; };
@@ -515,7 +507,6 @@
 		9C0107B8A19AEA8B1CDB683C /* ExistingBranchWorktreeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExistingBranchWorktreeTests.swift; sourceTree = "<group>"; };
 		9CB13ABE54299959FD8A14E1 /* SidebarNavigationDragging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNavigationDragging.swift; sourceTree = "<group>"; };
 		A04D862809818007329A335B /* BrowserPanelUIContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserPanelUIContractTests.swift; sourceTree = "<group>"; };
-		A06AC1BC7EF1C774C902D400 /* test_lifecycle.cpython-314.pyc */ = {isa = PBXFileReference; path = "test_lifecycle.cpython-314.pyc"; sourceTree = "<group>"; };
 		A0DE49DF785BEEBDEBA739E8 /* TerminalSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSurface.swift; sourceTree = "<group>"; };
 		A12241B4E1DFAFF468AEC223 /* GitMetadataWatchPathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitMetadataWatchPathTests.swift; sourceTree = "<group>"; };
 		A170B01F39BB2D7F5D058D43 /* RecordedBaseBranchReader+Graphite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecordedBaseBranchReader+Graphite.swift"; sourceTree = "<group>"; };
@@ -542,7 +533,6 @@
 		B8008B75AC97822EFF6C3FE8 /* WorkspaceManager+PullRequestStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspaceManager+PullRequestStatus.swift"; sourceTree = "<group>"; };
 		B82A11967759AA4F1B34B47C /* ContentAreaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentAreaView.swift; sourceTree = "<group>"; };
 		B85B710CD787E14321AB971B /* SidebarStatePersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarStatePersistenceTests.swift; sourceTree = "<group>"; };
-		B8C771D45CD0857E6EF52951 /* check_writer_expiry.cpython-314.pyc */ = {isa = PBXFileReference; path = "check_writer_expiry.cpython-314.pyc"; sourceTree = "<group>"; };
 		B921EB3F145DEF6CD009EAE1 /* BrowserPanelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserPanelTests.swift; sourceTree = "<group>"; };
 		BBAD922CBF0C867C0EDB5DBD /* SidebarView+Header.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SidebarView+Header.swift"; sourceTree = "<group>"; };
 		BC0B9ECA31DC779CDC60C200 /* SidebarState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarState.swift; sourceTree = "<group>"; };
@@ -558,7 +548,6 @@
 		C3425033A6F482EDB6ECD3B8 /* pi-plugin-events.mjs */ = {isa = PBXFileReference; path = "pi-plugin-events.mjs"; sourceTree = "<group>"; };
 		C3C4B6C5B4B41EB345468D1F /* ArgusKiloTurnCompletionPlugin-1.13.0.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "ArgusKiloTurnCompletionPlugin-1.13.0.js"; sourceTree = "<group>"; };
 		C46B327656627D8D71A2C84F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		C606483AAA27EB321741ABCF /* test_launcher.cpython-314.pyc */ = {isa = PBXFileReference; path = "test_launcher.cpython-314.pyc"; sourceTree = "<group>"; };
 		C69B34D7D3E65E340C473C43 /* AgentSocketServerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSocketServerTests.swift; sourceTree = "<group>"; };
 		C769DEBE4174CF967355B999 /* DestructiveConfirmation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DestructiveConfirmation.swift; sourceTree = "<group>"; };
 		C93B31BE3628269A47AEA562 /* RecordedBaseBranchReader+Metadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecordedBaseBranchReader+Metadata.swift"; sourceTree = "<group>"; };
@@ -618,7 +607,6 @@
 		EAEA40E4A41292D6EBE0E95B /* GitStatusUIContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusUIContractTests.swift; sourceTree = "<group>"; };
 		EB86E7E260A69A54EFC15308 /* ArgusPiAgentStatusPlugin.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = ArgusPiAgentStatusPlugin.js; sourceTree = "<group>"; };
 		EBFBCD01970CD5AD9C39793D /* ArgusPiAgentStatusPlugin-1.13.2.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "ArgusPiAgentStatusPlugin-1.13.2.js"; sourceTree = "<group>"; };
-		EC2677B4336D0765347A99D9 /* writer_publication_failure.cpython-314.pyc */ = {isa = PBXFileReference; path = "writer_publication_failure.cpython-314.pyc"; sourceTree = "<group>"; };
 		ED00064FF5E8E3F4C36DAF6B /* TurnCompletionAttentionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurnCompletionAttentionStore.swift; sourceTree = "<group>"; };
 		ED1CFB5B60DC9CCCB94CEADB /* ContentAreaView+SyntaxHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentAreaView+SyntaxHighlighter.swift"; sourceTree = "<group>"; };
 		EDA50BB27255AFF560A99F86 /* LocalBranchPickerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalBranchPickerTests.swift; sourceTree = "<group>"; };
@@ -776,17 +764,6 @@
 			path = AgentStatusTests;
 			sourceTree = "<group>";
 		};
-		1FA3C75E980316C6B4F04BDF /* __pycache__ */ = {
-			isa = PBXGroup;
-			children = (
-				4072B6C75D724CA88EEED63E /* synthetic_pi_stand_in.cpython-314.pyc */,
-				C606483AAA27EB321741ABCF /* test_launcher.cpython-314.pyc */,
-				A06AC1BC7EF1C774C902D400 /* test_lifecycle.cpython-314.pyc */,
-				45C341561E793A8AE9D1AC0D /* test_writer_provenance.cpython-314.pyc */,
-			);
-			path = __pycache__;
-			sourceTree = "<group>";
-		};
 		234C02C2B7CA13C56AF9B10C /* WorkspaceTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -794,6 +771,7 @@
 				B3E7C54A6AB4FCDF15AC7E6A /* ClipboardConfirmationTests.swift */,
 				0BF114B3FC0859D6A88F6BAD /* CloseWorkspaceConfirmationUIContractTests.swift */,
 				F8D1C8CBCD5980B96C02A3E7 /* EmptyWorkspaceUIContractTests.swift */,
+				90665F33AB2C287231468D34 /* GhosttyResourcesTests.swift */,
 				04A77AE31C15EB2829A05321 /* MacOS27UIContractTests.swift */,
 				D91555A21B626A22D60280E6 /* ProjectCollectionTests.swift */,
 				2F29FAA647BB11D78C02967A /* ProjectCollectionUITests.swift */,
@@ -928,14 +906,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		4C1140D2A483D64A1EC80EFA /* swift */ = {
-			isa = PBXGroup;
-			children = (
-				9030A03E015070F1D734474C /* __pycache__ */,
-			);
-			path = swift;
-			sourceTree = "<group>";
-		};
 		598F65DDB5FF917F250CA120 /* Sidebar */ = {
 			isa = PBXGroup;
 			children = (
@@ -1049,8 +1019,6 @@
 				C3425033A6F482EDB6ECD3B8 /* pi-plugin-events.mjs */,
 				D11FECAF443D881B88A5FD48 /* PiIntegrationServiceTests.swift */,
 				194866910E1AF93B3BB64F74 /* Fixtures */,
-				701373E3856AFCE5E8E19564 /* lifecycle */,
-				4C1140D2A483D64A1EC80EFA /* swift */,
 			);
 			path = PiIntegrationTests;
 			sourceTree = "<group>";
@@ -1063,14 +1031,6 @@
 				D64C5F69041FA0257B462DF6 /* Fixtures */,
 			);
 			path = KiloIntegrationTests;
-			sourceTree = "<group>";
-		};
-		701373E3856AFCE5E8E19564 /* lifecycle */ = {
-			isa = PBXGroup;
-			children = (
-				1FA3C75E980316C6B4F04BDF /* __pycache__ */,
-			);
-			path = lifecycle;
 			sourceTree = "<group>";
 		};
 		7DD632E6ABDB2D5A6202B887 /* DiffRendering */ = {
@@ -1092,17 +1052,6 @@
 				80EE2E74B39FEB342DB83A41 /* WorkspaceStackPersistenceTests.swift */,
 			);
 			path = SessionTests;
-			sourceTree = "<group>";
-		};
-		9030A03E015070F1D734474C /* __pycache__ */ = {
-			isa = PBXGroup;
-			children = (
-				03AF9B35C2FC36882BFB549C /* check_backend_pty.cpython-314.pyc */,
-				04772374136B87D47384F9F0 /* check_stop_recovery.cpython-314.pyc */,
-				B8C771D45CD0857E6EF52951 /* check_writer_expiry.cpython-314.pyc */,
-				EC2677B4336D0765347A99D9 /* writer_publication_failure.cpython-314.pyc */,
-			);
-			path = __pycache__;
 			sourceTree = "<group>";
 		};
 		93BAB8A8D25F41D7072B4882 /* Views */ = {
@@ -1130,6 +1079,7 @@
 				CD1784EE26371C0FE0BF4A6D /* GhosttyCallbacks.swift */,
 				93A28C47CFFC35C8515E0B8F /* GhosttyConfig.swift */,
 				6AAE1F6D2D88EDCBC72EA3AF /* GhosttyInput.swift */,
+				62F7B6068F80A51E27FF6D23 /* GhosttyResources.swift */,
 				6D768BF4B1DD82D18B53E28F /* TerminalClipboardConfirmation.swift */,
 				18CEC2C4ABBB5016B268EEA9 /* TerminalEnvironment.swift */,
 				EF781F36ADED8076735767AF /* TerminalNSView.swift */,
@@ -1355,16 +1305,8 @@
 				72400ECC9ABB0DEDBDB578CA /* ArgusPiAgentStatusPlugin-1.13.0.js in Resources */,
 				1D0A442D039D75704DE38487 /* ArgusPiAgentStatusPlugin-1.13.2.js in Resources */,
 				91E2F1D54DBF9F417990EAB6 /* ArgusPiAgentStatusPlugin-1.15.0.js in Resources */,
-				E18387F135D3DCC4ED190FCF /* check_backend_pty.cpython-314.pyc in Resources */,
-				15902E9BAA38F163B406EA80 /* check_stop_recovery.cpython-314.pyc in Resources */,
-				E0601A3CBF467D0991C1DE30 /* check_writer_expiry.cpython-314.pyc in Resources */,
 				F4D2852568492A9BA56DC428 /* pi-plugin-events.mjs in Resources */,
 				425A9B597D2205A427ADBF35 /* plugin-events.mjs in Resources */,
-				676770A32E2E91D886FC28D7 /* synthetic_pi_stand_in.cpython-314.pyc in Resources */,
-				38BBBDA03419B3C98D09C960 /* test_launcher.cpython-314.pyc in Resources */,
-				9B717FAC2641108CBEDC3343 /* test_lifecycle.cpython-314.pyc in Resources */,
-				9A0C5FA25210B03FD5507AA0 /* test_writer_provenance.cpython-314.pyc in Resources */,
-				0B288531A6384AB3BE0B427F /* writer_publication_failure.cpython-314.pyc in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1408,6 +1350,7 @@
 				6ACDF998D304D03C52DE5241 /* GhosttyCallbacks.swift in Sources */,
 				E4830742CCBF697A5503CDFB /* GhosttyConfig.swift in Sources */,
 				CCBA30F3C0A6DB329DE695B2 /* GhosttyInput.swift in Sources */,
+				C3446FE97721F41C8524CF60 /* GhosttyResources.swift in Sources */,
 				6A070C166FF0C9361AE775B5 /* GitDiffStatParser.swift in Sources */,
 				EAB3343A6EE57205E148A50E /* GitFileStatusStyle.swift in Sources */,
 				A86AB99A5CBC19B820B6A690 /* GitHubPullRequestService+Status.swift in Sources */,
@@ -1559,6 +1502,7 @@
 				F46179E18E48775C783E104A /* ExistingBranchWorktreeTests.swift in Sources */,
 				5B4BB7179424815BEF595AF7 /* ExistingWorktreeBranchChoiceTests.swift in Sources */,
 				56D23E481BAE7617C4CE54B1 /* ExternalProcessTests.swift in Sources */,
+				3DAC03967628ECE5672CA55A /* GhosttyResourcesTests.swift in Sources */,
 				21B3E316D345B5A2038674EF /* GitBaseBranchMetadataTests.swift in Sources */,
 				4DA794F359E00C48E50F95BD /* GitBranchBarUIContractTests.swift in Sources */,
 				74EF2866EEC883D1D40C4EA4 /* GitChangesEmptyStateTests.swift in Sources */,
