@@ -47,95 +47,6 @@ func ghosttyActionCallback(
     return handleApplicationAction(action)
 }
 
-func ghosttyReadClipboardCallback(
-    _ userdata: UnsafeMutableRawPointer?,
-    _ clipboard: ghostty_clipboard_e,
-    _ state: UnsafeMutableRawPointer?
-) -> Bool {
-    guard let userdata, let state else { return false }
-    let terminalSurface = Unmanaged<TerminalSurface>.fromOpaque(userdata).takeUnretainedValue()
-    guard let ghosttySurface = terminalSurface.surface else { return false }
-
-    let contents = NSPasteboard.general.string(forType: .string) ?? ""
-    contents.withCString { pointer in
-        ghostty_surface_complete_clipboard_request(ghosttySurface, pointer, state, false)
-    }
-    return true
-}
-
-func ghosttyConfirmReadClipboardCallback(
-    _ userdata: UnsafeMutableRawPointer?,
-    _ content: UnsafePointer<CChar>?,
-    _ state: UnsafeMutableRawPointer?,
-    _ request: ghostty_clipboard_request_e
-) {
-    guard let userdata, let state else { return }
-    let terminalSurface = Unmanaged<TerminalSurface>.fromOpaque(userdata).takeUnretainedValue()
-    let value = content.map(String.init(cString:)) ?? ""
-    let kind: TerminalClipboardConfirmationKind =
-        request == GHOSTTY_CLIPBOARD_REQUEST_OSC_52_READ ? .terminalRead : .unsafePaste
-    let requestState = TerminalClipboardRequestState(pointer: state)
-    let decision = TerminalClipboardDecision(surfaceId: terminalSurface.id) { approved in
-        guard let ghosttySurface = terminalSurface.surface else { return }
-        let resolution = TerminalClipboardRequestResolution.resolve(
-            content: value,
-            approved: approved
-        )
-        resolution.content.withCString { pointer in
-            ghostty_surface_complete_clipboard_request(
-                ghosttySurface,
-                pointer,
-                requestState.pointer,
-                resolution.confirmed
-            )
-        }
-    }
-    DispatchQueue.main.async {
-        TerminalClipboardConfirmationPresenter.shared.present(
-            kind: kind,
-            surfaceId: decision.surfaceId,
-            preview: kind == .unsafePaste ? value : nil,
-            completion: decision.complete
-        )
-    }
-}
-
-func ghosttyWriteClipboardCallback(
-    _ userdata: UnsafeMutableRawPointer?,
-    _ clipboard: ghostty_clipboard_e,
-    _ contents: UnsafePointer<ghostty_clipboard_content_s>?,
-    _ count: Int,
-    _ confirm: Bool
-) {
-    guard count > 0, let contents else { return }
-
-    var clipboardContents: [(mimeType: String, text: String)] = []
-    clipboardContents.reserveCapacity(count)
-    for index in 0..<count {
-        let item = contents[index]
-        guard let mime = item.mime, let data = item.data else { continue }
-        clipboardContents.append((String(cString: mime), String(cString: data)))
-    }
-
-    guard let surfaceId = callbackSurfaceId(from: userdata) else { return }
-    if !confirm {
-        writeTerminalClipboard(clipboardContents, to: .general)
-        return
-    }
-
-    let preview = clipboardContents.first(where: { $0.mimeType.hasPrefix("text/plain") })?.text
-    DispatchQueue.main.async {
-        TerminalClipboardConfirmationPresenter.shared.present(
-            kind: .terminalWrite,
-            surfaceId: surfaceId,
-            preview: preview
-        ) { approved in
-            guard approved else { return }
-            writeTerminalClipboard(clipboardContents, to: .general)
-        }
-    }
-}
-
 func ghosttyCloseSurfaceCallback(
     _ userdata: UnsafeMutableRawPointer?,
     _ processAlive: Bool
@@ -312,7 +223,7 @@ private func handleCloseTab(surfaceId: UUID?) -> Bool {
 
 // MARK: - Callback Helpers
 
-private func callbackSurfaceId(from userdata: UnsafeMutableRawPointer?) -> UUID? {
+func callbackSurfaceId(from userdata: UnsafeMutableRawPointer?) -> UUID? {
     guard let userdata else { return nil }
     let surfaceRef = Unmanaged<AnyObject>.fromOpaque(userdata).takeUnretainedValue()
     return (surfaceRef as? TerminalSurface)?.id

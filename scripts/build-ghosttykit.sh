@@ -26,15 +26,15 @@ set -euo pipefail
 # Pinned to a known-good ghostty main commit (1.3.2-dev). This is the API that
 # Argus/Ghostty/*.swift is currently written against — bump deliberately, and
 # re-check the C API drift notes in Frameworks/README.md if you do.
-GHOSTTY_REF="${GHOSTTY_REF:-88b4cd047fa627cdca6781bc7e7dc8b75a2cecb9}"
-ZIG_PINNED_VERSION="0.15.2"
+GHOSTTY_REF="${GHOSTTY_REF:-c959af63d11b524a84c21900372990dbc024b059}"
+ZIG_PINNED_VERSION="0.16.0"
 ZIG_VERSION="${ZIG_VERSION:-$ZIG_PINNED_VERSION}"
 # SHA-256 of the official Zig ${ZIG_PINNED_VERSION} macOS tarballs, from
 # https://ziglang.org/download/index.json. Pinned so a corrupted or tampered
 # download fails loudly instead of being run as the build toolchain. These
 # apply to ZIG_PINNED_VERSION only — bump them in lockstep when you bump it,
 # or set ZIG_SHA256 to override for a one-off version.
-ZIG_SHA256_AARCH64="3cc2bab367e185cdfb27501c4b30b1b0653c28d9f73df8dc91488e66ece5fa6b"
+ZIG_SHA256_AARCH64="b23d70deaa879b5c2d486ed3316f7eaa53e84acf6fc9cc747de152450d401489"
 CACHE_DIR="${CACHE_DIR:-$HOME/.cache/argus/ghosttykit}"
 
 usage() {
@@ -175,14 +175,14 @@ cache_provenance_ok() {
         && grep -qxF "build_target=${BUILD_TARGET}" "${metadata}"
 }
 
-# project.yml links \`-lghostty\`, which expects \`libghostty.a\`. A native
-# (arm64-only) main build names the combined archive \`libghostty-internal-fat.a\`;
-# alias it. Older refs/flag combos use other names — handle those too. Returns
-# non-zero if no linkable archive is present.
+# project.yml links \`-lghostty\`, which expects \`libghostty.a\`. The combined
+# archive has been named \`libghostty-internal.a\` (current main) and
+# \`libghostty-internal-fat.a\` (older main) across refs — handle both.
+# Returns non-zero if no linkable archive is present.
 alias_lib() {
     if [[ ! -e "${macos_slice}/libghostty.a" ]]; then
         local alt
-        for alt in libghostty-internal-fat.a libghostty-fat.a ghostty-internal.a; do
+        for alt in libghostty-internal-fat.a libghostty-fat.a ghostty-internal.a libghostty-internal.a; do
             if [[ -e "${macos_slice}/${alt}" ]]; then
                 ln -s "${alt}" "${macos_slice}/libghostty.a"
                 break
@@ -211,6 +211,15 @@ sanity_ok() {
     for sym in _ghostty_app_new _spvc_context_create; do
         grep -qE " [TtSsDdBbC] ${sym}$" <<<"${lib_syms}" || return 1
     done
+}
+
+# An SDK works around the arm64e-only .tbd breakage (ziglang/zig#31665) iff
+# Zig can match arm64-macos in it. libSystem.tbd is a multi-document file (one
+# doc per re-exported dylib) and Zig resolves against the FIRST document, so
+# check that document's targets (may wrap across lines) — not the whole file.
+sdk_supports_zig_arm64() {
+    awk '/^targets:/ { t=1 } t { print; if (index($0, "]")) exit }' \
+        "$1/usr/lib/libSystem.tbd" 2>/dev/null | grep -q "arm64-macos"
 }
 
 # (Re)create the gitignored repo symlink -> the shared cache copy.
@@ -294,13 +303,27 @@ while ! do_zig_build 2>"${WORK_DIR}/build.log"; do
     if [[ "${USE_OLDER_SDK}" -eq 0 ]] \
         && grep -qE "undefined symbol: (_abort|__availability_version_check)" "${WORK_DIR}/build.log"; then
         log "Hit the Zig ${ZIG_VERSION} / new-SDK .tbd issue; retrying against an older SDK"
-        # -type d excludes the MacOSX.sdk / MacOSXNN.sdk shortcut symlinks,
-        # which point at the current (newest) SDK — the one causing this in
-        # the first place. Only real, fully-versioned SDK directories count.
-        older_sdk="$(find /Library/Developer/CommandLineTools/SDKs -maxdepth 1 -type d -name 'MacOSX*.sdk' 2>/dev/null | sort -V | head -1)"
+        # Xcode/CLT >= 26.4 SDKs ship arm64e-macos-only .tbd stubs, which
+        # Zig < 0.16's Mach-O linker cannot match to arm64-macos
+        # (ziglang/zig#31665). The pinned Zig includes the fix, so this only
+        # triggers for older ZIG_VERSION overrides. The workaround is any SDK
+        # whose libSystem.tbd still declares arm64-macos (pre-26.4). Search
+        # the CLT SDK dir and the user-writable ~/Library/SDKs (drop a
+        # MacOSX15.x.sdk there — see Frameworks/README.md). -type d excludes
+        # the MacOSX.sdk / MacOSXNN.sdk shortcut symlinks, which point at the
+        # current (newest) SDK — the one causing this in the first place.
+        older_sdk=""
+        while IFS= read -r candidate; do
+            if sdk_supports_zig_arm64 "${candidate}"; then
+                older_sdk="${candidate}"
+                break
+            fi
+        done < <(find /Library/Developer/CommandLineTools/SDKs "${HOME}/Library/SDKs" \
+            -maxdepth 1 -type d -name 'MacOSX*.sdk' 2>/dev/null | sort -V)
         current_sdk="$(xcrun --sdk macosx --show-sdk-path 2>/dev/null)"
-        if [[ -z "$older_sdk" || "$older_sdk" -ef "$current_sdk" ]]; then
-            err "No older MacOSX SDK found under CommandLineTools/SDKs to work around this."
+        if [[ -z "${older_sdk}" || "${older_sdk}" -ef "${current_sdk}" ]]; then
+            err "No MacOSX SDK with an arm64-macos .tbd slice (pre-26.4) found."
+            err "Drop one (e.g. MacOSX15.5.sdk) into ${HOME}/Library/SDKs — see Frameworks/README.md."
             cat "${WORK_DIR}/build.log" >&2
             exit 1
         fi
