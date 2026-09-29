@@ -2,6 +2,11 @@
 
 This file records changes pushed for local Argus releases. New entries use a `YYYY-MM-DD` heading and link to their commit or commits.
 
+## 2026-09-29
+
+- Released Argus 1.18.0 with clearer Project hierarchy in the sidebar. Project-associated Workspaces align beneath folder headings and use vertical guides, while Standalone Workspaces keep their separate alignment. ([8f38c5b](https://github.com/jeanduplessis/argus/commit/8f38c5bd052c04f68c6cfeafdf440578d58e3dd1))
+- Project blocks can now be reordered within the same Collection or ungrouped section by dragging a Project heading or using Move Up and Move Down. Reordering keeps internal Workspace order, disclosure, selection, focus, and live content unchanged. ([84efb7b](https://github.com/jeanduplessis/argus/commit/84efb7bb24b9d6a4fcdddd53009b5020351bd771))
+
 ## 2026-09-25
 
 - Upgraded the bundled GhosttyKit to ghostty main (`c959af6`) built with Zig 0.16.0. Builds work again on Xcode/CLT 26.4+ SDKs, whose arm64e-only library stubs broke Zig 0.15.x linking; Zig 0.16 matches those stubs itself. The build script keeps its older-SDK fallback for Zig 0.15.x overrides and accepts main's new `libghostty-internal.a` archive name. ([de80236](https://github.com/eshurakov/argus/commit/de80236))
