@@ -63,22 +63,22 @@ is one of its own build targets.
 **1. Get the exact Zig version Ghostty pins to.**
 
 Check `build.zig.zon`'s `minimum_zig_version` in the Ghostty checkout — as
-of the pinned commit this is `0.15.2`. Zig has no backwards compatibility
+of the pinned commit this is `0.16.0`. Zig has no backwards compatibility
 guarantees across minor versions, so it must match exactly; Homebrew's `zig`
 formula is usually newer and will fail to even parse Ghostty's `build.zig`.
 
 ```bash
 curl -fsSL -o zig.tar.xz \
-  "https://ziglang.org/download/0.15.2/zig-aarch64-macos-0.15.2.tar.xz"
+  "https://ziglang.org/download/0.16.0/zig-aarch64-macos-0.16.0.tar.xz"
 # Verify against the sha256 published in https://ziglang.org/download/index.json
 # before running it as your build toolchain (build-ghosttykit.sh does this for you):
-shasum -a 256 -c - <<<"3cc2bab367e185cdfb27501c4b30b1b0653c28d9f73df8dc91488e66ece5fa6b  zig.tar.xz"
+shasum -a 256 -c - <<<"b23d70deaa879b5c2d486ed3316f7eaa53e84acf6fc9cc747de152450d401489  zig.tar.xz"
 tar xf zig.tar.xz
-ZIG=./zig-aarch64-macos-0.15.2/zig
+ZIG=./zig-aarch64-macos-0.16.0/zig
 ```
 
-(Use `zig-x86_64-macos-0.15.2.tar.xz` on Intel — sha256
-`375b6909fc1495d16fc2c7db9538f707456bfc3373b14ee83fdd3e22b3d43f7f`.)
+(Use `zig-x86_64-macos-0.16.0.tar.xz` on Intel — sha256
+`0387557ed1877bc6a2e1802c8391953baddba76081876301c522f52977b52ba7`.)
 
 **2. Fetch the pinned Ghostty commit.**
 
@@ -87,7 +87,7 @@ version comes from `build.zig.zon`, and deps are fetched by the Zig package
 manager at build time, no git submodules):
 
 ```bash
-REF=88b4cd047fa627cdca6781bc7e7dc8b75a2cecb9   # ghostty main, 1.3.2-dev
+REF=c959af63d11b524a84c21900372990dbc024b059   # ghostty main, 1.3.2-dev
 mkdir ghostty && cd ghostty
 git init -q
 git remote add origin https://github.com/ghostty-org/ghostty.git
@@ -108,37 +108,65 @@ its code. `scripts/build-ghosttykit.sh` applies the patch in its temporary
 checkout and rejects duplicate archive member names before publishing. The
 patch hash is part of the cache key, so existing artifacts remain untouched.
 
-**3. Work around Zig 0.15.2 vs. new macOS SDKs.**
+**3. (Zig 0.15.x only) Work around arm64e-only SDK stubs.**
 
-Zig 0.15.2's Mach-O linker can fail to parse the `.tbd` library stubs in
-very new macOS SDKs, breaking *any* build (not just Ghostty's) with errors
-like:
+The pinned Zig ≥ 0.16 matches `arm64e-macos` `.tbd` entries itself
+([ziglang/zig#31673](https://codeberg.org/ziglang/zig/pulls/31673)), so a
+plain `zig build` links fine even against Xcode/CLT ≥ 26.4 SDKs. You only
+need this section when overriding `ZIG_VERSION` to 0.15.x (e.g. to build an
+older `GHOSTTY_REF`).
+
+Xcode/CLT ≥ 26.4 SDKs ship `.tbd` library stubs that declare only the
+`arm64e-macos` target. Zig 0.15.x's Mach-O linker matches `arm64-macos`
+entries, finds none, and reports every libSystem symbol as undefined —
+breaking *any* `zig build` (not just Ghostty's), starting with the build
+runner itself:
 
 ```
 error: undefined symbol: _abort
 error: undefined symbol: __availability_version_check
 ```
 
-If you hit this, check whether an older SDK is available alongside your
-current Xcode's Command Line Tools:
+This is upstream [ziglang/zig#31665](https://codeberg.org/ziglang/zig/issues/31665)
+(also #31658, #31669); there is no 0.15.x backport. So a 0.15.x build must
+instead use an SDK whose `usr/lib/libSystem.tbd` still declares
+`arm64-macos`, i.e. any pre-26.4 SDK (e.g. `MacOSX15.x.sdk`).
+
+`build-ghosttykit.sh` looks for such an SDK in
+`/Library/Developer/CommandLineTools/SDKs/` and in the user-writable
+`~/Library/SDKs/` (checking the `libSystem.tbd` targets, not just the
+version number). If neither has one, download one — either the official way
+(an Xcode/CLT ≤ 26.3 download from developer.apple.com; Apple ID required)
+or from the community [osxcross mirror](https://github.com/joseluisq/macosx-sdks)
+used throughout the Zig ecosystem:
 
 ```bash
-ls /Library/Developer/CommandLineTools/SDKs/
+mkdir -p ~/Library/SDKs && cd ~/Library/SDKs
+curl -fsSL -O https://github.com/joseluisq/macosx-sdks/releases/download/15.5/MacOSX15.5.sdk.tar.xz
+shasum -a 256 -c - <<<"c15cf0f3f17d714d1aa5a642da8e118db53d79429eb015771ba816aa7c6c1cbd  MacOSX15.5.sdk.tar.xz"
+tar xf MacOSX15.5.sdk.tar.xz && rm MacOSX15.5.sdk.tar.xz
 ```
 
-If there's an older `MacOSX*.sdk` there (e.g. `MacOSX15.4.sdk`), point Zig
-at it — but pick an actual versioned directory, not one of the `MacOSX.sdk`
-/ `MacOSX26.sdk` shortcut symlinks, which just point back at the newest SDK
-(the one causing the problem). Zig always resolves the SDK via
-`xcrun --sdk macosx --show-sdk-path` internally and doesn't honor
-`SDKROOT`, so shim `xcrun` in `PATH`:
+(The [Xcode license terms](https://www.apple.com/legal/sla/docs/xcode.pdf)
+apply to these SDKs either way.) To check whether any given SDK is usable —
+note `libSystem.tbd` holds one YAML document per re-exported dylib and Zig
+only matches against the first document's `targets`:
+
+```bash
+awk '/^targets:/{t=1} t{print; if (index($0,"]")) exit}' \
+  /path/to/MacOSX.sdk/usr/lib/libSystem.tbd | grep arm64-macos
+```
+
+Zig always resolves the SDK via `xcrun --sdk macosx --show-sdk-path`
+internally and doesn't honor `SDKROOT`, so the script shims `xcrun` in
+`PATH`. For a manual build, do the same:
 
 ```bash
 mkdir -p fakebin
 cat > fakebin/xcrun <<'EOF'
 #!/bin/bash
 if [[ "$*" == *"--sdk macosx --show-sdk-path"* ]]; then
-    echo "/Library/Developer/CommandLineTools/SDKs/MacOSX15.4.sdk"
+    echo "$HOME/Library/SDKs/MacOSX15.5.sdk"
     exit 0
 fi
 exec /usr/bin/xcrun "$@"
@@ -210,11 +238,11 @@ mkdir -p "$CACHE_DIR"
 rm -rf "$CACHE_DIR/GhosttyKit.xcframework"
 cp -R macos/GhosttyKit.xcframework "$CACHE_DIR/GhosttyKit.xcframework"
 
-# project.yml links `-lghostty`, which expects `libghostty.a`. A native
-# arm64-only build names the combined archive `libghostty-internal-fat.a`;
-# alias it:
+# project.yml links `-lghostty`, which expects `libghostty.a`. The combined
+# archive is named `libghostty-internal.a` on current main (older main:
+# `libghostty-internal-fat.a`); alias it:
 macos_slice="$CACHE_DIR/GhosttyKit.xcframework/macos-arm64"
-( cd "$macos_slice" && ln -sf libghostty-internal-fat.a libghostty.a )
+( cd "$macos_slice" && ln -sf libghostty-internal.a libghostty.a )
 
 cd /path/to/argus
 rm -f Frameworks/GhosttyKit.xcframework
@@ -225,7 +253,7 @@ ln -s "$CACHE_DIR/GhosttyKit.xcframework" Frameworks/GhosttyKit.xcframework
 fails here instead of at Argus link time:
 
 ```bash
-LIB="$CACHE_DIR/GhosttyKit.xcframework/macos-arm64/libghostty-internal-fat.a"
+LIB="$CACHE_DIR/GhosttyKit.xcframework/macos-arm64/libghostty-internal.a"
 nm "$LIB" | grep " _ghostty_app_new$"       # core C API
 nm "$LIB" | grep " _spvc_context_create$"   # a bundled dependency symbol
 ```
@@ -244,9 +272,22 @@ only as reference for anyone bumping `GHOSTTY_REF`:
 - `ghostty_surface_config_s` has no `io_mode` field upstream (the
   `GHOSTTY_SURFACE_IO_EXEC` assignment was removed in `TerminalSurface.swift`
   — leaving `command` unset already gets Ghostty to exec the default shell).
-- `ghostty_runtime_read_clipboard_cb` returns `Bool` upstream (`true` if the
-  clipboard request was started; `GhosttyCallbacks.swift`'s
-  `ghosttyReadClipboardCallback` returns a matching value).
+
+The bump from `88b4cd0` to `c959af6` reworked the clipboard C API; Argus's
+adaptations live in `Argus/Ghostty/GhosttyClipboardCallbacks.swift`, modeled
+on `macos/Sources/Ghostty/Ghostty.App.swift` in the Ghostty checkout:
+
+- `ghostty_runtime_read_clipboard_cb` returns
+  `ghostty_clipboard_read_result_e` and receives the requested MIME types
+  plus a `list` flag.
+- `ghostty_runtime_confirm_read_clipboard_cb` receives a borrowed
+  `ghostty_clipboard_confirm_s`; its contents must be copied out
+  synchronously because the confirmation completes asynchronously with
+  exactly what the user approved.
+- `ghostty_clipboard_content_s` carries an explicit `len`; `data` is
+  binary-safe, not necessarily null-terminated.
+- Denial completes via `ghostty_surface_deny_clipboard_request`, replacing
+  the old "empty content + confirmed" workaround.
 
 Bumping `GHOSTTY_REF` may surface new C API drifts as Swift compile errors.
 Diff `macos-arm64/Headers/ghostty.h` in the built framework against the

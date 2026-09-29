@@ -2,6 +2,11 @@
 
 This file records changes pushed for local Argus releases. New entries use a `YYYY-MM-DD` heading and link to their commit or commits.
 
+## 2026-09-25
+
+- Upgraded the bundled GhosttyKit to ghostty main (`c959af6`) built with Zig 0.16.0. Builds work again on Xcode/CLT 26.4+ SDKs, whose arm64e-only library stubs broke Zig 0.15.x linking; Zig 0.16 matches those stubs itself. The build script keeps its older-SDK fallback for Zig 0.15.x overrides and accepts main's new `libghostty-internal.a` archive name. ([de80236](https://github.com/eshurakov/argus/commit/de80236))
+- Terminal clipboard bridging follows Ghostty's reworked C API: reads report whether a request started and receive the requested MIME types, confirmations copy out exactly what you approved, clipboard data is length-delimited instead of null-terminated, and denials use Ghostty's new denial call. Behavior is unchanged: plain text only, with the same confirmation prompts. ([de80236](https://github.com/eshurakov/argus/commit/de80236))
+
 ## 2026-09-09
 
 - Argus now advertises Ghostty resources only when a matching terminfo bundle is present, so terminals keep a valid `xterm-256color` environment otherwise. Worktree Setup's spawned arguments and environment now build cleanly under Swift 6, and stale generated Python bytecode references are removed from the Xcode project. ([7e20bb9](https://github.com/jeanduplessis/argus/commit/7e20bb9))

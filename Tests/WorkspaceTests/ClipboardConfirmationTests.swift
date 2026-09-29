@@ -42,23 +42,16 @@ struct ClipboardConfirmationTests {
 
     @Test
     func cancellationCompletesOnceWithoutSubmittingClipboardContent() {
+        // Denial completes the request via ghostty_surface_deny_clipboard_request
+        // (no clipboard content is ever submitted), exactly once.
         let store = TerminalClipboardDecisionStore()
         let surfaceId = UUID()
-        var resolutions: [TerminalClipboardRequestResolution] = []
+        var decisions: [Bool] = []
 
-        store.register(surfaceId: surfaceId) { approved in
-            resolutions.append(
-                TerminalClipboardRequestResolution.resolve(
-                    content: "secret\ncommand",
-                    approved: approved
-                ))
-        }
+        store.register(surfaceId: surfaceId) { decisions.append($0) }
         store.cancel(surfaceId: surfaceId)
         store.cancel(surfaceId: surfaceId)
 
-        #expect(
-            resolutions == [
-                TerminalClipboardRequestResolution(content: "", confirmed: true)
-            ])
+        #expect(decisions == [false])
     }
 }
