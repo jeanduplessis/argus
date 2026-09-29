@@ -36,6 +36,16 @@
 				<string>public.data</string>
 			</array>
 			<key>UTTypeDescription</key>
+			<string>Argus Project Block</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.argus.sidebar-project-block</string>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
 			<string>Argus Collection</string>
 			<key>UTTypeIdentifier</key>
 			<string>com.argus.sidebar-collection</string>

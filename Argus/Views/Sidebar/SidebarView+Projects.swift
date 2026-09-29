@@ -36,7 +36,7 @@ struct ProjectSection: View {
         VStack(spacing: 0) {
             ProjectHeaderRow(project: project, collectionId: collectionId)
                 .windowFocusChrome()
-                .modifier(SidebarNavigationDropTarget(target: collectionId.map { .collection($0) } ?? .ungrouped))
+                .modifier(SidebarNavigationDropTarget(target: .project(project.id, collectionId: collectionId)))
                 .padding(.top, 4)
 
             if disclosure.isExpanded {
@@ -210,6 +210,7 @@ private struct ProjectHeaderRow: View {
     let collectionId: UUID?
     @EnvironmentObject var workspaceManager: WorkspaceManager
     @EnvironmentObject private var appSettings: AppSettings
+    @EnvironmentObject private var dropFeedback: SidebarNavigationDropFeedback
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.sidebarWidthMetrics) private var sidebarMetrics
     @Environment(\.sidebarCollectionContentInset) private var collectionContentInset
@@ -261,7 +262,17 @@ private struct ProjectHeaderRow: View {
         .onHover { hovering in
             isHovered = hovering
         }
+        .onDrag {
+            let drag = workspaceManager.projectBlockDrag(project.id, in: collectionId)
+            dropFeedback.beginProjectBlockDrag(drag)
+            return drag.itemProvider
+        }
         .contextMenu {
+            Button("Move Up") { workspaceManager.moveProjectBlock(project.id, in: collectionId, offset: -1) }
+                .disabled(!workspaceManager.canMoveProjectBlock(project.id, in: collectionId, offset: -1))
+            Button("Move Down") { workspaceManager.moveProjectBlock(project.id, in: collectionId, offset: 1) }
+                .disabled(!workspaceManager.canMoveProjectBlock(project.id, in: collectionId, offset: 1))
+            Divider()
             Button("New Workspace…") {
                 NotificationCenter.default.post(name: .showNewWorkspaceSheet, object: creationRequest)
             }

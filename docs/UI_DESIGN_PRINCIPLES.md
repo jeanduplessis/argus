@@ -308,6 +308,14 @@ section + repository + optional Stack identity. No local heading may authorize
 global repository removal. Remove Collection only ungroups members. Workspace
 menus and typed drag/drop MUST move an individual Workspace across sections,
 including one member of a Stack, without changing repository association.
+Project headings MUST also support dragging their section-local repository block
+before or after another Project heading or Standalone Workspace row in the same
+section. An accepted Project-block drag MUST show a transient insertion line,
+without changing layout, and clear it on exit or drop. Project menus MUST offer
+Move Up and Move Down, disabled at section boundaries. These actions MUST retain
+internal manual Workspace order, disclosure, selection, focus, and live content;
+they MUST NOT move Workspaces across sections.
+
 New Workspace requests MUST carry Collection destination separately from the
 repository and explicit Stack parent. Collection creation supports Standalone
 and registered-repository choices; global requests start ungrouped and cancel

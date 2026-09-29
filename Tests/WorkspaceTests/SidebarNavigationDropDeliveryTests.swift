@@ -115,3 +115,100 @@ private final class DelayedNavigationProvider: @unchecked Sendable {
         callback?(data, nil)
     }
 }
+
+extension SidebarNavigationDropDeliveryTests {
+    enum ProjectBlockChange: CaseIterable, Sendable {
+        case none, sourceAssociation, targetAssociation, sourceOrder, sourceMembership, targetRemoved,
+            sourceProjectRemoved, sectionRemoved, collectionOrder, malformedData, wrongKind, oversizedData
+    }
+
+    @Test(arguments: ProjectBlockChange.allCases)
+    func projectBlockDeliveryRevalidatesSectionOrderAndAllAssociations(change: ProjectBlockChange) async throws {
+        let fixture = try WorkspaceStackTestFixture()
+        defer { fixture.cleanup() }
+        let manager = fixture.manager
+        let section = try #require(manager.createCollection(name: "Work"))
+        let elsewhere = try #require(manager.createCollection(name: "Elsewhere"))
+        let otherProject = Project(
+            repositoryPath: fixture.root.appendingPathComponent("other").path, mainBranch: "main")
+        manager.projects.append(otherProject)
+        fixture.ordinary.projectId = otherProject.id
+        for id in fixture.manualOrder { manager.moveWorkspace(id, toCollection: section.id) }
+        let standalone = try #require(manager.addWorkspace(workingDirectory: fixture.root.path))
+        manager.moveWorkspace(standalone.id, toCollection: section.id)
+        let drag = manager.projectBlockDrag(fixture.project.id, in: section.id)
+        let target = SidebarNavigationDrop.project(otherProject.id, collectionId: section.id)
+        let context = try #require(manager.navigationDropContext(for: target))
+        let delayed = DelayedNavigationProvider(typeIdentifier: drag.typeIdentifier)
+        let delivery = Task {
+            await manager.loadNavigationDrop(
+                from: delayed.provider, typeIdentifier: drag.typeIdentifier, context: context, after: true)
+        }
+        await waitForStackState { delayed.isRequested }
+        applyProjectBlockChange(
+            change, fixture: fixture, sectionId: section.id, elsewhereId: elsewhere.id, otherProjectId: otherProject.id)
+        let beforeDelivery = manager.manualWorkspaceIds(in: section.id)
+        let ungroupedBeforeDelivery = manager.ungroupedWorkspaceIds
+        let savedBeforeDelivery = try Data(contentsOf: manager.sessionSnapshotURL)
+        delayed.complete(
+            with: try projectBlockData(for: change, drag: drag, manager: manager, workspaceId: fixture.child.id))
+        #expect(await delivery.value == (change == .none))
+        if change == .none {
+            #expect(
+                manager.manualWorkspaceIds(in: section.id) == [
+                    fixture.ordinary.id, fixture.child.id, fixture.parent.id, standalone.id
+                ])
+        } else {
+            #expect(manager.manualWorkspaceIds(in: section.id) == beforeDelivery)
+            #expect(manager.ungroupedWorkspaceIds == ungroupedBeforeDelivery)
+            #expect(try Data(contentsOf: manager.sessionSnapshotURL) == savedBeforeDelivery)
+        }
+    }
+
+    private func applyProjectBlockChange(
+        _ change: ProjectBlockChange, fixture: WorkspaceStackTestFixture,
+        sectionId: UUID, elsewhereId: UUID, otherProjectId: UUID
+    ) {
+        let manager = fixture.manager
+        switch change {
+        case .sourceAssociation: fixture.parent.projectId = otherProjectId
+        case .targetAssociation: fixture.ordinary.projectId = nil
+        case .sourceOrder: manager.moveWorkspace(fixture.parent.id, toCollection: sectionId, at: 0)
+        case .sourceMembership: manager.moveWorkspace(fixture.parent.id, toCollection: elsewhereId)
+        case .targetRemoved: manager.removeWorkspace(fixture.ordinary.id)
+        case .sourceProjectRemoved: manager.projects.removeAll { $0.id == fixture.project.id }
+        case .sectionRemoved: manager.removeCollection(sectionId)
+        case .collectionOrder: manager.moveCollection(sectionId, offset: 1)
+        default: break
+        }
+    }
+
+    private func projectBlockData(
+        for change: ProjectBlockChange, drag: SidebarNavigationDrag, manager: WorkspaceManager, workspaceId: UUID
+    ) throws -> Data {
+        switch change {
+        case .malformedData: return Data("not JSON".utf8)
+        case .wrongKind: return try JSONEncoder().encode(manager.workspaceDrag(workspaceId))
+        case .oversizedData: return Data(repeating: 32, count: 32_769)
+        default: return try JSONEncoder().encode(drag)
+        }
+    }
+
+    @Test
+    func workspaceProviderStillAppendsThroughAProjectHeading() async throws {
+        let fixture = try WorkspaceStackTestFixture()
+        defer { fixture.cleanup() }
+        let manager = fixture.manager
+        let section = try #require(manager.createCollection(name: "Work"))
+        manager.moveWorkspace(fixture.parent.id, toCollection: section.id)
+        manager.toggleRepository(fixture.project.id, in: section.id)
+        let drag = manager.workspaceDrag(fixture.child.id)
+        let target = SidebarNavigationDrop.project(fixture.project.id, collectionId: section.id)
+        let context = try #require(manager.navigationDropContext(for: target))
+        #expect(
+            await manager.loadNavigationDrop(
+                from: drag.itemProvider, typeIdentifier: drag.typeIdentifier, context: context, after: false))
+        #expect(manager.manualWorkspaceIds(in: section.id) == [fixture.parent.id, fixture.child.id])
+        #expect(!manager.repositoryDisclosure(for: fixture.project.id, in: section.id).isExpanded)
+    }
+}

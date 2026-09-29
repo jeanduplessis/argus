@@ -149,6 +149,67 @@ extension WorkspaceManager {
         return true
     }
 
+    /// Move only this section's repository members. Nonmembers retain their
+    /// relative manual order; Stack display order never supplies the moved IDs.
+    @discardableResult
+    func reorderProjectBlock(
+        _ projectId: UUID, in collectionId: UUID?,
+        relativeTo target: WorkspaceNavigationBlock.Identifier, after: Bool
+    ) -> Bool {
+        guard let next = reorderedProjectBlockIds(projectId, in: collectionId, relativeTo: target, after: after)
+        else { return false }
+        pendingWorkspaceStackReveal = nil
+        setManualWorkspaceIds(next, in: collectionId)
+        saveSession()
+        return true
+    }
+
+    func reorderedProjectBlockIds(
+        _ projectId: UUID, in collectionId: UUID?,
+        relativeTo target: WorkspaceNavigationBlock.Identifier, after: Bool
+    ) -> [UUID]? {
+        guard projects.contains(where: { $0.id == projectId }),
+            let section = navigationSections.first(where: { $0.id == collectionId }),
+            let sourceIndex = section.blocks.firstIndex(where: { $0.id == .repository(projectId) }),
+            let targetIndex = section.blocks.firstIndex(where: { $0.id == target }), sourceIndex != targetIndex
+        else { return nil }
+        let destinationIndex = targetIndex - (sourceIndex < targetIndex ? 1 : 0) + (after ? 1 : 0)
+        guard destinationIndex != sourceIndex else { return nil }
+        let previous = manualWorkspaceIds(in: collectionId)
+        guard Set(previous).count == previous.count,
+            previous.allSatisfy({ id in workspaces.contains { $0.id == id } })
+        else { return nil }
+        let members = previous.filter { id in workspaces.first { $0.id == id }?.projectId == projectId }
+        let targetMembers = Set(section.blocks[targetIndex].workspaceIds)
+        var next = previous.filter { !members.contains($0) }
+        guard let anchor = next.firstIndex(where: targetMembers.contains) else { return nil }
+        // A repository block is projected at its earliest member, not its last.
+        // Inserting after that anchor avoids jumping over interleaved direct rows.
+        next.insert(contentsOf: members, at: anchor + (after ? 1 : 0))
+        return next
+    }
+
+    func canMoveProjectBlock(_ projectId: UUID, in collectionId: UUID?, offset: Int) -> Bool {
+        projectBlockMoveTarget(projectId, in: collectionId, offset: offset) != nil
+    }
+
+    @discardableResult
+    func moveProjectBlock(_ projectId: UUID, in collectionId: UUID?, offset: Int) -> Bool {
+        guard let target = projectBlockMoveTarget(projectId, in: collectionId, offset: offset) else { return false }
+        return reorderProjectBlock(projectId, in: collectionId, relativeTo: target, after: offset > 0)
+    }
+
+    private func projectBlockMoveTarget(
+        _ projectId: UUID, in collectionId: UUID?, offset: Int
+    ) -> WorkspaceNavigationBlock.Identifier? {
+        guard offset == -1 || offset == 1,
+            let section = navigationSections.first(where: { $0.id == collectionId }),
+            let index = section.blocks.firstIndex(where: { $0.id == .repository(projectId) }),
+            section.blocks.indices.contains(index + offset)
+        else { return nil }
+        return section.blocks[index + offset].id
+    }
+
     func canMoveCollection(_ collectionId: UUID, offset: Int) -> Bool {
         guard offset == -1 || offset == 1,
             let index = collections.firstIndex(where: { $0.id == collectionId })

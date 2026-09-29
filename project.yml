@@ -35,6 +35,9 @@ targets:
           - UTTypeIdentifier: com.argus.sidebar-workspace
             UTTypeConformsTo: [public.data]
             UTTypeDescription: Argus Workspace
+          - UTTypeIdentifier: com.argus.sidebar-project-block
+            UTTypeConformsTo: [public.data]
+            UTTypeDescription: Argus Project Block
           - UTTypeIdentifier: com.argus.sidebar-collection
             UTTypeConformsTo: [public.data]
             UTTypeDescription: Argus Collection

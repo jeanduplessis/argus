@@ -33,6 +33,16 @@ struct SidebarNavigationDraggingTests {
         #expect(feedback.placement(for: firstRegion) == .after)
         feedback.update(firstRegion, placement: nil)
         #expect(feedback.destination == nil)
+        // Crossing from a no-op half of a Project heading to its valid half
+        // may restore feedback, but only while that region is still entered.
+        feedback.update(firstRegion, placement: .before)
+        #expect(feedback.placement(for: firstRegion) == .before)
+        feedback.enter(secondRegion, placement: nil)
+        feedback.update(secondRegion, placement: .after)
+        #expect(feedback.placement(for: secondRegion) == .after)
+        feedback.exit(secondRegion)
+        feedback.update(secondRegion, placement: .before)
+        #expect(feedback.destination == nil)
     }
 
     @Test

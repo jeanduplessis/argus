@@ -239,6 +239,7 @@
 		C6C1541735E7F381C04442EA /* GitMetadataWatchPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13DC35DE5E650C00B845B280 /* GitMetadataWatchPaths.swift */; };
 		C78C807408186D160B44E7AC /* SidebarView+Collections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CFC38393A29D24C701F9E96 /* SidebarView+Collections.swift */; };
 		C7C983B98A61A136A60D3C2D /* WorktreeSetupTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 853A4CD540E21C6486C3F99A /* WorktreeSetupTestSupport.swift */; };
+		C7F93D7DCE458028BCF8B87D /* SidebarProjectBlockDraggingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 271009903C52142D048F6AB5 /* SidebarProjectBlockDraggingTests.swift */; };
 		C8C731513F14803F545C1593 /* SwiftDiffs in Frameworks */ = {isa = PBXBuildFile; productRef = B5EF1104CBB0AF98D5376458 /* SwiftDiffs */; };
 		C91924B4D57717BA9A809B27 /* WorkspacePullRequestStatusLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCC3D524C95096AAFB6F9D78 /* WorkspacePullRequestStatusLifecycle.swift */; };
 		C956D7810FA987298F229D25 /* GitHubPullRequestService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EBB5B9672D03C89A4A05E5 /* GitHubPullRequestService.swift */; };
@@ -285,6 +286,7 @@
 		E4830742CCBF697A5503CDFB /* GhosttyConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93A28C47CFFC35C8515E0B8F /* GhosttyConfig.swift */; };
 		E625F85112623B5C5EAD209B /* SidebarAlignmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA1C132CF2CE6237BB8B502F /* SidebarAlignmentTests.swift */; };
 		E86FD6F6D14B7A6DE416A093 /* RightSidebarView+WorkspaceFileLabels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 621BDE2A45BFFDC6F008EE55 /* RightSidebarView+WorkspaceFileLabels.swift */; };
+		EA32EB24FA74F7C7C8CAB37E /* SidebarNavigationDropFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68ADAB7EC43328789C066E37 /* SidebarNavigationDropFeedback.swift */; };
 		EAB3343A6EE57205E148A50E /* GitFileStatusStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C1ED524D3519A8D6A0A46D0 /* GitFileStatusStyle.swift */; };
 		EBD78ABBAF499A8A3E1C6BCF /* WorkspaceManager+WorktreeSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E45E51DE999EF67A4AC5038 /* WorkspaceManager+WorktreeSetup.swift */; };
 		ECABDEE17F7E6E7FA8F828B8 /* WorkspaceCommandFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99D56CCEE4A059E4A04FF593 /* WorkspaceCommandFixture.swift */; };
@@ -365,6 +367,7 @@
 		25C6AD3C8C294A2BC8A3BB19 /* CHANGELOG.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
 		26A673793BA15A2530C9474F /* WorktreeSetupSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeSetupSheet.swift; sourceTree = "<group>"; };
 		26C760682C442D934B98A7C5 /* GitBaseBranchMetadataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitBaseBranchMetadataTests.swift; sourceTree = "<group>"; };
+		271009903C52142D048F6AB5 /* SidebarProjectBlockDraggingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarProjectBlockDraggingTests.swift; sourceTree = "<group>"; };
 		2901E5911A8F9D27A0EB1D45 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		29E4A93EB538D6AE1F188805 /* TabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarView.swift; sourceTree = "<group>"; };
 		2A66AF57A5A40B3722A56592 /* TerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalView.swift; sourceTree = "<group>"; };
@@ -446,6 +449,7 @@
 		67B95D53AE677C0805034EBA /* RightSidebarView+WorkspaceFilesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RightSidebarView+WorkspaceFilesView.swift"; sourceTree = "<group>"; };
 		67E97A521D4EE12B47A3FEF7 /* RightSidebarView+WorkspaceFileTree.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RightSidebarView+WorkspaceFileTree.swift"; sourceTree = "<group>"; };
 		681653165C6E738AFBBA18A4 /* ChromeComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromeComponents.swift; sourceTree = "<group>"; };
+		68ADAB7EC43328789C066E37 /* SidebarNavigationDropFeedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNavigationDropFeedback.swift; sourceTree = "<group>"; };
 		68C6A0D18C23DE4EC0897500 /* RecordedBaseBranchReaderTests+Resolution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecordedBaseBranchReaderTests+Resolution.swift"; sourceTree = "<group>"; };
 		6A13E31CBADD56D584A29886 /* GitStatusViewModelSectionAndPreviewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusViewModelSectionAndPreviewTests.swift; sourceTree = "<group>"; };
 		6AA0F3F6F24AC03615F06600 /* GitStatusService+BaseComparison.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GitStatusService+BaseComparison.swift"; sourceTree = "<group>"; };
@@ -789,6 +793,7 @@
 				D753CE6E1FFD67B19A85930F /* SidebarLayoutTests.swift */,
 				0D13D93F55EB4E125C14ACAA /* SidebarNavigationDraggingTests.swift */,
 				3A92C35C28C472DB330BB838 /* SidebarNavigationDropDeliveryTests.swift */,
+				271009903C52142D048F6AB5 /* SidebarProjectBlockDraggingTests.swift */,
 				B85B710CD787E14321AB971B /* SidebarStatePersistenceTests.swift */,
 				E91AE5F5A0080B0BAA411546 /* TerminalEnvironmentTests.swift */,
 				5FDD710DA80C6A08EDC5A86D /* TerminalFileDropTargetTests.swift */,
@@ -920,6 +925,7 @@
 				5B15831275B325CA2E8A4D69 /* SidebarDivider.swift */,
 				E6D28191E019C7FB7E2AE020 /* SidebarLayout.swift */,
 				9CB13ABE54299959FD8A14E1 /* SidebarNavigationDragging.swift */,
+				68ADAB7EC43328789C066E37 /* SidebarNavigationDropFeedback.swift */,
 				BC0B9ECA31DC779CDC60C200 /* SidebarState.swift */,
 				1A268687E6FB693A77166E11 /* SidebarView.swift */,
 				6CFC38393A29D24C701F9E96 /* SidebarView+Collections.swift */,
@@ -1421,6 +1427,7 @@
 				F7B2935F162B1E42E5035113 /* SidebarDivider.swift in Sources */,
 				DC862B0710F0629EAB8BDF7A /* SidebarLayout.swift in Sources */,
 				601AAF051A3A36B3FEF62564 /* SidebarNavigationDragging.swift in Sources */,
+				EA32EB24FA74F7C7C8CAB37E /* SidebarNavigationDropFeedback.swift in Sources */,
 				12D7A8C68E6686B8EB0BF266 /* SidebarState.swift in Sources */,
 				C78C807408186D160B44E7AC /* SidebarView+Collections.swift in Sources */,
 				84AFCD154E69A6433732EBA7 /* SidebarView+Header.swift in Sources */,
@@ -1565,6 +1572,7 @@
 				E20DFC66EAE40A5C68EC4F09 /* SidebarLayoutTests.swift in Sources */,
 				4D4AB09B09FEDFF19A8933AC /* SidebarNavigationDraggingTests.swift in Sources */,
 				B6FE9FC9BF9FFFC24721D136 /* SidebarNavigationDropDeliveryTests.swift in Sources */,
+				C7F93D7DCE458028BCF8B87D /* SidebarProjectBlockDraggingTests.swift in Sources */,
 				B87E14DF8A9A133F597BC3E9 /* SidebarStatePersistenceTests.swift in Sources */,
 				04DCE84FEB30B0CE57BD6213 /* SourceContract.swift in Sources */,
 				D62DC52C2FFDA79E060D8BB4 /* StackRepositoryFixture.swift in Sources */,
