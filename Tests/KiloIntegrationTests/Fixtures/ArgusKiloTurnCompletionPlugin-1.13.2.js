@@ -1,4 +1,4 @@
-/* Argus-owned Kilo TUI plugin for live Agent Status and turn completion. It uses only the public TUI API. */
+/* Argus-owned Kilo TUI plugin. It uses only the public TUI API. */
 const requiredEnvironment = ["ARGUS_SOCKET_PATH", "ARGUS_WORKSPACE_ID", "ARGUS_SURFACE_ID"];
 const deliveryTimeoutMilliseconds = 1500;
 
@@ -12,23 +12,6 @@ export function eventProperties(event) {
 
 export function turnEventID(sessionID, candidateID, sequence) {
   return `kilo:${sessionID}:${candidateID ?? "unknown"}:${sequence}`;
-}
-
-export function statusEventID(sessionID, sequence, operation = "changed") {
-  return `kilo:${operation}:${sessionID}:${sequence}`;
-}
-
-// Precedence: a pending permission or question needs the person; any busy
-// session is running; a failed root turn is an error until the next root turn.
-export function aggregateState({ pending, busy, errored }) {
-  if (pending.size > 0) return "needsInput";
-  if (busy.size > 0) return "running";
-  if (errored.size > 0) return "error";
-  return "idle";
-}
-
-function defaultInstanceID() {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
 export function closeIsEligible(properties, state, isRoot) {
@@ -67,7 +50,6 @@ export async function send(socketPath, payload) {
     socket.once("error", finish(reject));
     socket.once("close", finish(resolve));
     socket.end(`${JSON.stringify(payload)}\n`);
-    socket.resume(); // Drain incoming response bytes so close fires without waiting for the deadline.
   });
 }
 
@@ -88,7 +70,7 @@ async function deliverWithDeadline(transport, socketPath, payload) {
   }
 }
 
-export function createPlugin({ environment: suppliedEnvironment, transport = send, instanceID = defaultInstanceID() } = {}) {
+export function createPlugin({ environment: suppliedEnvironment, transport = send } = {}) {
   return {
     id: "argus-turn-completed",
     tui(api) {
@@ -96,57 +78,6 @@ export function createPlugin({ environment: suppliedEnvironment, transport = sen
       if (!environmentIsValid(environment)) return;
       const states = new Map();
       const subscriptions = [];
-      const reportingSessionID = `kilo:${instanceID}`;
-      const tracked = { pending: new Map(), busy: new Set(), errored: new Set() };
-      let statusSequence = 0;
-      let reportedState;
-      let deliveryQueue = Promise.resolve();
-      const deliver = (payload) => {
-        deliveryQueue = deliveryQueue
-          .then(() => deliverWithDeadline(transport, environment.ARGUS_SOCKET_PATH, payload))
-          .catch(() => {
-            // Delivery failures must not alter Kilo's behavior.
-          });
-        return deliveryQueue;
-      };
-      const statusPayload = (method, operation, extra = {}) => {
-        const sequence = ++statusSequence;
-        return {
-          version: 1,
-          id: statusEventID(reportingSessionID, sequence, operation),
-          method,
-          params: {
-            agentKey: "kilo",
-            workspaceId: environment.ARGUS_WORKSPACE_ID,
-            surfaceId: environment.ARGUS_SURFACE_ID,
-            ...extra,
-            sessionId: reportingSessionID,
-            sequence,
-          },
-        };
-      };
-      const reportStatus = () => {
-        const state = aggregateState(tracked);
-        if (state === reportedState) return deliveryQueue;
-        reportedState = state;
-        return deliver(statusPayload("agent.statusChanged", "changed", { state }));
-      };
-      const setBusy = (sessionID, busy) => {
-        if (!sessionID) return;
-        if (busy) tracked.busy.add(sessionID); else tracked.busy.delete(sessionID);
-        reportStatus();
-      };
-      const addPending = (sessionID, requestID) => {
-        if (!sessionID || !requestID) return;
-        tracked.pending.set(requestID, sessionID);
-        reportStatus();
-      };
-      const removePending = (requestID) => {
-        if (tracked.pending.delete(requestID)) reportStatus();
-      };
-      const clearPendingFor = (sessionID) => {
-        for (const [requestID, owner] of tracked.pending) if (owner === sessionID) tracked.pending.delete(requestID);
-      };
       const subscribe = (name, handler) => {
         const unsubscribe = api.event.on(name, handler);
         if (typeof unsubscribe === "function") subscriptions.push(unsubscribe);
@@ -154,10 +85,6 @@ export function createPlugin({ environment: suppliedEnvironment, transport = sen
 
       subscribe("session.turn.open", (event) => {
       const { sessionID } = eventProperties(event);
-      if (sessionID) {
-        tracked.errored.clear(); // A new turn supersedes the previous failure.
-        setBusy(sessionID, true);
-      }
       if (sessionID) states.set(sessionID, { candidateID: null, activity: false, synthetic: false, compaction: false, closed: false, sequence: (states.get(sessionID)?.sequence ?? 0) + 1 });
       });
       subscribe("message.updated", (event) => {
@@ -177,33 +104,16 @@ export function createPlugin({ environment: suppliedEnvironment, transport = sen
       subscribe("session.status", (event) => {
       const { sessionID, status } = eventProperties(event);
       if (sessionID && (status?.type === "busy" || status?.type === "retry")) stateFor(states, sessionID).activity = true;
-      if (sessionID && status?.type) setBusy(sessionID, status.type !== "idle");
       });
-      subscribe("session.idle", (event) => { setBusy(eventProperties(event).sessionID, false); });
-      subscribe("permission.asked", (event) => {
-        const { id, sessionID } = eventProperties(event);
-        addPending(sessionID, id);
-      });
-      subscribe("permission.replied", (event) => { removePending(eventProperties(event).requestID); });
-      subscribe("question.asked", (event) => {
-        const { id, sessionID } = eventProperties(event);
-        addPending(sessionID, id);
-      });
-      subscribe("question.replied", (event) => { removePending(eventProperties(event).requestID); });
-      subscribe("question.rejected", (event) => { removePending(eventProperties(event).requestID); });
       subscribe("session.turn.close", async (event) => {
       const { sessionID, reason } = eventProperties(event);
       if (!sessionID) return;
       const state = stateFor(states, sessionID);
-      clearPendingFor(sessionID);
-      tracked.busy.delete(sessionID);
-      const isRoot = await rootSession(api, sessionID);
-      if (isRoot && reason === "error") tracked.errored.add(sessionID);
-      reportStatus();
-      if (!closeIsEligible({ reason }, state, isRoot)) return;
+      if (!closeIsEligible({ reason }, state, await rootSession(api, sessionID))) return;
       state.closed = true;
       const eventId = turnEventID(sessionID, state.candidateID, state.sequence);
-      await deliver({
+      try {
+        await deliverWithDeadline(transport, environment.ARGUS_SOCKET_PATH, {
           version: 1,
           id: eventId,
           method: "agent.turnCompleted",
@@ -214,12 +124,13 @@ export function createPlugin({ environment: suppliedEnvironment, transport = sen
             eventId,
           },
         });
+      } catch {
+        // Delivery failures must not alter Kilo's completed turn behavior.
+      }
       });
-      reportStatus();
       api.lifecycle?.onDispose?.(() => {
         subscriptions.forEach((unsubscribe) => { unsubscribe(); });
         states.clear();
-        return deliver(statusPayload("agent.statusCleared", "cleared"));
       });
     },
   };

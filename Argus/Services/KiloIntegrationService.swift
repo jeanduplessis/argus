@@ -74,7 +74,11 @@ private enum KiloIntegrationOperation: Sendable { case enable, disable }
 /// Installs only Argus's local Kilo TUI plugin. UI wiring intentionally lives elsewhere.
 final class KiloIntegrationService: @unchecked Sendable {
     static let pluginFileName = "argus-turn-completed.js"
-    static let pluginDeclaration = "plugins/\(pluginFileName)"
+    // Kilo treats specs without a `./` prefix as npm packages, and auto-loads
+    // `plugins/*.js` as server plugins, so the TUI plugin lives outside `plugins/`.
+    static let pluginDeclaration = "./argus/\(pluginFileName)"
+    // Argus 1.13.0–1.18.0 declaration and location; Kilo never loaded it as a TUI plugin.
+    static let legacyPluginDeclaration = "plugins/\(pluginFileName)"
 
     // Complete-file digests for exact Argus-managed plugins from previous releases.
     private static let historicalPluginDigests: Set<Data> = [
@@ -84,6 +88,20 @@ final class KiloIntegrationService: @unchecked Sendable {
             0xd9, 0x39, 0xb3, 0x89, 0x20, 0x22, 0x01, 0x5c,
             0x40, 0xd4, 0x5b, 0xca, 0x3e, 0x56, 0x93, 0x9b,
             0x9b, 0x90, 0xc5, 0xd0, 0x7b, 0x3d, 0x2c, 0x1f
+        ]),
+        // Argus 1.13.1 plugin.
+        Data([
+            0x31, 0xc2, 0xa9, 0x5f, 0x69, 0x6b, 0x36, 0x9a,
+            0xf2, 0xe6, 0x61, 0xeb, 0x79, 0x24, 0x7e, 0x40,
+            0xb6, 0x6f, 0x7a, 0x9e, 0x68, 0x25, 0xab, 0x7d,
+            0x40, 0x68, 0x9e, 0x19, 0xbc, 0x24, 0x24, 0x01
+        ]),
+        // Argus 1.13.2 through 1.18.0 turn-completion-only plugin.
+        Data([
+            0x04, 0x3d, 0x61, 0x2a, 0x86, 0xa3, 0x8f, 0xc6,
+            0x77, 0xd6, 0xae, 0xa7, 0x56, 0xd4, 0xe6, 0xd0,
+            0x95, 0x4e, 0xca, 0xc5, 0x26, 0x22, 0xa3, 0xbe,
+            0x7c, 0xc9, 0x96, 0xa5, 0x3f, 0x03, 0xdd, 0x70
         ])
     ]
 
@@ -114,6 +132,7 @@ final class KiloIntegrationService: @unchecked Sendable {
         let configDirectory: URL
         let configFile: URL
         let pluginFile: URL
+        let legacyPluginFile: URL
         let lockFile: URL
     }
 
@@ -133,7 +152,8 @@ final class KiloIntegrationService: @unchecked Sendable {
             ? jsonc : (fileManager.fileExists(atPath: json.path) ? json : jsonc)
         return Paths(
             configDirectory: directory, configFile: config,
-            pluginFile: directory.appendingPathComponent("plugins/\(Self.pluginFileName)"),
+            pluginFile: directory.appendingPathComponent("argus/\(Self.pluginFileName)"),
+            legacyPluginFile: directory.appendingPathComponent("plugins/\(Self.pluginFileName)"),
             lockFile: directory.appendingPathComponent(".argus-kilo-integration.lock"))
     }
 
@@ -145,7 +165,8 @@ final class KiloIntegrationService: @unchecked Sendable {
         let paths = try resolvedPaths(createConfigIfMissing: update == .enable)
         if update == .disable,
             !fileManager.fileExists(atPath: paths.configFile.path),
-            !fileManager.fileExists(atPath: paths.pluginFile.path)
+            !fileManager.fileExists(atPath: paths.pluginFile.path),
+            !fileManager.fileExists(atPath: paths.legacyPluginFile.path)
         {
             return paths
         }
@@ -166,12 +187,18 @@ final class KiloIntegrationService: @unchecked Sendable {
         if let originalPlugin, !(try isOwnedPlugin(originalPlugin)) {
             throw KiloIntegrationError.pluginFileNotOwned(paths.pluginFile)
         }
+        // A legacy file that Argus does not own is left in place.
+        let originalLegacyPlugin = try existingData(at: paths.legacyPluginFile).flatMap {
+            try isOwnedPlugin($0) ? $0 : nil
+        }
         let originalText = originalConfig.flatMap { String(data: $0, encoding: .utf8) } ?? "{}\n"
         guard originalConfig == nil || String(data: originalConfig!, encoding: .utf8) != nil else {
             throw KiloIntegrationError.invalidConfiguration("not UTF-8")
         }
+        let withoutLegacy = try JSONCEditor.edit(
+            originalText, declaration: Self.legacyPluginDeclaration, operation: .disable)
         let edited = try JSONCEditor.edit(
-            originalText, declaration: Self.pluginDeclaration, operation: update == .enable ? .enable : .disable)
+            withoutLegacy, declaration: Self.pluginDeclaration, operation: update == .enable ? .enable : .disable)
         // Structural validation.
         _ = try JSONCEditor.edit(edited, declaration: Self.pluginDeclaration, operation: .disable)
 
@@ -192,9 +219,13 @@ final class KiloIntegrationService: @unchecked Sendable {
             if update == .disable, originalPlugin != nil {
                 try fileManager.removeItem(at: paths.pluginFile)
             }
+            if originalLegacyPlugin != nil {
+                try fileManager.removeItem(at: paths.legacyPluginFile)
+            }
         } catch {
             try? restore(originalConfig, to: paths.configFile)
             try? restore(originalPlugin, to: paths.pluginFile)
+            if let originalLegacyPlugin { try? atomicWrite(originalLegacyPlugin, to: paths.legacyPluginFile) }
             throw error
         }
         return paths

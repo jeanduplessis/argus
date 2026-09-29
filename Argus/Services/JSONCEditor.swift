@@ -73,6 +73,8 @@ enum JSONCEditor {
             guard let separator = array.elements[index + 1].leadingSeparator else { return element.range }
             return element.range.lowerBound..<(separator + 1)
         }
+        // Keep the preceding comma as a valid JSONC trailing comma; drop an existing trailing comma.
+        if array.hasTrailingComma, let comma = array.trailingComma { return element.range.lowerBound..<(comma + 1) }
         return element.range
     }
     private static func escaped(_ value: String) -> String {
@@ -116,6 +118,7 @@ extension JSONCEditor {
     }
     fileprivate struct ArrayValue {
         let elements: [Value], openBracket: Int, closeBracket: Int, hasTrailingComma: Bool
+        var trailingComma: Int?
     }
     fileprivate struct Parser {
         let bytes: [UInt8]
@@ -219,7 +222,8 @@ extension JSONCEditor {
                         elements: elements,
                         openBracket: start,
                         closeBracket: position - 1,
-                        hasTrailingComma: hasTrailingComma
+                        hasTrailingComma: hasTrailingComma,
+                        trailingComma: hasTrailingComma ? leadingSeparator : nil
                     )),
                 range: start..<position,
                 stringValue: nil,

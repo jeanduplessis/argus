@@ -23,7 +23,7 @@ struct KiloIntegrationServiceTests {
             let text = try String(contentsOf: paths.configFile, encoding: .utf8)
             #expect(text.contains("// Kilo config"))
             #expect(text.contains("\"user.js\""))
-            #expect(text.contains("\"plugins/argus-turn-completed.js\""))
+            #expect(text.contains("\"./argus/argus-turn-completed.js\""))
             #expect(FileManager.default.fileExists(atPath: paths.pluginFile.path))
         }
     }
@@ -37,7 +37,7 @@ struct KiloIntegrationServiceTests {
             let text = try String(contentsOf: paths.configFile, encoding: .utf8)
 
             #expect(text.contains("\"theme\": \"dark\","))
-            #expect(text.contains("\"plugin\": [\"plugins/argus-turn-completed.js\"],"))
+            #expect(text.contains("\"plugin\": [\"./argus/argus-turn-completed.js\"],"))
             _ = try JSONCEditor.edit(text, declaration: declaration, operation: .disable)
         }
     }
@@ -53,32 +53,66 @@ struct KiloIntegrationServiceTests {
         }
     }
 
-    @Test
-    func previousReleasePluginIsUpgradedAndRemoved() throws {
+    @Test(arguments: ["1.13.0", "1.13.2"])
+    func legacyPluginsDirectoryInstallIsMigratedAndRemoved(_ release: String) throws {
         try withFixture { fixture in
-            try fixture.write(
-                "{\"plugin\": [\"plugins/argus-turn-completed.js\"]}",
-                named: "tui.jsonc"
-            )
+            let legacyConfig = "{\"plugin\": [\"user.js\", \"\(KiloIntegrationService.legacyPluginDeclaration)\"]}"
             let previousRelease = URL(filePath: #filePath)
                 .deletingLastPathComponent()
-                .appendingPathComponent("Fixtures/ArgusKiloTurnCompletionPlugin-1.13.0.js")
+                .appendingPathComponent("Fixtures/ArgusKiloTurnCompletionPlugin-\(release).js")
+            let service = fixture.service()
+            let paths = try service.resolvedPaths()
+            func installLegacy() throws {
+                try fixture.write(legacyConfig, named: "tui.jsonc")
+                try FileManager.default.createDirectory(
+                    at: paths.legacyPluginFile.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try? FileManager.default.removeItem(at: paths.legacyPluginFile)
+                try FileManager.default.copyItem(at: previousRelease, to: paths.legacyPluginFile)
+            }
+
+            try installLegacy()
+            #expect(!service.isInstalled(at: paths))
+            _ = try service.enable()
+            #expect(service.isInstalled(at: paths))
+            let enabled = try String(contentsOf: paths.configFile, encoding: .utf8)
+            #expect(enabled.contains("user.js"))
+            #expect(!(try JSONCEditor.containsDeclaration(KiloIntegrationService.legacyPluginDeclaration, in: enabled)))
+            #expect(!FileManager.default.fileExists(atPath: paths.legacyPluginFile.path))
+
+            _ = try service.disable()
+            try installLegacy()
+            _ = try service.disable()
+            let disabled = try String(contentsOf: paths.configFile, encoding: .utf8)
+            #expect(disabled.contains("user.js"))
+            #expect(!disabled.contains(KiloIntegrationService.pluginFileName))
+            #expect(!FileManager.default.fileExists(atPath: paths.legacyPluginFile.path))
+            #expect(!FileManager.default.fileExists(atPath: paths.pluginFile.path))
+        }
+    }
+
+    @Test
+    func unownedLegacyPluginIsLeftInPlace() throws {
+        try withFixture { fixture in
             let service = fixture.service()
             let paths = try service.resolvedPaths()
             try FileManager.default.createDirectory(
-                at: paths.pluginFile.deletingLastPathComponent(),
-                withIntermediateDirectories: true
-            )
-            try FileManager.default.copyItem(at: previousRelease, to: paths.pluginFile)
-
-            #expect(!service.isInstalled(at: paths))
+                at: paths.legacyPluginFile.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try "user artifact".write(to: paths.legacyPluginFile, atomically: true, encoding: .utf8)
             _ = try service.enable()
-            #expect(try Data(contentsOf: paths.pluginFile) == Data(contentsOf: fixture.plugin))
-
-            try FileManager.default.removeItem(at: paths.pluginFile)
-            try FileManager.default.copyItem(at: previousRelease, to: paths.pluginFile)
             _ = try service.disable()
-            #expect(!FileManager.default.fileExists(atPath: paths.pluginFile.path))
+            #expect(try String(contentsOf: paths.legacyPluginFile, encoding: .utf8) == "user artifact")
+        }
+    }
+
+    @Test
+    func pluginPathIsOutsideKiloServerPluginDirectoryAndRelativeToConfig() throws {
+        try withFixture { fixture in
+            let paths = try fixture.service().resolvedPaths()
+            #expect(paths.pluginFile.deletingLastPathComponent().lastPathComponent == "argus")
+            #expect(
+                paths.configDirectory.appendingPathComponent(KiloIntegrationService.pluginDeclaration).standardized
+                    == paths.pluginFile.standardized)
+            #expect(KiloIntegrationService.pluginDeclaration.hasPrefix("./"))
         }
     }
 
@@ -127,7 +161,7 @@ struct KiloIntegrationServiceTests {
             #expect(try String(contentsOf: fixture.root.appendingPathComponent("tui.jsonc"), encoding: .utf8) == "{}")
             #expect(
                 !FileManager.default.fileExists(
-                    atPath: fixture.root.appendingPathComponent("plugins/argus-turn-completed.js").path))
+                    atPath: fixture.root.appendingPathComponent("argus/argus-turn-completed.js").path))
         }
     }
 }
@@ -210,8 +244,8 @@ extension KiloIntegrationServiceTests {
     @Test
     fileprivate func unownedPluginIsNeverReplacedOrRemoved() throws {
         try withFixture { fixture in
-            try fixture.write("{\"plugin\": [\"plugins/argus-turn-completed.js\"]}", named: "tui.jsonc")
-            let plugin = fixture.root.appendingPathComponent("plugins/argus-turn-completed.js")
+            try fixture.write("{\"plugin\": [\"./argus/argus-turn-completed.js\"]}", named: "tui.jsonc")
+            let plugin = fixture.root.appendingPathComponent("argus/argus-turn-completed.js")
             try FileManager.default.createDirectory(
                 at: plugin.deletingLastPathComponent(), withIntermediateDirectories: true)
             try "user artifact".write(to: plugin, atomically: true, encoding: .utf8)
@@ -230,7 +264,7 @@ extension KiloIntegrationServiceTests {
                   "plugin": [
                     "user.js",
                     \(comment)
-                    "plugins/argus-turn-completed.js"
+                    "./argus/argus-turn-completed.js"
                   ]
                 }
                 """, named: "tui.jsonc")
@@ -270,7 +304,7 @@ extension KiloIntegrationServiceTests {
                 """
                 {
                   "label\\u0020name": "\\uD83D\\uDE80",
-                  "plugin": ["plugins/\\u0061rgus-turn-completed.js", "\\u03A9.js"]
+                  "plugin": ["./\\u0061rgus/argus-turn-completed.js", "\\u03A9.js"]
                 }
                 """, named: "tui.jsonc")
             let service = fixture.service()
@@ -284,6 +318,14 @@ extension KiloIntegrationServiceTests {
         }
     }
 
+    @Test(arguments: ["[\"user.js\", \"D\",]", "[\"D\",]"])
+    fileprivate func disableRemovesFinalPluginFollowedByTrailingComma(_ array: String) throws {
+        let disabled = try JSONCEditor.edit("{\"plugin\": \(array)}", declaration: "D", operation: .disable)
+        #expect(!(try JSONCEditor.containsDeclaration("D", in: disabled)))
+        let enabled = try JSONCEditor.edit(disabled, declaration: "D", operation: .enable)
+        _ = try JSONCEditor.edit(enabled, declaration: "D", operation: .disable)
+    }
+
     @Test(arguments: ["\\uD83D", "\\uDE80", "\\u12G4", "\\uD83D\\u0041"])
     fileprivate func rejectsInvalidUnicodeEscapes(_ escaped: String) {
         #expect(throws: JSONCEditor.Error.self) {
@@ -294,8 +336,8 @@ extension KiloIntegrationServiceTests {
     @Test
     fileprivate func markerPrefixedPluginIsNotOwnedOnEnableOrDisable() throws {
         try withFixture { fixture in
-            try fixture.write("{\"plugin\": [\"plugins/argus-turn-completed.js\"]}", named: "tui.jsonc")
-            let plugin = fixture.root.appendingPathComponent("plugins/argus-turn-completed.js")
+            try fixture.write("{\"plugin\": [\"./argus/argus-turn-completed.js\"]}", named: "tui.jsonc")
+            let plugin = fixture.root.appendingPathComponent("argus/argus-turn-completed.js")
             try FileManager.default.createDirectory(
                 at: plugin.deletingLastPathComponent(), withIntermediateDirectories: true)
             let unowned = "/* Argus-owned Kilo TUI plugin */\nuser modified artifact\n"
@@ -325,7 +367,7 @@ extension KiloIntegrationServiceTests {
             #expect(!FileManager.default.fileExists(atPath: fixture.root.appendingPathComponent("tui.jsonc").path))
             #expect(
                 !FileManager.default.fileExists(
-                    atPath: fixture.root.appendingPathComponent("plugins/argus-turn-completed.js").path))
+                    atPath: fixture.root.appendingPathComponent("argus/argus-turn-completed.js").path))
         }
     }
 

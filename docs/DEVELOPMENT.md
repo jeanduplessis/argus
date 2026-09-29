@@ -226,7 +226,12 @@ Normal builds use the vendored `Frameworks/GhosttyKit.xcframework`. `scripts/bui
 ## Agent integrations
 
 Argus installs integrations only when enabled from Settings. Kilo owns its
-managed JSON/JSONC declaration and completion extension. Pi owns
+managed `tui.json`/`tui.jsonc` declaration `./argus/argus-turn-completed.js`
+and that file under the effective Kilo config directory. The file stays out of
+Kilo's `plugins/` directory because Kilo loads `plugins/*.js` as server
+plugins. Enabling or disabling also removes the non-working
+`plugins/argus-turn-completed.js` install from Argus 1.13.0 through 1.18.0.
+Pi owns
 `extensions/argus-agent-status.js` under the effective `PI_CODING_AGENT_DIR`
 (or `~/.pi/agent` when the variable is unset). Existing files owned by another
 program are never replaced or removed.
@@ -236,6 +241,9 @@ Restart Kilo sessions after changing the Kilo integration. Restart Pi or use
 the app-owned `~/.argus/argus.sock` endpoint, which accepts
 `agent.turnCompleted`, `agent.statusChanged`, and `agent.statusCleared`. The
 same socket serves the Companion CLI's Workspace Commands.
+
+After updating Argus, enable the Kilo integration again in Settings to install
+its bundled plugin, then restart Kilo.
 
 After updating Argus, enable the Pi integration again in Settings to install
 its bundled extension, then restart Pi or use `/reload`. Reloading alone does
@@ -249,11 +257,12 @@ next successful main-agent settlement with no active delegated work. An
 advertised status API that is unsupported or fails suppresses completion;
 plain Pi sessions need no subagent package.
 
-Run the Pi lifecycle and socket transport regression tests without launching
+Run the Pi and Kilo lifecycle and socket transport regression tests without launching
 Argus or making model calls:
 
 ```sh
 node Tests/PiIntegrationTests/pi-plugin-events.mjs
+node Tests/KiloIntegrationTests/plugin-events.mjs
 ```
 
 ## Companion CLI
