@@ -34,9 +34,9 @@ enum WorkspaceType: String, Codable, Sendable {
 
     var icon: String {
         switch self {
-        case .mainCheckout: return "folder.fill"
-        case .worktree: return "arrow.triangle.branch"
-        case .external: return "folder"
+        case .mainCheckout: return "apple.terminal.on.rectangle"
+        case .worktree: return "apple.terminal.on.rectangle"
+        case .external: return "apple.terminal.on.rectangle"
         }
     }
 }

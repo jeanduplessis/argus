@@ -107,7 +107,11 @@ struct SidebarWorkspaceRow: View {
                 }
             }
             .padding(.leading, collectionContentInset)
-            .padding(.leading, projectContentInset)
+            .padding(
+                .leading,
+                workspaceManager.project(for: workspace.id) == nil
+                    ? sidebarMetrics.standaloneContentInset : projectContentInset
+            )
             .padding(.horizontal, sidebarMetrics.rowPadding)
             .padding(.vertical, appSettings.presentationMetrics.workspaceRowVerticalPadding)
             .background(
@@ -162,8 +166,8 @@ struct SidebarWorkspaceRow: View {
             }
             if let subtitle = workspaceSubtitle ?? (showsPullRequestStatus ? "" : nil) {
                 Text(subtitle)
-                    .font(.system(size: appSettings.presentationMetrics.textSize(forBaseSize: 10)))
-                    .foregroundColor(.secondary.opacity(workspace.workspaceType == .external ? 0.55 : 1))
+                    .font(.system(size: appSettings.presentationMetrics.textSize(forBaseSize: 10), design: .monospaced))
+                    .foregroundColor(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .help(workspaceSubtitleHelp)

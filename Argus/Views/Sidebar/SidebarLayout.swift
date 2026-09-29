@@ -24,12 +24,19 @@ struct SidebarWidthMetrics: Equatable, Sendable {
     var headerSpacing: CGFloat { isCompact ? 2 : 6 }
     var disclosureWidth: CGFloat { isCompact ? 8 : 12 }
     var stackGutterWidth: CGFloat { isCompact ? 6 : 12 }
-    var projectIconWidth: CGFloat { isCompact ? 12 : 14 }
+    var projectIconWidth: CGFloat { 20 }
+    // Only the decorative Project chevron reservation shrinks, not its enclosing button target.
+    var projectDisclosureWidth: CGFloat { isCompact ? 4 : 9 }
     var projectContentInset: CGFloat { isCompact ? 22 : 32 }
+
+    /// Project and direct Workspace rows share a 20-point icon slot and the same name gap.
+    var standaloneContentInset: CGFloat {
+        projectDisclosureWidth + headerSpacing
+    }
 
     /// Relative to the section edge; the Collection inset is applied by the view.
     var projectGuideOffset: CGFloat {
-        rowPadding + disclosureWidth + headerSpacing + projectIconWidth / 2
+        rowPadding + projectDisclosureWidth + headerSpacing + projectIconWidth / 2
     }
 
     func stackGutterWidth(laneCount: Int) -> CGFloat {

@@ -203,7 +203,7 @@ struct SidebarWorkspaceEntry: View {
 
 // MARK: - ProjectHeaderRow
 
-/// Disclosure-triangle header for a project. Shows folder, optional color dot, display name,
+/// Disclosure-triangle header for a project. Shows repository symbol, optional color dot, display name,
 /// and provides a context menu for project operations.
 private struct ProjectHeaderRow: View {
     @ObservedObject var project: Project
@@ -286,35 +286,42 @@ private struct ProjectHeaderRow: View {
                 workspaceManager.toggleRepository(project.id, in: collectionId)
             }
         } label: {
-            HStack(spacing: sidebarMetrics.headerSpacing) {
+            HStack(spacing: 0) {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
                     .rotationEffect(.degrees(disclosure.isExpanded ? 90 : 0))
                     .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: disclosure.isExpanded)
-                    .frame(width: sidebarMetrics.disclosureWidth)
+                    .frame(width: sidebarMetrics.projectDisclosureWidth)
+                    .padding(.trailing, sidebarMetrics.headerSpacing)
 
-                Image(systemName: "folder")
+                Image(systemName: "tray.full")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .frame(width: sidebarMetrics.projectIconWidth)
+                    .overlay(alignment: .bottomTrailing) {
+                        // A badge preserves the optional color without moving the name column.
+                        if let color = project.color {
+                            Circle()
+                                .fill(Color(nsColor: color.nsColor))
+                                .frame(
+                                    width: sidebarMetrics.isCompact ? 4 : 8, height: sidebarMetrics.isCompact ? 4 : 8
+                                )
+                                .offset(x: 2, y: 3)
+                        }
+                    }
                     .accessibilityHidden(true)
-
-                if let color = project.color {
-                    Circle()
-                        .fill(Color(nsColor: color.nsColor))
-                        .frame(width: sidebarMetrics.isCompact ? 4 : 8, height: sidebarMetrics.isCompact ? 4 : 8)
-                }
+                    .padding(.trailing, sidebarMetrics.rowSpacing)
 
                 Text(project.displayName)
                     .font(
                         .system(
-                            size: appSettings.presentationMetrics.textSize(forBaseSize: 11),
+                            size: appSettings.presentationMetrics.textSize(forBaseSize: 13),
                             weight: .semibold
                         )
                     )
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)

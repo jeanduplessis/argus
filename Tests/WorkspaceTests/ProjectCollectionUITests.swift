@@ -7,7 +7,7 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct ProjectCollectionUITests {
-    @Test(arguments: [80.0, 159.0, 160.0, 240.0])
+    @Test(arguments: [80.0, 159.0, 160.0, 200.0])
     func nativeHeaderDisclosureKeepsSelectionAndFitsAllocatedWidth(width: Double) async throws {
         let fixture = try WorkspaceStackTestFixture()
         defer { fixture.cleanup() }
@@ -26,7 +26,7 @@ struct ProjectCollectionUITests {
         defer { restoreAccessibility() }
         let host = NSHostingView(rootView: header)
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: width, height: 60),
+            contentRect: NSRect(x: 0, y: 0, width: width - 16, height: 60),
             styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentView = host
@@ -41,8 +41,9 @@ struct ProjectCollectionUITests {
                 $0.accessibilityIdentifier?() == "collection-\(collection.id)"
             })
         #expect(button.accessibilityRole?() == .button)
-        #expect((button.accessibilityFrame?().width ?? 0) <= width + 1)
-        #expect((button.accessibilityFrame?().width ?? 0) >= width - 1)
+        let frame = try #require(button.accessibilityFrame?())
+        #expect(abs(frame.width - (width - 16)) <= 1)
+        #expect(window.convertToScreen(host.convert(host.bounds, to: nil)).contains(frame))
         #expect((button.accessibilityFrame?().height ?? 0) >= 20)
         #expect(button.accessibilityPerformPress?() == true)
         #expect(manager.collections.first?.isExpanded == false)
@@ -50,14 +51,16 @@ struct ProjectCollectionUITests {
         #expect(manager.workspaceRevealRevision == 0)
     }
 
-    @Test(arguments: [80.0, 159.0, 160.0, 200.0], [false, true])
-    func hierarchyInsetsKeepWorkspaceSelectionFullWidth(width: Double, isStackMember: Bool) async throws {
+    @Test(arguments: [80.0, 159.0, 160.0, 200.0], [WorkspaceType.mainCheckout, .worktree, .external])
+    func hierarchyInsetsKeepWorkspaceSelectionFullWidth(width: Double, type: WorkspaceType) async throws {
         let fixture = try WorkspaceStackTestFixture()
         defer { fixture.cleanup() }
         let manager = fixture.manager
+        let isStackMember = type == .worktree
+        let workspace = standaloneOrProjectWorkspace(type: type, fixture: fixture)
         let row = SidebarWorkspaceRow(
-            workspace: fixture.child, globalIndex: 2, shortcutDigit: 2,
-            isSelected: true, onSelect: { manager.selectWorkspace(fixture.child.id) },
+            workspace: workspace, globalIndex: 2, shortcutDigit: 2,
+            isSelected: true, onSelect: { manager.selectWorkspace(workspace.id) },
             stackRelationship: isStackMember
                 ? WorkspaceStackRow(
                     branch: "feature/child", parentBranch: "feature/parent", dependentBranches: [],
@@ -72,13 +75,15 @@ struct ProjectCollectionUITests {
         .environment(WindowFocusState())
         .environment(\.sidebarWidthMetrics, SidebarWidthMetrics(width: width))
         .environment(\.sidebarCollectionContentInset, width < 160 ? 0 : 8)
-        .environment(\.sidebarProjectContentInset, SidebarWidthMetrics(width: width).projectContentInset)
+        .environment(
+            \.sidebarProjectContentInset, type == .external ? 0 : SidebarWidthMetrics(width: width).projectContentInset
+        )
         .environment(\.sidebarStackLaneCount, 3)
         let restoreAccessibility = try enableNativeAccessibility()
         defer { restoreAccessibility() }
         let host = NSHostingView(rootView: row)
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: width, height: 100),
+            contentRect: NSRect(x: 0, y: 0, width: width - 16, height: 100),
             styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentView = host
@@ -92,11 +97,24 @@ struct ProjectCollectionUITests {
             accessibilityDescendants(host).first {
                 $0.accessibilityRole?() == .button && $0.accessibilityLabel?()?.hasPrefix("Workspace 2") == true
             })
-        #expect((button.accessibilityFrame?().width ?? 0) >= width - 1)
-        #expect((button.accessibilityFrame?().width ?? 0) <= width + 1)
+        let frame = try #require(button.accessibilityFrame?())
+        #expect(abs(frame.width - (width - 16)) <= 1)
+        #expect(window.convertToScreen(host.convert(host.bounds, to: nil)).contains(frame))
         #expect(button.accessibilityPerformPress?() == true)
         #expect(manager.workspaceRevealRevision == 1)
-        #expect(manager.selectedWorkspaceId == fixture.child.id)
+        #expect(manager.selectedWorkspaceId == workspace.id)
+    }
+
+    private func standaloneOrProjectWorkspace(type: WorkspaceType, fixture: WorkspaceStackTestFixture) -> Workspace {
+        guard type == .external else { return type == .worktree ? fixture.child : fixture.parent }
+        let workspace = Workspace(
+            snapshot: WorkspaceSnapshot(
+                id: UUID(), projectId: nil, branchName: "", workspaceType: .external,
+                worktreePath: nil, title: "Standalone", customTitle: nil,
+                currentDirectory: fixture.root.path, panelCount: 0))
+        fixture.manager.workspaces.append(workspace)
+        fixture.manager.ungroupedWorkspaceIds.append(workspace.id)
+        return workspace
     }
 
     @Test
@@ -279,7 +297,7 @@ extension ProjectCollectionUITests {
         sheet.excludes("workspaceManager.moveProject", "membership is not a create-then-move view operation")
     }
 
-    private func accessibilityDescendants(_ object: AnyObject) -> [AnyObject] {
+    func accessibilityDescendants(_ object: AnyObject) -> [AnyObject] {
         [object] + (object.accessibilityChildren?() ?? []).flatMap { accessibilityDescendants($0 as AnyObject) }
     }
 }
@@ -288,7 +306,7 @@ extension ProjectCollectionUITests {
     /// AppKit lazily enables its native AX tree when an accessibility client requests it.
     /// Unit tests are not an AX client: enable the advertised process-local attribute,
     /// then restore it. No system preference or Accessibility permission is changed.
-    private func enableNativeAccessibility() throws -> () -> Void {
+    func enableNativeAccessibility() throws -> () -> Void {
         let attribute = NSAccessibility.Attribute(rawValue: "AXEnhancedUserInterface")
         let application = NSApplication.shared
         try #require(application.accessibilityIsAttributeSettable(attribute))
@@ -300,7 +318,9 @@ extension ProjectCollectionUITests {
 
 extension ProjectCollectionUITests {
     @Test(arguments: [80.0, 159.0, 160.0, 200.0], [false, true])
-    func projectDisclosureWithFolderAndColorFitsAndRemainsSectionLocal(width: Double, hasColor: Bool) async throws {
+    func projectDisclosureWithRepositorySymbolAndColorFitsAndRemainsSectionLocal(width: Double, hasColor: Bool)
+        async throws
+    {
         let fixture = try WorkspaceStackTestFixture()
         defer { fixture.cleanup() }
         let manager = fixture.manager
@@ -324,7 +344,7 @@ extension ProjectCollectionUITests {
         defer { restoreAccessibility() }
         let host = NSHostingView(rootView: content)
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: width, height: 500),
+            contentRect: NSRect(x: 0, y: 0, width: width - 16, height: 500),
             styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentView = host
@@ -343,10 +363,35 @@ extension ProjectCollectionUITests {
         #expect(disclosureFrame.width >= 20 && disclosureFrame.height >= 20)
         #expect(retryFrame.width >= 20 && retryFrame.height >= 20)
         #expect(disclosureFrame.maxX <= retryFrame.minX)
-        #expect(retryFrame.maxX - disclosureFrame.minX <= width)
+        #expect(retryFrame.maxX - disclosureFrame.minX <= width - 16)
+        let contentFrame = window.convertToScreen(host.convert(host.bounds, to: nil))
+        #expect(disclosureFrame.minX >= contentFrame.minX && retryFrame.maxX <= contentFrame.maxX)
         #expect(disclosure.accessibilityPerformPress?() == true)
         #expect(!fixture.isExpanded)
         #expect(manager.repositoryDisclosure(for: fixture.project.id, in: collection.id) == otherDisclosure)
         #expect(manager.selectedWorkspaceId == selectedId)
+    }
+}
+
+// Pixel regions use the hosting view's top-left point coordinates, not the outer sidebar width.
+extension ProjectCollectionUITests {
+    func sidebarForegroundPixelCount(
+        _ bitmap: NSBitmapImageRep, in rect: CGRect, scale: CGFloat, threshold: CGFloat = 0.7
+    ) -> Int {
+        guard rect.maxX > 0, rect.maxY > 0, rect.minX * scale < CGFloat(bitmap.pixelsWide),
+            rect.minY * scale < CGFloat(bitmap.pixelsHigh)
+        else { return 0 }
+        var count = 0
+        for y in max(0, Int(rect.minY * scale))..<min(bitmap.pixelsHigh, Int(rect.maxY * scale)) {
+            for x in max(0, Int(rect.minX * scale))..<min(bitmap.pixelsWide, Int(rect.maxX * scale)) {
+                guard let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+                if color.alphaComponent > 0.7,
+                    min(color.redComponent, color.greenComponent, color.blueComponent) > threshold
+                {
+                    count += 1
+                }
+            }
+        }
+        return count
     }
 }

@@ -258,9 +258,9 @@ use full-width rows, and put directories before files at each tree level.
 Disclosure state belongs to the tree row; opening content belongs to a tab.
 
 Collection headers MUST preserve the user's entered casing, use semibold primary
-text stronger than muted Project headings, and show a disclosure chevron with a
-subtle trailing horizontal rule. They MUST NOT show a Project count, icon, color
-marker, vertical rail, or persistent card/background. A transient full-width
+text, and show a disclosure chevron with a subtle trailing horizontal rule. They
+MUST NOT show a Project count, icon, color marker, vertical rail, or persistent
+card/background. A transient full-width
 hover/focus treatment remains appropriate. The full header MUST accept Workspace
 drops even when the Collection is empty or collapsed. An accepted Workspace drag
 MUST show a transient accent fill and outline across the header before release,
@@ -274,27 +274,30 @@ below it.
 With Collections present, section content MUST have one 8-point leading
 Collection inset at normal widths, removed below 160 points. This inset MUST
 remain inside full-width Workspace selection fills and hit regions. Project
-headings MUST show a muted folder SF Symbol after the disclosure chevron and
-before the name, sized and spaced like the Stack icon at normal widths. Existing
-optional Project color markers MUST remain separate from this hierarchy cue.
+headings MUST use primary semibold text at the same 13-point base size as
+Workspace names, with a muted `tray.full` SF Symbol after the disclosure
+chevron. Project and direct Standalone Workspace icon centers MUST align, with
+20-point icon slots and the same icon-to-name gap. Their names MUST align at one
+section-level column. Optional Project color markers MUST remain visible as a
+small badge on the repository symbol without shifting that name column.
 Project-associated Workspace content, Stack headers, and branch references MUST
 share one shallow fixed leading inset beneath that heading. Standalone Workspace
 rows MUST remain direct section children without the Project inset.
 
 An expanded Project MUST show a thin, neutral vertical scope guide beneath the
-folder, aligned with its center and ending at the last visible descendant. The
-guide MUST remain visible over selection fills, be noninteractive and hidden
-from accessibility, and stay outside the Stack connector gutter. It MUST NOT
+repository symbol, aligned with its center and ending at the last visible
+descendant. The guide MUST remain visible over selection fills, be noninteractive
+and hidden from accessibility, and stay outside the Stack connector gutter. It MUST NOT
 use arrows, dots, forks, or Project colors. Stack connectors retain their recorded
 relationship meaning. No Project scope guide extends into a following Standalone
 Workspace or another Project.
 
 Both insets MUST stay inside full-width row fills and hit regions. They MUST NOT
 change Stack gutter/connector geometry, icon/process slots, or introduce
-recursive indentation. At narrow widths, Project inset and folder spacing MUST
-shrink without removing the folder or scope guide, while preserving action and
-status targets at the supported 80-point sidebar width. Collection disclosure
-MUST only expand/collapse. A collapsed Collection MUST retain readable Selected
+recursive indentation. At narrow widths, Project inset and repository symbol
+spacing MUST shrink without removing the repository symbol or scope guide, while
+preserving action and status targets at the supported 80-point sidebar width.
+Collection disclosure MUST only expand/collapse. A collapsed Collection MUST retain readable Selected
 Workspace context as
 Project / Workspace and undimmed Turn Completion Attention without acknowledging
 it. Explicit selection MUST reveal every ancestor, including same-ID reselection.
@@ -305,7 +308,6 @@ section + repository + optional Stack identity. No local heading may authorize
 global repository removal. Remove Collection only ungroups members. Workspace
 menus and typed drag/drop MUST move an individual Workspace across sections,
 including one member of a Stack, without changing repository association.
-
 New Workspace requests MUST carry Collection destination separately from the
 repository and explicit Stack parent. Collection creation supports Standalone
 and registered-repository choices; global requests start ungrouped and cancel
@@ -343,8 +345,12 @@ help MUST remain available at the supported minimum width.
 
 Every Workspace row MUST reserve one fixed 20 by 20 point leading icon slot at
 all sidebar widths, including rows that are not eligible for Pull Request
-Status. Workspace icon precedence MUST be Turn Completion Attention → non-idle
-Agent Status (running, needs input, error) → Pull Request Status → idle Agent
+Status. Main-checkout, Standalone, and Worktree Workspace fallback icons MUST use
+`apple.terminal.on.rectangle`.
+Branch and path subtitles MUST use compact monospaced type and ordinary readable
+secondary contrast. This hierarchy MUST NOT deduplicate or change title, branch,
+or path data. Workspace icon precedence MUST be Turn Completion Attention →
+non-idle Agent Status (running, needs input, error) → Pull Request Status → idle Agent
 Status → Workspace-type icon. Apply this precedence to the newest effective
 Agent Status Entry without changing aggregation; Top-level Tab icon precedence
 is unchanged.
