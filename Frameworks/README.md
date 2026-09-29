@@ -16,6 +16,10 @@ architecture, and build mode. The script rebuilds when those inputs change,
 serializes builds shared by multiple worktrees, validates output before
 publication, and links each worktree directly to its immutable matching artifact.
 
+`scripts/build.sh` runs `scripts/build-ghosttykit.sh` automatically when the
+framework headers are missing. It never rebuilds an existing framework; run the
+script by hand after changing its inputs.
+
 If that symlink is missing or broken (fresh clone, new machine, or the cache
 was cleared), `xcodebuild` fails immediately with:
 

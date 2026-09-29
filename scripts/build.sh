@@ -78,6 +78,17 @@ ensure_xcode_project() {
     fi
 }
 
+ensure_ghosttykit() {
+    local header="${PROJECT_DIR}/Frameworks/GhosttyKit.xcframework/macos-arm64/Headers/ghostty.h"
+    if [[ ! -f "$header" ]]; then
+        log "GhosttyKit.xcframework not found — building it (first run takes several minutes)..."
+        if ! "${SCRIPT_DIR}/build-ghosttykit.sh"; then
+            err "GhosttyKit build failed. See Frameworks/README.md."
+            exit 1
+        fi
+    fi
+}
+
 find_app() {
     find "${BUILD_DIR}/Build/Products/${CONFIGURATION}" -name "${APP_NAME}.app" -type d 2>/dev/null | head -1
 }
@@ -187,6 +198,7 @@ bundle_cli() {
 
 do_build() {
     ensure_xcode_project
+    ensure_ghosttykit
     log "Building ${APP_NAME} (${CONFIGURATION})..."
     time_start
 

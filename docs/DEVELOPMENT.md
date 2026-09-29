@@ -36,7 +36,7 @@ Required tools:
 - Xcode command-line tools;
 - XcodeGen;
 - SwiftLint;
-- the vendored `Frameworks/GhosttyKit.xcframework`.
+- the vendored `Frameworks/GhosttyKit.xcframework` (built automatically by `scripts/build.sh` if missing).
 
 Swift 6 toolchains include `swift-format`. Install the other command-line tools with:
 
@@ -221,7 +221,7 @@ and runtime boundaries.
 
 ## GhosttyKit
 
-Normal builds use the vendored `Frameworks/GhosttyKit.xcframework`. Rebuilding the framework is a maintainer task and is separate from the normal application workflow. See `Frameworks/README.md` and `scripts/build-ghosttykit.sh` before changing it.
+Normal builds use the vendored `Frameworks/GhosttyKit.xcframework`. `scripts/build.sh` runs `scripts/build-ghosttykit.sh` automatically when the framework is missing (the first run takes several minutes). It never rebuilds an existing framework. Rebuilding the framework is a maintainer task and is separate from the normal application workflow. See `Frameworks/README.md` and `scripts/build-ghosttykit.sh` before changing it.
 
 ## Agent integrations
 
