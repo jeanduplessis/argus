@@ -4,6 +4,7 @@ This file records changes pushed for local Argus releases. New entries use a `YY
 
 ## 2026-09-29
 
+- `scripts/build.sh` now builds GhosttyKit automatically when it is missing, instead of failing with a `ghostty.h not found` compiler error. An existing framework is never rebuilt. ([30a0197](https://github.com/jeanduplessis/argus/commit/30a019708971fd4d46ec554439e686f5b50baad9))
 - Released Argus 1.18.0 with clearer Project hierarchy in the sidebar. Project-associated Workspaces align beneath folder headings and use vertical guides, while Standalone Workspaces keep their separate alignment. ([8f38c5b](https://github.com/jeanduplessis/argus/commit/8f38c5bd052c04f68c6cfeafdf440578d58e3dd1))
 - Project blocks can now be reordered within the same Collection or ungrouped section by dragging a Project heading or using Move Up and Move Down. Reordering keeps internal Workspace order, disclosure, selection, focus, and live content unchanged. ([84efb7b](https://github.com/jeanduplessis/argus/commit/84efb7bb24b9d6a4fcdddd53009b5020351bd771))
 
