@@ -6,12 +6,12 @@ import SwiftUI
 struct FilePanelPreparedContent: Sendable {
     static let loading = FilePanelPreparedContent(
         state: .loading,
-        sourceLines: [],
+        source: nil,
         markdownBlocks: []
     )
 
     let state: FilePanelContentState
-    let sourceLines: [AttributedString]
+    let source: FileSourceDocument?
     let markdownBlocks: [MarkdownRenderedBlock]
 
     init(state: FilePanelContentState, fileURL: URL, fileName: String) {
@@ -19,7 +19,7 @@ struct FilePanelPreparedContent: Sendable {
 
         switch state {
         case .loaded(.text(let text)):
-            sourceLines = FileSourceText.lines(in: text, fileName: fileName)
+            source = FileSourceDocument(text: text, fileName: fileName)
             if ["md", "markdown"].contains(fileURL.pathExtension.lowercased()) {
                 markdownBlocks = MarkdownRenderer.blocks(
                     source: text,
@@ -29,21 +29,21 @@ struct FilePanelPreparedContent: Sendable {
                 markdownBlocks = []
             }
         case .loaded(.svg(let source, _)):
-            sourceLines = FileSourceText.lines(in: source, fileName: fileName)
+            self.source = FileSourceDocument(text: source, fileName: fileName)
             markdownBlocks = []
         case .loading, .loaded(.image), .binary, .oversized, .failed:
-            sourceLines = []
+            source = nil
             markdownBlocks = []
         }
     }
 
     private init(
         state: FilePanelContentState,
-        sourceLines: [AttributedString],
+        source: FileSourceDocument?,
         markdownBlocks: [MarkdownRenderedBlock]
     ) {
         self.state = state
-        self.sourceLines = sourceLines
+        self.source = source
         self.markdownBlocks = markdownBlocks
     }
 }

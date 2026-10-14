@@ -72,7 +72,11 @@ enum ChromeColors {
     }
 
     static var separator: Color {
-        adaptiveOverlay(darkAlpha: 0.12, lightAlpha: 0.10)
+        Color(nsColor: separatorNSColor)
+    }
+
+    static var separatorNSColor: NSColor {
+        adaptiveOverlayNSColor(darkAlpha: 0.12, lightAlpha: 0.10)
     }
 
     static var contentBackgroundNSColor: NSColor {
@@ -100,11 +104,13 @@ enum ChromeColors {
     }
 
     private static func adaptiveOverlay(darkAlpha: CGFloat, lightAlpha: CGFloat) -> Color {
-        let color =
-            palette.isDark
+        Color(nsColor: adaptiveOverlayNSColor(darkAlpha: darkAlpha, lightAlpha: lightAlpha))
+    }
+
+    private static func adaptiveOverlayNSColor(darkAlpha: CGFloat, lightAlpha: CGFloat) -> NSColor {
+        palette.isDark
             ? NSColor.white.withAlphaComponent(darkAlpha)
             : NSColor.black.withAlphaComponent(lightAlpha)
-        return Color(nsColor: color)
     }
 
     private static var palette: ChromePalette {

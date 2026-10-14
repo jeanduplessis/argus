@@ -2,6 +2,7 @@
 // ContentAreaView+FilePanel.swift
 // Argus
 
+import AppKit
 import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
@@ -90,21 +91,54 @@ enum FilePanelContentLoader {
     }
 }
 
-enum FileSourceText {
-    static func lines(in text: String, fileName: String) -> [AttributedString] {
-        let highlighted = FileSyntaxHighlighter.highlightedText(
-            for: text,
-            fileName: fileName
-        )
-        var lines: [AttributedString] = []
-        var lineStart = highlighted.startIndex
+/// Pasteboard payload for the File Tab "Copy File Content" action.
+enum FilePanelPasteboardContent: Equatable {
+    case string(String)
+    case image(Data)
 
-        for index in highlighted.characters.indices where highlighted.characters[index].isNewline {
-            lines.append(AttributedString(highlighted[lineStart..<index]))
-            lineStart = highlighted.characters.index(after: index)
+    /// Nil for binary, oversized, failed, or still-loading content.
+    init?(state: FilePanelContentState) {
+        switch state {
+        case .loaded(.text(let text)):
+            self = .string(text)
+        case .loaded(.svg(let source, _)):
+            self = .string(source)
+        case .loaded(.image(let data)):
+            self = .image(data)
+        case .loading, .binary, .oversized, .failed:
+            return nil
         }
-        lines.append(AttributedString(highlighted[lineStart..<highlighted.endIndex]))
-        return lines
+    }
+
+    /// Leaves the pasteboard unchanged and returns false when the content cannot be written.
+    @MainActor
+    func write(to pasteboard: NSPasteboard) -> Bool {
+        switch self {
+        case .string(let text):
+            pasteboard.clearContents()
+            return pasteboard.setString(text, forType: .string)
+        case .image(let data):
+            guard let image = NSImage(data: data) else { return false }
+            pasteboard.clearContents()
+            return pasteboard.writeObjects([image])
+        }
+    }
+
+    /// Reads the file's current contents off the main actor, then writes them to
+    /// the general pasteboard or beeps when the file cannot be copied.
+    @MainActor
+    static func copyFileContent(at url: URL) {
+        Task {
+            let state = await Task.detached(priority: .userInitiated) {
+                FilePanelContentLoader.load(url: url)
+            }.value
+            guard let content = FilePanelPasteboardContent(state: state),
+                content.write(to: .general)
+            else {
+                NSSound.beep()
+                return
+            }
+        }
     }
 }
 
@@ -208,7 +242,7 @@ extension FilePanelContentView {
                 if isMarkdownFile, displayMode == .preview {
                     MarkdownRenderedView(blocks: preparedContent.markdownBlocks, documentTextSize: documentTextSize)
                 } else {
-                    sourceContent(preparedContent.sourceLines)
+                    sourceContent(preparedContent.source)
                 }
             case .image(let data):
                 FileImagePreview(data: data, accessibilityLabel: panel.displayTitle)
@@ -216,7 +250,7 @@ extension FilePanelContentView {
                 if displayMode == .preview {
                     FileImagePreview(data: data, accessibilityLabel: panel.displayTitle)
                 } else {
-                    sourceContent(preparedContent.sourceLines)
+                    sourceContent(preparedContent.source)
                 }
             }
         case .binary:
@@ -329,102 +363,16 @@ extension FilePanelContentView {
         }
     }
 
-    private func sourceContent(_ lines: [AttributedString]) -> some View {
-        let digitCount = String(lines.count).count
-        let gutterWidth = max(36, CGFloat(digitCount * 7 + 18))
-
-        return GeometryReader { proxy in
-            if lineWrapEnabled {
-                ScrollView(.vertical) {
-                    sourceLines(
-                        lines,
-                        gutterWidth: gutterWidth,
-                        viewportSize: proxy.size,
-                        wrapsLines: true
-                    )
-                }
-            } else {
-                ScrollView([.horizontal, .vertical]) {
-                    sourceLines(
-                        lines,
-                        gutterWidth: gutterWidth,
-                        viewportSize: proxy.size,
-                        wrapsLines: false
-                    )
-                }
-            }
+    @ViewBuilder
+    private func sourceContent(_ document: FileSourceDocument?) -> some View {
+        if let document {
+            FileSourceTextView(
+                document: document,
+                wrapsLines: lineWrapEnabled,
+                fontSize: documentTextSize,
+                accessibilityLabel: "Source of \(panel.relativePath)"
+            )
         }
-    }
-
-    private func sourceLines(
-        _ lines: [AttributedString],
-        gutterWidth: CGFloat,
-        viewportSize: CGSize,
-        wrapsLines: Bool
-    ) -> some View {
-        LazyVStack(alignment: .leading, spacing: 0) {
-            ForEach(lines.indices, id: \.self) { index in
-                sourceLine(
-                    lines[index],
-                    number: index + 1,
-                    gutterWidth: gutterWidth,
-                    wrapsLines: wrapsLines
-                )
-            }
-        }
-        .padding(.vertical, 12)
-        .frame(
-            width: wrapsLines ? viewportSize.width : nil,
-            alignment: .topLeading
-        )
-        .frame(
-            minWidth: viewportSize.width,
-            minHeight: viewportSize.height,
-            alignment: .topLeading
-        )
-        .background(alignment: .leading) {
-            HStack(spacing: 0) {
-                Color.primary.opacity(0.025)
-                    .frame(width: gutterWidth)
-                ChromeColors.separator
-                    .frame(width: 1)
-            }
-        }
-    }
-
-    private func sourceLine(
-        _ line: AttributedString,
-        number: Int,
-        gutterWidth: CGFloat,
-        wrapsLines: Bool
-    ) -> some View {
-        HStack(alignment: .top, spacing: 0) {
-            Text(String(number))
-                .foregroundColor(.secondary.opacity(0.7))
-                .frame(width: gutterWidth - 8, alignment: .trailing)
-                .padding(.trailing, 8)
-                .accessibilityLabel("Line \(number)")
-
-            Group {
-                if wrapsLines {
-                    sourceLineText(line)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    sourceLineText(line)
-                        .fixedSize(horizontal: true, vertical: true)
-                }
-            }
-            .padding(.leading, 10)
-            .padding(.trailing, 14)
-        }
-        .font(.system(size: documentTextSize, design: .monospaced))
-        .padding(.vertical, 1)
-    }
-
-    private func sourceLineText(_ line: AttributedString) -> some View {
-        Text(line.characters.isEmpty ? AttributedString(" ") : line)
-            .textSelection(.enabled)
     }
 
     private func fileMessage(_ message: String, systemImage: String) -> some View {
@@ -451,5 +399,322 @@ extension FilePanelContentView {
             return
         }
         preparedContent = loadedContent
+    }
+}
+
+// MARK: - Source Text View
+
+/// UTF-16 offsets of every source line start, matching NSString paragraph
+/// boundaries so gutter numbers follow the text system's line breaks.
+struct FileSourceLineIndex: Equatable, Sendable {
+    let lineStarts: [Int]
+
+    init(text: String) {
+        let string = text as NSString
+        var starts = [0]
+        var start = 0
+        while start < string.length {
+            var end = 0
+            var contentsEnd = 0
+            string.getParagraphStart(
+                nil,
+                end: &end,
+                contentsEnd: &contentsEnd,
+                for: NSRange(location: start, length: 0)
+            )
+            guard contentsEnd < end else { break }
+            starts.append(end)
+            start = end
+        }
+        lineStarts = starts
+    }
+
+    var lineCount: Int { lineStarts.count }
+
+    /// One-based line number when `characterIndex` starts a line.
+    func lineNumber(startingAt characterIndex: Int) -> Int? {
+        var lower = 0
+        var upper = lineStarts.count
+        while lower < upper {
+            let middle = (lower + upper) / 2
+            if lineStarts[middle] < characterIndex {
+                lower = middle + 1
+            } else {
+                upper = middle
+            }
+        }
+        guard lower < lineStarts.count, lineStarts[lower] == characterIndex else { return nil }
+        return lower + 1
+    }
+}
+
+/// Highlighted source prepared off the main actor. The attributed text is an
+/// immutable `NSAttributedString` that is never mutated after creation, which
+/// Foundation documents as safe to share across threads.
+struct FileSourceDocument: @unchecked Sendable {
+    let highlightedText: NSAttributedString
+    let lineIndex: FileSourceLineIndex
+
+    init(text: String, fileName: String) {
+        highlightedText = FileSyntaxHighlighter.highlightedText(for: text, fileName: fileName)
+        lineIndex = FileSourceLineIndex(text: text)
+    }
+}
+
+struct FileSourceTextView: NSViewRepresentable {
+    let document: FileSourceDocument
+    let wrapsLines: Bool
+    let fontSize: CGFloat
+    let accessibilityLabel: String
+
+    func makeNSView(context: Context) -> FileSourceScrollView {
+        FileSourceScrollView()
+    }
+
+    func updateNSView(_ scrollView: FileSourceScrollView, context: Context) {
+        scrollView.update(document: document, fontSize: fontSize, wrapsLines: wrapsLines)
+        scrollView.textView.setAccessibilityLabel(accessibilityLabel)
+    }
+}
+
+/// Plain-text, read-only NSTextView host. It never requests first responder
+/// itself; it only takes keyboard focus when the user clicks into the text.
+final class FileSourceScrollView: NSScrollView {
+    static let textInset = NSSize(width: 12, height: 12)
+    static let lineSpacing: CGFloat = 2
+
+    let textView: NSTextView
+    private let lineNumberRuler: FileSourceLineNumberRulerView
+    private var document: FileSourceDocument?
+    private var fontSize: CGFloat?
+    private(set) var wrapsLines: Bool?
+
+    override init(frame frameRect: NSRect) {
+        textView = NSTextView(usingTextLayoutManager: false)
+        lineNumberRuler = FileSourceLineNumberRulerView(textView: textView)
+        super.init(frame: frameRect)
+
+        drawsBackground = false
+        borderType = .noBorder
+        hasVerticalScroller = true
+        autohidesScrollers = true
+        contentView.drawsBackground = false
+
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.isRichText = false
+        textView.importsGraphics = false
+        textView.allowsUndo = false
+        textView.usesRuler = false
+        textView.drawsBackground = false
+        textView.textContainerInset = Self.textInset
+        textView.textContainer?.lineFragmentPadding = 0
+        textView.layoutManager?.allowsNonContiguousLayout = true
+        textView.minSize = .zero
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.isVerticallyResizable = true
+        textView.autoresizingMask = [.width]
+        textView.frame = NSRect(origin: .zero, size: contentSize)
+        documentView = textView
+
+        verticalRulerView = lineNumberRuler
+        hasVerticalRuler = true
+        rulersVisible = true
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    func update(document: FileSourceDocument, fontSize: CGFloat, wrapsLines: Bool) {
+        let documentChanged = self.document?.highlightedText !== document.highlightedText
+        if documentChanged {
+            textView.textStorage?.setAttributedString(document.highlightedText)
+            self.document = document
+            lineNumberRuler.lineIndex = document.lineIndex
+        }
+        if documentChanged || fontSize != self.fontSize {
+            applyFont(size: fontSize)
+        }
+        if wrapsLines != self.wrapsLines {
+            applyLineWrap(wrapsLines)
+        }
+        lineNumberRuler.needsDisplay = true
+    }
+
+    /// Width visible beside the line-number ruler; the clip view insets its content by the ruler width.
+    private var visibleTextWidth: CGFloat {
+        let insets = contentView.contentInsets
+        return max(contentView.bounds.width - insets.left - insets.right, 0)
+    }
+
+    /// Keeps wrapped text exactly as wide as the visible text area after ruler or frame changes.
+    override func tile() {
+        super.tile()
+        guard wrapsLines == true, textView.frame.width != visibleTextWidth else { return }
+        textView.setFrameSize(NSSize(width: visibleTextWidth, height: textView.frame.height))
+    }
+
+    var visibleLineNumbers: [FileSourceLineNumberRulerView.LineNumber] {
+        lineNumberRuler.visibleLineNumbers()
+    }
+
+    private func applyFont(size: CGFloat) {
+        fontSize = size
+        let font = NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.paragraphSpacing = Self.lineSpacing
+        if let textStorage = textView.textStorage {
+            textStorage.addAttributes(
+                [.font: font, .paragraphStyle: paragraphStyle],
+                range: NSRange(location: 0, length: textStorage.length)
+            )
+        }
+        textView.font = font
+        textView.defaultParagraphStyle = paragraphStyle
+        lineNumberRuler.font = font
+    }
+
+    private func applyLineWrap(_ wraps: Bool) {
+        wrapsLines = wraps
+        guard let textContainer = textView.textContainer else { return }
+        hasHorizontalScroller = !wraps
+        textView.isHorizontallyResizable = !wraps
+        textContainer.widthTracksTextView = wraps
+        // Unwrapped text sizes to its longest line; clip-view resizing must not shrink it.
+        textView.autoresizingMask = wraps ? [.width] : []
+        if wraps {
+            textView.setFrameSize(NSSize(width: visibleTextWidth, height: textView.frame.height))
+            textContainer.containerSize = NSSize(
+                width: max(visibleTextWidth - Self.textInset.width * 2, 0),
+                height: CGFloat.greatestFiniteMagnitude
+            )
+        } else {
+            textContainer.containerSize = NSSize(
+                width: CGFloat.greatestFiniteMagnitude,
+                height: CGFloat.greatestFiniteMagnitude
+            )
+        }
+        textView.sizeToFit()
+    }
+}
+
+/// Gutter drawn beside the clip view. Numbers mark the first line fragment of
+/// each source line, so wrapped continuation fragments stay unnumbered.
+final class FileSourceLineNumberRulerView: NSRulerView {
+    struct LineNumber: Equatable {
+        let number: Int
+        let minY: CGFloat
+    }
+
+    private static let minimumGutterWidth: CGFloat = 36
+    private static let numberTrailingPadding: CGFloat = 8
+
+    var lineIndex = FileSourceLineIndex(text: "") {
+        didSet { updateThickness() }
+    }
+    var font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular) {
+        didSet { updateThickness() }
+    }
+
+    init(textView: NSTextView) {
+        super.init(scrollView: nil, orientation: .verticalRuler)
+        clientView = textView
+        reservedThicknessForMarkers = 0
+        reservedThicknessForAccessoryView = 0
+        updateThickness()
+
+        textView.postsFrameChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(clientGeometryDidChange),
+            name: NSView.frameDidChangeNotification,
+            object: textView
+        )
+    }
+
+    @available(*, unavailable)
+    required init(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    override var isFlipped: Bool { true }
+    override var isOpaque: Bool { false }
+
+    override func viewDidMoveToSuperview() {
+        super.viewDidMoveToSuperview()
+        NotificationCenter.default.removeObserver(self, name: NSView.boundsDidChangeNotification, object: nil)
+        guard let contentView = scrollView?.contentView else { return }
+        contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(clientGeometryDidChange),
+            name: NSView.boundsDidChangeNotification,
+            object: contentView
+        )
+    }
+
+    @objc private func clientGeometryDidChange(_ notification: Notification) {
+        needsDisplay = true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let gutterWidth = ruleThickness - 1
+        NSColor.labelColor.withAlphaComponent(0.025).setFill()
+        NSRect(x: 0, y: dirtyRect.minY, width: gutterWidth, height: dirtyRect.height).fill(using: .sourceOver)
+        ChromeColors.separatorNSColor.setFill()
+        NSRect(x: gutterWidth, y: dirtyRect.minY, width: 1, height: dirtyRect.height).fill(using: .sourceOver)
+
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: NSColor.secondaryLabelColor.withAlphaComponent(0.7)
+        ]
+        for line in visibleLineNumbers() {
+            let label = String(line.number) as NSString
+            let width = label.size(withAttributes: attributes).width
+            label.draw(
+                at: NSPoint(x: gutterWidth - Self.numberTrailingPadding - width, y: line.minY),
+                withAttributes: attributes
+            )
+        }
+    }
+
+    func visibleLineNumbers() -> [LineNumber] {
+        guard let textView = clientView as? NSTextView,
+            let layoutManager = textView.layoutManager,
+            let textContainer = textView.textContainer
+        else { return [] }
+
+        let origin = textView.textContainerOrigin
+        let visibleRect = textView.visibleRect.offsetBy(dx: -origin.x, dy: -origin.y)
+        let glyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textContainer)
+        var lines: [LineNumber] = []
+
+        func append(characterIndex: Int, fragmentMinY: CGFloat) {
+            guard let number = lineIndex.lineNumber(startingAt: characterIndex) else { return }
+            let point = convert(NSPoint(x: 0, y: fragmentMinY + origin.y), from: textView)
+            lines.append(LineNumber(number: number, minY: point.y))
+        }
+
+        layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { rect, _, _, fragmentRange, _ in
+            append(
+                characterIndex: layoutManager.characterIndexForGlyph(at: fragmentRange.location),
+                fragmentMinY: rect.minY
+            )
+        }
+        let extraLineRect = layoutManager.extraLineFragmentRect
+        if !extraLineRect.isEmpty, extraLineRect.intersects(visibleRect) {
+            append(characterIndex: textView.textStorage?.length ?? 0, fragmentMinY: extraLineRect.minY)
+        }
+        return lines
+    }
+
+    private func updateThickness() {
+        let digitWidth = ("8" as NSString).size(withAttributes: [.font: font]).width
+        let digitCount = CGFloat(String(lineIndex.lineCount).count)
+        let gutterWidth = max(Self.minimumGutterWidth, ceil(digitCount * digitWidth + 18))
+        ruleThickness = gutterWidth + 1
+        needsDisplay = true
     }
 }

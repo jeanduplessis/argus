@@ -90,14 +90,14 @@ struct ArgusDiffRenderingTests {
 struct FileTabUIContractTests {
     @Test
     func fileTabsShowLineNumbersAndWrapSourceByDefault() throws {
-        let lines = FileSourceText.lines(
-            in: "first\r\n/* second\ncontinued */\n",
-            fileName: "Example.swift")
+        let lineIndex = FileSourceLineIndex(text: "first\r\n/* second\ncontinued */\n")
 
-        #expect(
-            lines.map { String($0.characters) } == [
-                "first", "/* second", "continued */", ""
-            ])
+        #expect(lineIndex.lineStarts == [0, 7, 17, 30])
+        #expect(lineIndex.lineNumber(startingAt: 17) == 3)
+        #expect(lineIndex.lineNumber(startingAt: 30) == 4)
+        #expect(lineIndex.lineNumber(startingAt: 8) == nil)
+        #expect(FileSourceLineIndex(text: "").lineStarts == [0])
+        #expect(FileSourceLineIndex(text: "a\n\nb").lineStarts == [0, 2, 3])
         try SourceContract("Argus/Views/Content/ContentAreaView.swift").containsAll(
             [
                 "FilePanelInitialPresentation.resolve(",
@@ -105,9 +105,8 @@ struct FileTabUIContractTests {
                 "Text(\"Wrap\")",
                 ".accessibilityLabel(\"Line wrap\")",
                 ".accessibilityValue(lineWrapEnabled ? \"On\" : \"Off\")",
-                "Text(String(number))",
-                ".accessibilityLabel(\"Line \\(number)\")",
-                "Color.primary.opacity(0.025)"
+                "final class FileSourceLineNumberRulerView: NSRulerView",
+                "NSColor.labelColor.withAlphaComponent(0.025)"
             ], "File Tab source gutter and line wrap control")
     }
 
@@ -182,11 +181,11 @@ struct FileTabUIContractTests {
         filePanel.containsAll(
             [
                 "struct FilePanelPreparedContent",
-                "let sourceLines: [AttributedString]",
+                "let source: FileSourceDocument?",
                 "let markdownBlocks: [MarkdownRenderedBlock]",
-                "sourceLines = FileSourceText.lines(in: text, fileName: fileName)",
+                "source = FileSourceDocument(text: text, fileName: fileName)",
                 "markdownBlocks = MarkdownRenderer.blocks(",
-                "sourceContent(preparedContent.sourceLines)",
+                "sourceContent(preparedContent.source)",
                 "MarkdownRenderedView(blocks: preparedContent.markdownBlocks, documentTextSize: documentTextSize)"
             ], "File Tab derived rendering cache")
 
@@ -324,3 +323,153 @@ struct FileTabUIContractTests {
             })
     }
 }
+
+@Suite
+@MainActor
+struct FileTabSourceSelectionTests {
+    @Test
+    func sourceSelectionCopiesPlainFileTextAcrossLines() throws {
+        let text = "let first = 1\n// second\nthird\n"
+        let scrollView = makeSourceView(text: text, wrapsLines: true)
+        let textView = scrollView.textView
+
+        #expect(!textView.isEditable)
+        #expect(textView.isSelectable)
+        let keywordColor = textView.textStorage?.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor
+        #expect(keywordColor == .systemPurple)
+
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name("ArgusTests.\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+
+        textView.setSelectedRange(NSRange(location: 4, length: 16))
+        #expect(textView.writeSelection(to: pasteboard, types: textView.writablePasteboardTypes))
+        #expect(pasteboard.string(forType: .string) == "first = 1\n// sec")
+
+        textView.selectAll(nil)
+        #expect(textView.writeSelection(to: pasteboard, types: textView.writablePasteboardTypes))
+        #expect(pasteboard.string(forType: .string) == text)
+        #expect(pasteboard.data(forType: .rtf) == nil)
+    }
+
+    @Test
+    func lineNumbersStayOnFirstFragmentOfWrappedLines() throws {
+        let text = String(repeating: "word ", count: 80) + "\nshort\n"
+        let scrollView = makeSourceView(text: text, wrapsLines: true)
+        let lineHeight = try #require(scrollView.textView.layoutManager)
+            .defaultLineHeight(for: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular))
+
+        let wrapped = scrollView.visibleLineNumbers
+        #expect(wrapped.map(\.number) == [1, 2, 3])
+        #expect(!scrollView.hasHorizontalScroller)
+        #expect(wrapped[1].minY - wrapped[0].minY > lineHeight * 2)
+        scrollView.setFrameSize(NSSize(width: 300, height: 300))
+        let clipView = scrollView.contentView
+        let visibleTextWidth = clipView.bounds.width - clipView.contentInsets.left - clipView.contentInsets.right
+        #expect(clipView.contentInsets.left > 0)
+        #expect(scrollView.textView.frame.width == visibleTextWidth)
+
+        scrollView.update(
+            document: FileSourceDocument(text: text, fileName: "notes.txt"),
+            fontSize: 12,
+            wrapsLines: false)
+        layOut(scrollView)
+
+        let unwrapped = scrollView.visibleLineNumbers
+        #expect(unwrapped.map(\.number) == [1, 2, 3])
+        #expect(scrollView.hasHorizontalScroller)
+        #expect(unwrapped[1].minY - unwrapped[0].minY < lineHeight * 2)
+        #expect(scrollView.textView.frame.width > scrollView.contentSize.width)
+    }
+
+    @Test
+    func mountingSourceViewKeepsExistingFirstResponder() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: true)
+        window.isReleasedWhenClosed = false
+        let probe = FirstResponderProbeView(frame: NSRect(x: 0, y: 0, width: 10, height: 10))
+        window.contentView?.addSubview(probe)
+        #expect(window.makeFirstResponder(probe))
+
+        let scrollView = makeSourceView(text: "one\ntwo\n", wrapsLines: true)
+        window.contentView?.addSubview(scrollView)
+        layOut(scrollView)
+
+        #expect(window.firstResponder === probe)
+    }
+
+    private func makeSourceView(text: String, wrapsLines: Bool) -> FileSourceScrollView {
+        let scrollView = FileSourceScrollView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
+        scrollView.update(
+            document: FileSourceDocument(text: text, fileName: "Example.swift"),
+            fontSize: 12,
+            wrapsLines: wrapsLines)
+        layOut(scrollView)
+        return scrollView
+    }
+
+    private func layOut(_ scrollView: FileSourceScrollView) {
+        scrollView.tile()
+        if let layoutManager = scrollView.textView.layoutManager,
+            let textContainer = scrollView.textView.textContainer
+        {
+            layoutManager.ensureLayout(for: textContainer)
+        }
+        scrollView.layoutSubtreeIfNeeded()
+    }
+}
+
+private final class FirstResponderProbeView: NSView {
+    override var acceptsFirstResponder: Bool { true }
+}
+
+@Suite
+@MainActor
+struct FilePanelPasteboardContentTests {
+    @Test
+    func copyFileContentMapsLoadedFilesToPasteboardContent() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("argus-copy-file-content-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        func content(_ name: String, _ data: Data) throws -> FilePanelPasteboardContent? {
+            let url = directory.appendingPathComponent(name)
+            try data.write(to: url)
+            return FilePanelPasteboardContent(state: FilePanelContentLoader.load(url: url))
+        }
+
+        let svgSource = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"/>"
+        #expect(try content("notes.txt", Data("one\ntwo\n".utf8)) == .string("one\ntwo\n"))
+        #expect(try content("icon.svg", Data(svgSource.utf8)) == .string(svgSource))
+        #expect(try content("pixel.png", Self.pngData) == .image(Self.pngData))
+        #expect(FilePanelPasteboardContent(state: .binary) == nil)
+        #expect(
+            try content("large.txt", Data(repeating: 65, count: FilePanelContentLoader.maximumFileSize + 1))
+                == nil)
+        #expect(FilePanelPasteboardContent(state: FilePanelContentLoader.load(url: directory)) == nil)
+    }
+
+    @Test
+    func copyFileContentWritesTextOrImageAndLeavesPasteboardOnFailure() throws {
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name("ArgusTests.\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+
+        #expect(FilePanelPasteboardContent.string("source").write(to: pasteboard))
+        #expect(pasteboard.string(forType: .string) == "source")
+
+        // The loader can classify undecodable binary data as an image; copying it must still fail.
+        #expect(!FilePanelPasteboardContent.image(Data([0x00, 0x01, 0xFF, 0x00])).write(to: pasteboard))
+        #expect(pasteboard.string(forType: .string) == "source")
+
+        #expect(FilePanelPasteboardContent.image(Self.pngData).write(to: pasteboard))
+        #expect(pasteboard.canReadObject(forClasses: [NSImage.self]))
+        #expect(pasteboard.string(forType: .string) == nil)
+    }
+
+    private static let pngData = Data(
+        base64Encoded:
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")!
+}  // swiftlint:disable:this file_length

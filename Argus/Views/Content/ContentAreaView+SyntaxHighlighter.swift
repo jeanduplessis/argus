@@ -1,7 +1,7 @@
 // ContentAreaView+SyntaxHighlighter.swift
 // Argus
 
-import SwiftUI
+import AppKit
 
 enum FileSyntaxHighlightKind: Equatable {
     case keyword
@@ -20,14 +20,20 @@ struct FileSyntaxHighlightToken: Equatable {
 }
 
 enum FileSyntaxHighlighter {
-    static func highlightedText(for text: String, fileName: String) -> AttributedString {
-        var attributed = AttributedString(text)
-
+    /// Colors only; File Tab source views apply font and paragraph attributes.
+    static func highlightedText(for text: String, fileName: String) -> NSAttributedString {
+        let attributed = NSMutableAttributedString(
+            string: text,
+            attributes: [.foregroundColor: NSColor.labelColor]
+        )
         for span in spans(in: text, fileName: fileName) {
-            guard let range = Range(span.range, in: attributed) else { continue }
-            attributed[range].foregroundColor = color(for: span.kind)
+            attributed.addAttribute(
+                .foregroundColor,
+                value: color(for: span.kind),
+                range: NSRange(span.range, in: text)
+            )
         }
-        return attributed
+        return NSAttributedString(attributedString: attributed)
     }
 
     static func tokens(in text: String, fileName: String) -> [FileSyntaxHighlightToken] {
@@ -174,22 +180,22 @@ extension FileSyntaxHighlighter {
         FileSyntaxLanguage(fileName: fileName)
     }
 
-    private static func color(for kind: FileSyntaxHighlightKind) -> Color {
+    private static func color(for kind: FileSyntaxHighlightKind) -> NSColor {
         switch kind {
         case .keyword:
-            return Color(nsColor: .systemPurple)
+            return .systemPurple
         case .literal, .number:
-            return Color(nsColor: .systemOrange)
+            return .systemOrange
         case .string:
-            return Color(nsColor: .systemGreen)
+            return .systemGreen
         case .comment:
-            return Color(nsColor: .secondaryLabelColor)
+            return .secondaryLabelColor
         case .property:
-            return Color(nsColor: .systemBlue)
+            return .systemBlue
         case .typeName:
-            return Color(nsColor: .systemTeal)
+            return .systemTeal
         case .tag:
-            return Color(nsColor: .systemPink)
+            return .systemPink
         }
     }
 

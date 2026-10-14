@@ -196,6 +196,8 @@ selection, or existing Git Preview Tabs.
 9. Opening a file MUST create or reuse a File Tab in the initiating Workspace.
 10. File Tabs MAY render source text, Markdown, native image formats, and SVG source or image preview according to file type and Panel-local controls.
 11. Unsupported, binary, oversized, or failed content MUST show an in-tab state instead of opening another window.
+12. File Tab source display MUST be read-only, selectable text that supports drag selection across lines, Shift-extended selection, Select All, and Copy. Copy MUST place only the selected file text on the pasteboard as plain text, without line numbers. The line-number gutter MUST number only the first visual line of each wrapped source line. Showing source text MUST NOT take keyboard focus until the user clicks into it.
+13. A File Tab context menu MUST offer “Copy File Content”. It MUST read the file's current contents from disk off the main thread, with the same size limit as File Tab loading. Text files and SVG files MUST copy their source text; raster images MUST copy the image. Binary, oversized, or unreadable files MUST beep and leave the pasteboard unchanged. The action MUST NOT change the Selected Workspace, Active Tab, or Focused Pane.
 
 ### Changes View
 

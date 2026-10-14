@@ -543,17 +543,13 @@ struct WorkspaceFileRowUIContractTests {
                 "handle.read(upToCount: maximumFileSize + 1)",
                 "data.contains(0)",
                 "FileSyntaxHighlighter.highlightedText",
-                "GeometryReader { proxy in",
                 "panel.lineWrapEnabled = initialPresentation.lineWrapEnabled",
                 "FilePanelPreparedContent",
-                "sourceContent(preparedContent.sourceLines)",
+                "sourceContent(preparedContent.source)",
                 "MarkdownRenderedView(blocks: preparedContent.markdownBlocks, documentTextSize: documentTextSize)",
-                "Text(String(number))",
-                "ScrollView([.horizontal, .vertical])",
-                ".fixedSize(horizontal: false, vertical: true)",
-                ".fixedSize(horizontal: true, vertical: true)",
-                "minHeight: viewportSize.height",
-                "alignment: .topLeading"
+                "FileSourceTextView(",
+                "wrapsLines: lineWrapEnabled",
+                "fontSize: documentTextSize"
             ], "file tab content rendering")
     }
 }  // swiftlint:disable:this file_length

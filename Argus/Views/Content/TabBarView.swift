@@ -42,6 +42,9 @@ struct TabBarView: View {
                                         renameText = workspace.tabDisplayTitle(for: panelId)
                                         showRenameAlert = true
                                     } : nil,
+                                onCopyFileContent: (panel as? FilePanel).map { filePanel in
+                                    { FilePanelPasteboardContent.copyFileContent(at: filePanel.fileURL) }
+                                },
                                 canMoveLeft: workspace.panelOrder.first != panelId,
                                 canMoveRight: workspace.panelOrder.last != panelId,
                                 onMoveLeft: {
@@ -176,6 +179,7 @@ struct TabItemView: View {
     let isActive: Bool
     let onSelect: () -> Void
     let onRename: (() -> Void)?
+    let onCopyFileContent: (() -> Void)?
     let canMoveLeft: Bool
     let canMoveRight: Bool
     let onMoveLeft: () -> Void
@@ -284,6 +288,9 @@ struct TabItemView: View {
             Button("Close", action: onClose)
             if let onRename {
                 Button("Rename", action: onRename)
+            }
+            if let onCopyFileContent {
+                Button("Copy File Content", action: onCopyFileContent)
             }
         }
     }
