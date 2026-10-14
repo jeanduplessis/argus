@@ -2,6 +2,11 @@
 
 This file records changes pushed for local Argus releases. New entries use a `YYYY-MM-DD` heading and link to their commit or commits.
 
+## 2026-10-14
+
+- You can now select File Tab source text across many lines and copy it. Copy gives plain text without line numbers. Line numbers, syntax highlighting, and line wrap still work. A File Tab's right-click menu also has **Copy File Content**, which copies the file's current text, or the image for image files. ([268aa41](https://github.com/jeanduplessis/argus/commit/268aa413e78d3ee7643cf8ff1fb706612d946dc8))
+- The Right Sidebar has a new **Notes** view. It is a text editor for the Selected Workspace that highlights Markdown as you type. Each Workspace has its own notes. Argus saves notes shortly after you stop typing and when you quit, and restores them after a restart. Closing a Workspace deletes its notes. ([c03c820](https://github.com/jeanduplessis/argus/commit/c03c820fb220e4f775bbc28657a0d462e193e92e))
+
 ## 2026-09-29
 
 - `scripts/build.sh` now builds GhosttyKit automatically when it is missing, instead of failing with a `ghostty.h not found` compiler error. An existing framework is never rebuilt. ([30a0197](https://github.com/jeanduplessis/argus/commit/30a019708971fd4d46ec554439e686f5b50baad9))
