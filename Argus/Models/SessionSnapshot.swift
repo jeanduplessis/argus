@@ -18,6 +18,8 @@ struct WorkspaceSnapshot: Codable, Sendable {
     let panelCount: Int
     let terminalDirectories: [String]
     let terminalCustomTitles: [String?]
+    /// Workspace Notes; `nil` when empty, oversized, or invalid so encoding omits them.
+    let notes: String?
 
     var restoredTerminalDirectories: [String] {
         let total = max(panelCount, 0)
@@ -56,7 +58,8 @@ struct WorkspaceSnapshot: Codable, Sendable {
         currentDirectory: String,
         panelCount: Int,
         terminalDirectories: [String]? = nil,
-        terminalCustomTitles: [String?]? = nil
+        terminalCustomTitles: [String?]? = nil,
+        notes: String? = nil
     ) {
         self.id = id
         self.projectId = projectId
@@ -80,6 +83,7 @@ struct WorkspaceSnapshot: Codable, Sendable {
                 repeating: nil,
                 count: safePanelCount
             )
+        self.notes = notes.flatMap { !$0.isEmpty && WorkspaceNotes.isWithinLimit($0) ? $0 : nil }
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -94,6 +98,7 @@ struct WorkspaceSnapshot: Codable, Sendable {
         case panelCount
         case terminalDirectories
         case terminalCustomTitles
+        case notes
     }
 
     init(from decoder: Decoder) throws {
@@ -116,6 +121,8 @@ struct WorkspaceSnapshot: Codable, Sendable {
         }
         let terminalDirectories = try Self.decodeTerminalDirectories(from: container)
         let terminalCustomTitles = try Self.decodeTerminalCustomTitles(from: container)
+        // Invalid notes are isolated so they never reject the Workspace or snapshot.
+        let notes = (try? container.decodeIfPresent(String.self, forKey: .notes)) ?? nil
 
         self.init(
             id: id,
@@ -128,7 +135,8 @@ struct WorkspaceSnapshot: Codable, Sendable {
             currentDirectory: currentDirectory,
             panelCount: panelCount,
             terminalDirectories: terminalDirectories,
-            terminalCustomTitles: terminalCustomTitles
+            terminalCustomTitles: terminalCustomTitles,
+            notes: notes
         )
     }
 
@@ -270,7 +278,8 @@ private struct SessionSnapshotReconciler {
                 branchName: workspace.branchName, workspaceType: workspace.workspaceType,
                 worktreePath: workspace.worktreePath, title: workspace.title, customTitle: workspace.customTitle,
                 currentDirectory: workspace.currentDirectory, panelCount: workspace.panelCount,
-                terminalDirectories: workspace.terminalDirectories, terminalCustomTitles: workspace.terminalCustomTitles
+                terminalDirectories: workspace.terminalDirectories,
+                terminalCustomTitles: workspace.terminalCustomTitles, notes: workspace.notes
             )
         }
         let workspaceIds = Set(workspaces.map(\.id))

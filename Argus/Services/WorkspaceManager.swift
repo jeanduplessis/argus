@@ -31,6 +31,7 @@ final class WorkspaceManager: ObservableObject {
         didSet {
             if oldValue != selectedWorkspaceId {
                 pendingWorkspaceStackReveal = nil
+                flushWorkspaceNotesCheckpoint()
             }
             notifyWorkspaceContextChanged()
         }
@@ -67,6 +68,10 @@ final class WorkspaceManager: ObservableObject {
     /// Canonical roots reserved through worktree deletion and Workspace state removal.
     @Published var worktreeDeletionRoots: Set<String> = []
     var isStoppingAllWorktreeSetups = false
+
+    /// Debounced Session Snapshot checkpoint for Workspace Notes edits.
+    var workspaceNotesCheckpointTask: Task<Void, Never>?
+    var workspaceNotesCheckpointDelay: Duration = .seconds(1)
 
     /// Provider boundary used only by explicit Pull Request intake.
     let pullRequestService: GitHubPullRequestService

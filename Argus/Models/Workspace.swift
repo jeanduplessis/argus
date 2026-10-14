@@ -148,6 +148,11 @@ final class Workspace: Identifiable, ObservableObject {
     /// Working directory for this workspace (worktree root or standalone dir).
     @Published var currentDirectory: String
 
+    /// Durable plain-text Markdown Workspace Notes. Deliberately not published:
+    /// the Notes View owns live editor text, so keystrokes do not re-render
+    /// Workspace observers. Edit through `WorkspaceManager.setWorkspaceNotes`.
+    var notes = ""
+
     /// Ordered panel IDs defining tab order left-to-right.
     @Published var panelOrder: [UUID] = []
 
@@ -296,6 +301,7 @@ final class Workspace: Identifiable, ObservableObject {
         self.branchName = snapshot.branchName
         self.workspaceType = snapshot.workspaceType
         self.worktreePath = snapshot.worktreePath
+        self.notes = snapshot.notes ?? ""
 
         for (directory, customTitle) in zip(
             snapshot.restoredTerminalDirectories,
@@ -322,7 +328,8 @@ final class Workspace: Identifiable, ObservableObject {
             currentDirectory: currentDirectory,
             panelCount: terminalDirectories.count,
             terminalDirectories: terminalDirectories,
-            terminalCustomTitles: terminalCustomTitlesForSnapshot()
+            terminalCustomTitles: terminalCustomTitlesForSnapshot(),
+            notes: notes
         )
     }
 

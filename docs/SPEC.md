@@ -31,7 +31,7 @@ Argus is a single-user, single-machine application. It has one main Workspace wi
 2. Settings MUST be stored separately from the Session Snapshot.
 3. General settings MUST include:
    - restore previous session;
-   - default Right-sidebar View;
+   - default Right-sidebar View: Files, Changes, or Notes;
    - default directory for a new Standalone Workspace; and
    - whether to keep a Workspace open after its final Terminal Tab closes.
 4. An explicitly supplied Standalone Workspace directory MUST take precedence over the configured default. The configured default MUST take precedence over the user's home directory.
@@ -172,9 +172,10 @@ selection, or existing Git Preview Tabs.
 
 ## Right Sidebar
 
-1. The Right Sidebar MUST contain the Files and Changes Right-sidebar Views.
+1. The Right Sidebar MUST contain the Files, Changes, and Notes Right-sidebar Views, in that order.
 2. Switching Right-sidebar Views MUST NOT change Workspace selection or Active Tab.
 3. Asynchronous results MUST remain associated with the Workspace that initiated them.
+4. Every Right-sidebar View tab MUST remain usable at the 180-point minimum width. When labels do not fit, tabs MUST fall back to icons with help and accessibility labels. The Changes count badge MUST remain visible.
 
 ## Titlebar
 
@@ -266,6 +267,15 @@ selection, or existing Git Preview Tabs.
 3. A completed refresh MUST start an approximately one-second cooldown for ordinary working-tree events.
 4. Git index/object noise that would create feedback loops MUST be suppressed. Configuration, config.worktree, supported parent metadata, packed refs, and relevant HEAD/local/remote reference changes MUST remain refreshable, including sibling administrative metadata. Remote reference and reflog changes MUST remain refreshable for every remote so upstream counts do not become stale.
 5. Relevant branch, ref, and parent-metadata changes received during cooldown MUST be deferred rather than dropped, so displayed branch and Against Base context cannot remain stale.
+
+### Notes View
+
+1. The Notes View MUST show one editable plain-text editor for the Selected Workspace's Workspace Notes across its whole content area. It MUST show placeholder text while the notes are empty.
+2. The editor MUST highlight Markdown syntax live — headings, bold, italic, inline code, fenced code blocks, links, list markers, and blockquotes — without rendering a preview. Stored Workspace Notes MUST remain plain Markdown text.
+3. The editor MUST disable smart quotes, smart dashes, and automatic text replacement, MUST support undo, and MUST use the document text size and the focus-aware content background. Undo history MUST NOT cross Workspaces.
+4. Workspace Notes MUST be at most 1 MiB of UTF-8 per Workspace. The editor MUST refuse an edit that would exceed this limit and beep.
+5. Changing the Selected Workspace MUST show that Workspace's notes. Edits MUST remain associated with the Workspace that produced them and MUST NOT mix text between Workspaces.
+6. The Notes View MUST NOT show the refresh button or a progress indicator. Showing it MUST NOT take keyboard focus until the user clicks into the editor.
 
 ## Git worktrees
 
@@ -398,14 +408,14 @@ selection, or existing Git Preview Tabs.
 
 1. Production MUST write schema-2 JSON to `~/Library/Application Support/Argus/session-v2.json`. Test instances MUST still default to the temporary per-process `Argus/TestSessions/<pid>/session.json`; a caller-supplied URL MUST take precedence and MUST NOT fall back to production legacy state.
 2. Only when the new destination is absent MAY Argus import schema-1 `session.json`. Import MUST preserve that source byte-for-byte as the downgrade backup and synchronously checkpoint converted state at the new destination. Existing corrupt or incompatible new-format state MUST NOT trigger legacy reimport. A failed initial write MUST preserve loaded content and legacy bytes; subsequent saves MAY retry the new-format checkpoint. Old/new edits MUST NOT be merged automatically.
-3. Snapshots with no Workspaces or more than 128 Workspaces MUST be rejected. A Workspace with zero persisted Terminal Panels is valid. Core identity and resource bounds MUST remain enforced; malformed optional placement MUST be isolated.
+3. Snapshots with no Workspaces or more than 128 Workspaces MUST be rejected. A Workspace with zero persisted Terminal Panels is valid. Core identity and resource bounds MUST remain enforced; malformed optional placement MUST be isolated. Missing Workspace Notes MUST restore as empty notes. Oversized or invalid Workspace Notes MUST be dropped for that Workspace only, without rejecting the snapshot or other Workspace data.
 4. Conversion MUST preserve Project, Workspace, and Collection UUIDs, repository configuration including setup consent, Workspace Roots, selected ID, Terminal metadata, and zero-Panel behavior. Old Project-based Collections MUST expand reconciled Project manual member order. Ungrouped Projects precede legacy Catch-all Workspaces. Synthetic associations MUST become nil. Stale/missing placement MUST reconcile deterministically without creating a runtime Catch-all.
 5. Project snapshots MUST persist repository identity/configuration without owning Workspace placement. Collection and ungrouped state MUST persist ordered Workspace IDs and section-local repository/Stack disclosure, seeded from legacy Project disclosure on import. Empty repositories and Collections MUST survive restoration. Discovered navigation state MUST remain runtime-only.
-6. Workspace snapshots MUST include Workspace identity and type, Project association, branch and worktree metadata, Workspace Root, display title, the count used to reconstruct Terminal Panels, terminal custom titles, and per-terminal Terminal Working Directories.
+6. Workspace snapshots MUST include Workspace identity and type, Project association, branch and worktree metadata, Workspace Root, display title, the count used to reconstruct Terminal Panels, terminal custom titles, per-terminal Terminal Working Directories, and nonempty Workspace Notes. Workspace Notes MUST restore regardless of tab or Panel state, including for an Empty Workspace. Closing a Workspace discards its Workspace Notes with the rest of its state.
 7. Restored Terminal Panels MUST use their last observed Terminal Working Directory as the initial directory.
 8. File Panels, Git Preview Panels, Browser Panels, Release Notes Panels, Worktree Setup Panels and their processes/logs, split layouts, Active Tab, Focused Pane, Git Status Snapshots, Pull Request Status and its provider associations/cache, and Agent Status Entries are runtime-only in v1. A Workspace whose persisted Terminal Panel count is zero MUST restore with no Terminal Panels and nil active state.
-9. Argus MUST synchronously save the Session Snapshot during normal application termination. It MUST also synchronously checkpoint after a user commits a Workspace display-name, Workspace Root, Collection, or Worktree Setup command change, so those changes survive an application crash.
-10. V1 does not provide periodic autosave. Event-driven checkpoints for explicitly user-authored durable changes do not constitute periodic autosave.
+9. Argus MUST synchronously save the Session Snapshot during normal application termination. It MUST also synchronously checkpoint after a user commits a Workspace display-name, Workspace Root, Collection, or Worktree Setup command change, so those changes survive an application crash. Workspace Notes edits MUST checkpoint approximately one second after the last edit, and immediately when the Selected Workspace changes or the Notes View stops editing or disappears.
+10. V1 does not provide periodic autosave. Event-driven checkpoints for explicitly user-authored durable changes, including debounced Workspace Notes checkpoints, do not constitute periodic autosave.
 11. Restore MUST be skipped when disabled in Settings or by the supported test/restore environment overrides.
 
 ## Build and local installation
@@ -425,5 +435,5 @@ selection, or existing Git Preview Tabs.
 - Pi child-session filtering uses the `pi-subagents` package's `PI_SUBAGENT_CHILD` marker, and delegated-work checks use its advertised version-one fleet status API. Other launchers or older packages that do not advertise that API cannot provide delegated-work awareness. Plain Pi sessions retain lifecycle-based completion reporting.
 - Kilo's public extension API cannot prove that every ordinary non-synthetic user message was authored interactively by a person, so completion provenance uses conservative best-effort filtering.
 - Nonterminal Panels, split layout, and current tab/focus state are not restored.
-- Session persistence occurs on normal application termination and after committed Workspace display-name, Workspace Root, Collection, or Worktree Setup command changes; there is no periodic autosave.
+- Session persistence occurs on normal application termination, after committed Workspace display-name, Workspace Root, Collection, or Worktree Setup command changes, and through debounced Workspace Notes checkpoints; there is no periodic autosave. An application crash can lose up to approximately one second of Workspace Notes edits.
 - Worktree ownership is not represented independently from Workspace type.

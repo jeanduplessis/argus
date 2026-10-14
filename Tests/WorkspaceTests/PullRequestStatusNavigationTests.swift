@@ -300,7 +300,8 @@ extension PullRequestStatusNavigationTests {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { $0.hasPrefix("case ") }
             .map { String($0.dropFirst("case ".count)) }
-        #expect(Set(declaredFields) == workspaceFields)
+        // Workspace Notes are durable but omitted from the encoded Workspace while empty.
+        #expect(Set(declaredFields) == workspaceFields.union(["notes"]))
     }
 }
 

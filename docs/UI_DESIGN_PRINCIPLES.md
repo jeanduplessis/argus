@@ -41,7 +41,7 @@ Choose a surface based on the user's task, not implementation convenience.
 | --- | --- | --- |
 | Center workspace tab | Content the user reads, operates on, or returns to | Terminal, browser, file, diff, blame |
 | Left sidebar | Workspace navigation with optional Collection placement and derived repository/Stack blocks | Collections, repositories, Selected Workspace |
-| Right sidebar | Contextual navigation, status, and compact actions | Files, Changes, git operations |
+| Right sidebar | Contextual navigation, status, compact actions, and Workspace Notes | Files, Changes, Notes, git operations |
 | Native Settings | Global application configuration | General, Appearance, Terminal, Files & Changes, Browser |
 | Sheet | Short, bounded workflow requiring completion or cancellation | Create, rename, adopt |
 | Alert | Confirmation or blocking failure requiring a decision | Delete, discard, remove worktree |
@@ -256,6 +256,8 @@ manipulation MUST track the pointer without animation.
 Sidebars are navigators, not alternate content areas. They SHOULD stay compact,
 use full-width rows, and put directories before files at each tree level.
 Disclosure state belongs to the tree row; opening content belongs to a tab.
+The Notes View is the one editing surface: it edits the Selected Workspace's
+Workspace Notes in place and does not open or preview content.
 
 Collection headers MUST preserve the user's entered casing, use semibold primary
 text, and show a disclosure chevron with a subtle trailing horizontal rule. They

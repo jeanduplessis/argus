@@ -2,22 +2,6 @@ import Foundation
 
 @MainActor
 final class AppSettings: ObservableObject {
-    enum RightSidebarView: String, CaseIterable, Identifiable {
-        case files
-        case changes
-
-        var id: String { rawValue }
-
-        var title: String {
-            switch self {
-            case .files:
-                "Files"
-            case .changes:
-                "Changes"
-            }
-        }
-    }
-
     enum InterfaceDensity: String, CaseIterable, Identifiable {
         case compact
         case comfortable
@@ -317,6 +301,27 @@ extension AppSettings.DiffStyle {
         switch self {
         case .split: .split
         case .unified: .unified
+        }
+    }
+}
+
+extension AppSettings {
+    enum RightSidebarView: String, CaseIterable, Identifiable {
+        case files
+        case changes
+        case notes
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .files:
+                "Files"
+            case .changes:
+                "Changes"
+            case .notes:
+                "Notes"
+            }
         }
     }
 }

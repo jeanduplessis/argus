@@ -9,6 +9,8 @@ extension AppSettings.RightSidebarView {
             "doc"
         case .changes:
             "arrow.triangle.branch"
+        case .notes:
+            "note.text"
         }
     }
 }
@@ -40,6 +42,12 @@ struct RightSidebarView: View {
                     .opacity(gitSidebarState.selectedView == .changes ? 1 : 0)
                     .allowsHitTesting(gitSidebarState.selectedView == .changes)
                     .accessibilityHidden(gitSidebarState.selectedView != .changes)
+
+                // Mounted only while selected so hiding the Notes View ends
+                // editing and flushes its pending Workspace Notes checkpoint.
+                if gitSidebarState.selectedView == .notes {
+                    WorkspaceNotesView()
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -51,12 +59,31 @@ struct RightSidebarView: View {
 
     private var header: some View {
         HStack(spacing: 0) {
-            ForEach(AppSettings.RightSidebarView.allCases) { panel in
-                tabButton(panel)
+            // As width shrinks, tabs drop titles first for unselected views,
+            // then for every view, so all tabs stay usable at 180 points.
+            ViewThatFits(in: .horizontal) {
+                tabButtons(titles: .all)
+                tabButtons(titles: .selectedOnly)
+                tabButtons(titles: .none)
             }
 
             Spacer(minLength: 0)
 
+            // Notes have no asynchronous load. Their refresh controls stay
+            // hidden in place so switching views never reflows the tabs.
+            refreshControls
+                .opacity(gitSidebarState.selectedView == .notes ? 0 : 1)
+                .allowsHitTesting(gitSidebarState.selectedView != .notes)
+                .accessibilityHidden(gitSidebarState.selectedView == .notes)
+        }
+        .frame(height: 44)
+        .overlay(alignment: .bottom) {
+            ChromeColors.separator.frame(height: 1)
+        }
+    }
+
+    private var refreshControls: some View {
+        HStack(spacing: 0) {
             ZStack {
                 if gitSidebarState.selectedView == .files, filesViewModel.isRefreshing {
                     ProgressView()
@@ -92,33 +119,55 @@ struct RightSidebarView: View {
             }
             .padding(.trailing, 12)
         }
-        .frame(height: 44)
-        .overlay(alignment: .bottom) {
-            ChromeColors.separator.frame(height: 1)
+    }
+
+    private enum TabTitles {
+        case all
+        case selectedOnly
+        case none
+    }
+
+    private func tabButtons(titles: TabTitles) -> some View {
+        HStack(spacing: 0) {
+            ForEach(AppSettings.RightSidebarView.allCases) { panel in
+                let showsTitle =
+                    switch titles {
+                    case .all: true
+                    case .selectedOnly: panel == gitSidebarState.selectedView
+                    case .none: false
+                    }
+                tabButton(panel, showsTitle: showsTitle)
+            }
         }
     }
 
-    private func tabButton(_ panel: AppSettings.RightSidebarView) -> some View {
+    private func tabButton(_ panel: AppSettings.RightSidebarView, showsTitle: Bool) -> some View {
         let isSelected = gitSidebarState.selectedView == panel
 
         return Button {
             gitSidebarState.selectedView = panel
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: showsTitle ? 8 : 4) {
                 Image(systemName: panel.systemImage)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(isSelected ? Color.primary : Color.secondary)
                     .accessibilityHidden(true)
                     .frame(width: 18)
-                Text(panel.title)
-                    .font(.system(size: appSettings.presentationMetrics.textSize(forBaseSize: 14), weight: .semibold))
+                if showsTitle {
+                    Text(panel.title)
+                        .font(
+                            .system(size: appSettings.presentationMetrics.textSize(forBaseSize: 14), weight: .semibold)
+                        )
+                        .fixedSize()
+                }
 
                 if panel == .changes, let count = changesCount, count > 0 {
                     CountBadge(count: count, prominent: isSelected)
+                        .fixedSize()
                 }
             }
             .foregroundColor(isSelected ? .primary : .secondary)
-            .padding(.horizontal, 12)
+            .padding(.horizontal, showsTitle ? 12 : 6)
             .frame(height: 44)
             .background(isSelected ? ChromeColors.activeTabFill : Color.clear)
             .contentShape(Rectangle())
@@ -126,8 +175,14 @@ struct RightSidebarView: View {
         .buttonStyle(.plain)
         .cursor(.pointingHand)
         .help(panel.title)
+        .accessibilityLabel(tabAccessibilityLabel(panel))
         .accessibilityValue(isSelected ? "Selected" : "")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func tabAccessibilityLabel(_ panel: AppSettings.RightSidebarView) -> String {
+        guard panel == .changes, let count = changesCount, count > 0 else { return panel.title }
+        return "\(panel.title), \(count)"
     }
 
     private var isRefreshActive: Bool {
@@ -136,6 +191,8 @@ struct RightSidebarView: View {
             return filesViewModel.isRefreshing
         case .changes:
             return gitStatusViewModel.isRefreshing
+        case .notes:
+            return false
         }
     }
 
@@ -146,6 +203,8 @@ struct RightSidebarView: View {
             return filesRequest != nil
         case .changes:
             return workspaceManager.selectedWorkspace != nil
+        case .notes:
+            return false
         }
     }
 
@@ -170,6 +229,8 @@ struct RightSidebarView: View {
             await refreshFiles()
         case .changes:
             await refreshChanges()
+        case .notes:
+            return
         }
     }
 
