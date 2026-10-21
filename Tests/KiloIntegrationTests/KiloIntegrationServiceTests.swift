@@ -8,7 +8,7 @@ struct KiloIntegrationServiceTests {
 
     @Test
     func enablesJSONCWithCommentsTrailingCommaAndExistingPlugins() throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             try fixture.write(
                 """
                 // Kilo config
@@ -30,7 +30,7 @@ struct KiloIntegrationServiceTests {
 
     @Test
     func enablesJSONCWhoseRootObjectHasATrailingComma() throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             try fixture.write("{\n  \"theme\": \"dark\",\n}\n", named: "tui.jsonc")
 
             let paths = try fixture.service().enable()
@@ -44,7 +44,7 @@ struct KiloIntegrationServiceTests {
 
     @Test
     func disableWithoutManagedArtifactsDoesNotCreateKiloConfiguration() throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             let paths = try fixture.service().disable()
 
             #expect(!FileManager.default.fileExists(atPath: paths.configFile.path))
@@ -55,7 +55,7 @@ struct KiloIntegrationServiceTests {
 
     @Test(arguments: ["1.13.0", "1.13.2"])
     func legacyPluginsDirectoryInstallIsMigratedAndRemoved(_ release: String) throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             let legacyConfig = "{\"plugin\": [\"user.js\", \"\(KiloIntegrationService.legacyPluginDeclaration)\"]}"
             let previousRelease = URL(filePath: #filePath)
                 .deletingLastPathComponent()
@@ -92,7 +92,7 @@ struct KiloIntegrationServiceTests {
 
     @Test
     func unownedLegacyPluginIsLeftInPlace() throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             let service = fixture.service()
             let paths = try service.resolvedPaths()
             try FileManager.default.createDirectory(
@@ -106,7 +106,7 @@ struct KiloIntegrationServiceTests {
 
     @Test
     func pluginPathIsOutsideKiloServerPluginDirectoryAndRelativeToConfig() throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             let paths = try fixture.service().resolvedPaths()
             #expect(paths.pluginFile.deletingLastPathComponent().lastPathComponent == "argus")
             #expect(
@@ -118,7 +118,7 @@ struct KiloIntegrationServiceTests {
 
     @Test
     func repeatedEnableIsIdempotentAndDisablePreservesUserPlugin() throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             try fixture.write("{\n  \"plugin\": [\"user.js\"]\n}\n", named: "tui.json")
             let service = fixture.service()
             let paths = try service.enable()
@@ -135,7 +135,7 @@ struct KiloIntegrationServiceTests {
 
     @Test
     func jsoncWinsWhenBothConfigFilesExist() throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             try fixture.write("{}", named: "tui.json")
             try fixture.write("// preferred\n{}", named: "tui.jsonc")
             let paths = try fixture.service().enable()
@@ -148,7 +148,7 @@ struct KiloIntegrationServiceTests {
 
     @Test
     func malformedConfigurationAndInjectedFailureLeaveArtifactsUntouched() throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             try fixture.write("{ invalid", named: "tui.jsonc")
             #expect(throws: JSONCEditor.Error.self) { try fixture.service().enable() }
             #expect(
@@ -156,8 +156,10 @@ struct KiloIntegrationServiceTests {
             )
 
             try fixture.write("{}", named: "tui.jsonc")
-            let service = fixture.service { point in if point == .stageConfig { throw FixtureError.injected } }
-            #expect(throws: FixtureError.self) { try service.enable() }
+            let service = fixture.service { point in
+                if point == .stageConfig { throw KiloIntegrationFixtureError.injected }
+            }
+            #expect(throws: KiloIntegrationFixtureError.self) { try service.enable() }
             #expect(try String(contentsOf: fixture.root.appendingPathComponent("tui.jsonc"), encoding: .utf8) == "{}")
             #expect(
                 !FileManager.default.fileExists(
@@ -169,7 +171,7 @@ struct KiloIntegrationServiceTests {
 extension KiloIntegrationServiceTests {
     @Test(arguments: ["01", "-01", "+1", ".5", "1.", "NaN", "Infinity", "1e", "1e+", "-"])
     fileprivate func invalidNumbersLeaveConfigurationAndPluginUntouched(_ number: String) throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             let original = "{\"plugin\": [\"\(declaration)\"], \"value\": \(number)}"
             let service = fixture.service()
             let paths = try service.resolvedPaths()
@@ -190,7 +192,7 @@ extension KiloIntegrationServiceTests {
 
     @Test(arguments: ["0", "-0", "1", "-42", "0.5", "-12.34", "1e10", "1E+10", "-1.2e-3"])
     fileprivate func validJSONNumbersSupportEnableAndDisable(_ number: String) throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             try fixture.write("{\"value\": \(number)}", named: "tui.jsonc")
             let service = fixture.service()
             let paths = try service.enable()
@@ -206,7 +208,7 @@ extension KiloIntegrationServiceTests {
 
     @Test(arguments: ["1/* retained */", "true// retained\n", "null/* retained */"])
     fileprivate func adjacentScalarCommentsSupportEnableAndDisable(_ scalar: String) throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             try fixture.write("{\"value\": \(scalar)}", named: "tui.jsonc")
             let service = fixture.service()
             let paths = try service.enable()
@@ -222,7 +224,7 @@ extension KiloIntegrationServiceTests {
 
     @Test(arguments: ["/*", "/* unterminated comment"])
     fileprivate func unterminatedBlockCommentsAfterRootLeaveArtifactsUntouched(_ comment: String) throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             let original = "{\"plugin\": [\"\(declaration)\"]} \(comment)"
             let service = fixture.service()
             let paths = try service.resolvedPaths()
@@ -243,7 +245,7 @@ extension KiloIntegrationServiceTests {
 
     @Test
     fileprivate func unownedPluginIsNeverReplacedOrRemoved() throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             try fixture.write("{\"plugin\": [\"./argus/argus-turn-completed.js\"]}", named: "tui.jsonc")
             let plugin = fixture.root.appendingPathComponent("argus/argus-turn-completed.js")
             try FileManager.default.createDirectory(
@@ -257,7 +259,7 @@ extension KiloIntegrationServiceTests {
 
     @Test(arguments: ["// comment, before managed entry", "/* block comment, before managed entry */"])
     fileprivate func disableRemovesFinalPluginUsingStructuralComma(_ comment: String) throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             try fixture.write(
                 """
                 {
@@ -280,7 +282,7 @@ extension KiloIntegrationServiceTests {
 
     @Test(arguments: ["// comment, before inserted entry", "/* block comment, before inserted entry */"])
     fileprivate func enablePreservesCommentsContainingCommasBeforeManagedEntry(_ comment: String) throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             try fixture.write(
                 """
                 {
@@ -299,7 +301,7 @@ extension KiloIntegrationServiceTests {
 
     @Test
     fileprivate func supportsEscapedUnicodeAndSurrogatePairsInPluginConfiguration() throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             try fixture.write(
                 """
                 {
@@ -335,7 +337,7 @@ extension KiloIntegrationServiceTests {
 
     @Test
     fileprivate func markerPrefixedPluginIsNotOwnedOnEnableOrDisable() throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             try fixture.write("{\"plugin\": [\"./argus/argus-turn-completed.js\"]}", named: "tui.jsonc")
             let plugin = fixture.root.appendingPathComponent("argus/argus-turn-completed.js")
             try FileManager.default.createDirectory(
@@ -352,7 +354,7 @@ extension KiloIntegrationServiceTests {
 
     @Test
     fileprivate func environmentOverrideAndNewConfigUseKiloDirectory() throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             let alternate = fixture.root.appendingPathComponent("alternate")
             let paths = try fixture.service(environment: ["KILO_CONFIG_DIR": alternate.path]).enable()
             #expect(paths.configFile == alternate.appendingPathComponent("tui.jsonc"))
@@ -361,9 +363,9 @@ extension KiloIntegrationServiceTests {
 
     @Test
     fileprivate func injectedLockFailureDoesNotCreateManagedArtifacts() throws {
-        try withFixture { fixture in
-            let service = fixture.service { point in if point == .lock { throw FixtureError.injected } }
-            #expect(throws: FixtureError.self) { try service.enable() }
+        try withKiloIntegrationFixture { fixture in
+            let service = fixture.service { point in if point == .lock { throw KiloIntegrationFixtureError.injected } }
+            #expect(throws: KiloIntegrationFixtureError.self) { try service.enable() }
             #expect(!FileManager.default.fileExists(atPath: fixture.root.appendingPathComponent("tui.jsonc").path))
             #expect(
                 !FileManager.default.fileExists(
@@ -375,63 +377,9 @@ extension KiloIntegrationServiceTests {
     // non-synthetic user message from a human-authored prompt; plugin filtering is best effort.
     @Test
     fileprivate func pluginResourceExistsForInstallation() throws {
-        try withFixture { fixture in
+        try withKiloIntegrationFixture { fixture in
             #expect(FileManager.default.fileExists(atPath: fixture.plugin.path))
         }
     }
 
-}
-
-extension KiloIntegrationServiceTests {
-    @Test
-    fileprivate func pluginBehavioralHarnessPasses() throws {
-        let repositoryRoot = URL(filePath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let harness = repositoryRoot.appendingPathComponent("Tests/KiloIntegrationTests/plugin-events.mjs")
-        let process = Process()
-        process.executableURL = URL(filePath: "/usr/bin/env")
-        process.arguments = ["node", harness.path]
-        process.currentDirectoryURL = repositoryRoot
-        let output = Pipe()
-        process.standardOutput = output
-        process.standardError = output
-
-        try process.run()
-        process.waitUntilExit()
-
-        let result = String(bytes: output.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-        #expect(process.terminationStatus == 0, "plugin-events.mjs failed: \(result)")
-    }
-}
-
-private enum FixtureError: Error { case injected }
-
-private struct Fixture {
-    let root: URL
-    let plugin: URL
-    func write(_ text: String, named: String) throws {
-        try text.write(to: root.appendingPathComponent(named), atomically: true, encoding: .utf8)
-    }
-    func service(environment: [String: String] = [:], inject: ((KiloIntegrationFailurePoint) throws -> Void)? = nil)
-        -> KiloIntegrationService
-    {
-        var environment = environment
-        if environment["KILO_CONFIG_DIR"] == nil {
-            environment["KILO_CONFIG_DIR"] = root.path
-        }
-        return KiloIntegrationService(
-            environment: environment, homeDirectory: root.deletingLastPathComponent(), pluginSourceURL: plugin,
-            injectFailure: inject)
-    }
-}
-
-private func withFixture(_ body: (Fixture) throws -> Void) throws {
-    let root = FileManager.default.temporaryDirectory.appendingPathComponent("argus-kilo-tests-\(UUID().uuidString)")
-    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: root) }
-    let plugin = root.appendingPathComponent("source.js")
-    try "/* Argus-owned Kilo TUI plugin */\nexport default {};\n".write(to: plugin, atomically: true, encoding: .utf8)
-    try body(Fixture(root: root, plugin: plugin))
 }

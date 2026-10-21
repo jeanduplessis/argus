@@ -191,16 +191,7 @@ final class KiloIntegrationService: @unchecked Sendable {
         let originalLegacyPlugin = try existingData(at: paths.legacyPluginFile).flatMap {
             try isOwnedPlugin($0) ? $0 : nil
         }
-        let originalText = originalConfig.flatMap { String(data: $0, encoding: .utf8) } ?? "{}\n"
-        guard originalConfig == nil || String(data: originalConfig!, encoding: .utf8) != nil else {
-            throw KiloIntegrationError.invalidConfiguration("not UTF-8")
-        }
-        let withoutLegacy = try JSONCEditor.edit(
-            originalText, declaration: Self.legacyPluginDeclaration, operation: .disable)
-        let edited = try JSONCEditor.edit(
-            withoutLegacy, declaration: Self.pluginDeclaration, operation: update == .enable ? .enable : .disable)
-        // Structural validation.
-        _ = try JSONCEditor.edit(edited, declaration: Self.pluginDeclaration, operation: .disable)
+        let edited = try editedConfiguration(originalConfig, for: update)
 
         do {
             if update == .enable {
@@ -229,6 +220,20 @@ final class KiloIntegrationService: @unchecked Sendable {
             throw error
         }
         return paths
+    }
+
+    private func editedConfiguration(_ originalConfig: Data?, for update: Update) throws -> String {
+        let originalText = originalConfig.flatMap { String(data: $0, encoding: .utf8) } ?? "{}\n"
+        guard originalConfig == nil || String(data: originalConfig!, encoding: .utf8) != nil else {
+            throw KiloIntegrationError.invalidConfiguration("not UTF-8")
+        }
+        let withoutLegacy = try JSONCEditor.edit(
+            originalText, declaration: Self.legacyPluginDeclaration, operation: .disable)
+        let edited = try JSONCEditor.edit(
+            withoutLegacy, declaration: Self.pluginDeclaration, operation: update == .enable ? .enable : .disable)
+        // Structural validation.
+        _ = try JSONCEditor.edit(edited, declaration: Self.pluginDeclaration, operation: .disable)
+        return edited
     }
 
     private func acquireIntegrationLock(_ descriptor: Int32) throws {
