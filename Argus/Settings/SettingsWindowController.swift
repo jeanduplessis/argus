@@ -1,19 +1,23 @@
 import AppKit
 import SwiftUI
 
+/// Agent Integration setup models shown in Settings > Agent.
+struct AgentIntegrationModels {
+    let kiloIntegration: KiloIntegrationModel
+    let piIntegration: PiIntegrationModel
+    let claudeCodeIntegration: ClaudeCodeIntegrationModel
+}
+
 @MainActor
 final class SettingsWindowController: NSWindowController, NSToolbarDelegate {
     private let navigation = SettingsNavigationModel()
 
-    init(
-        settings: AppSettings,
-        kiloIntegration: KiloIntegrationModel,
-        piIntegration: PiIntegrationModel
-    ) {
+    init(settings: AppSettings, agentIntegrations: AgentIntegrationModels) {
         let rootView = SettingsView(navigation: navigation)
             .environmentObject(settings)
-            .environmentObject(kiloIntegration)
-            .environmentObject(piIntegration)
+            .environmentObject(agentIntegrations.kiloIntegration)
+            .environmentObject(agentIntegrations.piIntegration)
+            .environmentObject(agentIntegrations.claudeCodeIntegration)
         let contentController = NSHostingController(rootView: rootView)
 
         let window = NSWindow(

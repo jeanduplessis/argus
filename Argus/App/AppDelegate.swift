@@ -16,8 +16,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {  // swiftlint:disable:this 
     private var workspaceCommandRuntime: WorkspaceCommandRuntime?
     private var agentSocketServer: AgentSocketServer?
     private var settings: AppSettings?
-    private var kiloIntegration: KiloIntegrationModel?
-    private var piIntegration: PiIntegrationModel?
+    private var agentIntegrations: AgentIntegrationModels?
     private var settingsWindowController: SettingsWindowController?
 
     // MARK: - NSApplicationDelegate
@@ -48,14 +47,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {  // swiftlint:disable:this 
         startWorkspaceStackObservationsIfReady()
     }
 
-    func configureSettings(
-        settings: AppSettings,
-        kiloIntegration: KiloIntegrationModel,
-        piIntegration: PiIntegrationModel
-    ) {
+    func configureSettings(settings: AppSettings, agentIntegrations: AgentIntegrationModels) {
         self.settings = settings
-        self.kiloIntegration = kiloIntegration
-        self.piIntegration = piIntegration
+        self.agentIntegrations = agentIntegrations
     }
 
     func showSettings() {
@@ -65,13 +59,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {  // swiftlint:disable:this 
             NSApp.activate(ignoringOtherApps: true)
             return
         }
-        guard let settings, let kiloIntegration, let piIntegration else { return }
+        guard let settings, let agentIntegrations else { return }
 
-        let controller = SettingsWindowController(
-            settings: settings,
-            kiloIntegration: kiloIntegration,
-            piIntegration: piIntegration
-        )
+        let controller = SettingsWindowController(settings: settings, agentIntegrations: agentIntegrations)
         settingsWindowController = controller
         controller.showWindow(nil)
         controller.window?.makeKeyAndOrderFront(nil)

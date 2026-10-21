@@ -236,8 +236,17 @@ Pi owns
 (or `~/.pi/agent` when the variable is unset). Existing files owned by another
 program are never replaced or removed.
 
+Claude Code owns only hook handlers whose command is exactly Argus's hook
+command, in `settings.json` under the effective `CLAUDE_CONFIG_DIR` (or
+`~/.claude`). The hooks run `argus agent claude-code-hook`, the bundled
+Companion CLI, so a build without the CLI (an Xcode-only build) refuses to
+enable it. Other settings, their key order, and your own hooks are kept; a
+symlinked `settings.json` stays a link. Settings that are not strict JSON are
+refused without writing.
+
 Restart Kilo sessions after changing the Kilo integration. Restart Pi or use
-`/reload` after changing the Pi integration. Both integrations send requests to
+`/reload` after changing the Pi integration. Restart Claude Code sessions after
+changing the Claude Code integration. All three integrations send requests to
 the app-owned `~/.argus/argus.sock` endpoint, which accepts
 `agent.turnCompleted`, `agent.statusChanged`, and `agent.statusCleared`. The
 same socket serves the Companion CLI's Workspace Commands.
@@ -256,6 +265,26 @@ completion sound or Turn Completion Attention. Completion is reported at the
 next successful main-agent settlement with no active delegated work. An
 advertised status API that is unsupported or fails suppresses completion;
 plain Pi sessions need no subagent package.
+
+The Claude Code hooks need no update after upgrading Argus unless Settings
+shows the integration as not enabled; they always run the bundled CLI of the
+running Argus. Status-only hooks run asynchronously. Stop, StopFailure,
+SessionStart, and SessionEnd run synchronously with a five-second hook timeout;
+the CLI gives up on delivery after one second. Claude Code does not run `Stop`
+after you interrupt it, so the tab stays running until your next prompt,
+permission request, or Claude Code's idle notification.
+
+Try the hook by hand from an Argus terminal; the tab icon turns to needs input:
+
+```sh
+echo '{"hook_event_name":"Notification","notification_type":"permission_prompt"}' \
+  | argus agent claude-code-hook
+echo '{"hook_event_name":"SessionEnd","reason":"other"}' | argus agent claude-code-hook
+```
+
+The second command clears the status again.
+
+`swift test` covers the Claude Code event mapping and socket delivery.
 
 Run the Pi and Kilo lifecycle and socket transport regression tests without launching
 Argus or making model calls:

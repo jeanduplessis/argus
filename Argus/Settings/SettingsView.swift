@@ -45,6 +45,7 @@ struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var kiloIntegration: KiloIntegrationModel
     @EnvironmentObject private var piIntegration: PiIntegrationModel
+    @EnvironmentObject private var claudeCodeIntegration: ClaudeCodeIntegrationModel
 
     var body: some View {
         Group {
@@ -306,6 +307,33 @@ extension SettingsView {
                 Text("Restart running Pi sessions or use /reload after changing this integration.")
                     .foregroundStyle(.secondary)
             }
+
+            Section("Claude Code Integration") {
+                LabeledContent("Status") { Text(claudeCodeStatusTitle) }
+                LabeledContent("Managed settings") {
+                    Text(claudeCodeIntegration.managedSettingsPath)
+                        .font(.system(.body, design: .monospaced))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .help(claudeCodeIntegration.managedSettingsPath)
+                }
+                HStack {
+                    Button("Enable") { claudeCodeIntegration.enable() }
+                        .disabled(
+                            claudeCodeIntegration.status == .busy || claudeCodeIntegration.status == .installed)
+                    Button("Disable") { claudeCodeIntegration.disable() }
+                        .disabled(claudeCodeIntegration.status == .busy)
+                    if claudeCodeIntegration.status == .busy { ProgressView().controlSize(.small) }
+                }
+                if case .failed(let error) = claudeCodeIntegration.status {
+                    Text(error).foregroundStyle(.red)
+                }
+                Text(
+                    "Adds hooks that run the bundled argus command. Restart running Claude Code sessions "
+                        + "after changing this integration."
+                )
+                .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
         .padding()
@@ -324,6 +352,15 @@ extension SettingsView {
         switch piIntegration.status {
         case .unavailable: "Not enabled"
         case .installed: "Enabled — restart or reload Pi sessions required"
+        case .busy: "Updating"
+        case .failed: "Configuration error"
+        }
+    }
+
+    private var claudeCodeStatusTitle: String {
+        switch claudeCodeIntegration.status {
+        case .unavailable: "Not enabled"
+        case .installed: "Enabled — restart Claude Code sessions required"
         case .busy: "Updating"
         case .failed: "Configuration error"
         }

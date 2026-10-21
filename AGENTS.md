@@ -60,7 +60,7 @@ Test-instance session rules:
 Single-process app with two build targets:
 
 1. **Argus** (app) — Xcode project target with Obj-C bridging header for GhosttyKit and a process-wide Socket Server implementing the agent methods and the Companion CLI's Workspace Commands
-2. **argus** (Companion CLI) — SwiftPM-based transport-only client for the Socket Server's Workspace Commands (`workspace.list`, `workspace.create`)
+2. **argus** (Companion CLI) — SwiftPM-based transport-only client for the Socket Server's Workspace Commands (`workspace.list`, `workspace.create`) and the Claude Code hook entry point (`argus agent claude-code-hook`)
 
 ```
 Argus/
@@ -70,7 +70,7 @@ Argus/
   Services/     WorkspaceManager, WorktreeService, GitStatus services,
                 AgentStatusStore, AgentStatusRuntime, AgentSocketServer,
                 WorkspaceCommandRuntime, KiloIntegrationService,
-                PiIntegrationService
+                PiIntegrationService, ClaudeCodeIntegrationService
   Ghostty/      GhosttyApp, TerminalSurface, TerminalView, GhosttyConfig
   Browser/      BrowserPanel, BrowserView
 ArgusIPC/
@@ -90,5 +90,6 @@ ArgusCLI/
 - **Worktrees** stored at `~/.argus/worktrees/<project-uuid>/<branch-slug>/`
 - **Socket Server** — process-wide, app-owned listener at `~/.argus/argus.sock`; it implements `agent.turnCompleted`, `agent.statusChanged`, `agent.statusCleared`, `workspace.list`, and `workspace.create`
 - **Kilo integration** — explicitly installed or removed through Settings; it is independent of the Companion CLI
+- **Claude Code integration** — explicitly installed or removed through Settings as hook entries in Claude Code's `settings.json`; the hooks run the bundled Companion CLI
 - **Workspace Command** — a Companion CLI Socket Request; Argus resolves every Project and Workspace reference and never lets the CLI own domain state
 - **Environment variables** injected into shells: `ARGUS_SOCKET_PATH`, `ARGUS_WORKSPACE_ID`, `ARGUS_SURFACE_ID`, and a `PATH` led by the bundled Companion CLI directory

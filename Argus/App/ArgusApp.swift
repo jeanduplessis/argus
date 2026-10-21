@@ -9,6 +9,7 @@ struct ArgusApp: App {
     @StateObject private var turnCompletionAttentionStore: TurnCompletionAttentionStore
     @StateObject private var kiloIntegration: KiloIntegrationModel
     @StateObject private var piIntegration: PiIntegrationModel
+    @StateObject private var claudeCodeIntegration: ClaudeCodeIntegrationModel
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
@@ -23,8 +24,10 @@ struct ArgusApp: App {
         _turnCompletionAttentionStore = StateObject(wrappedValue: attentionStore)
         let kiloIntegration = KiloIntegrationModel()
         let piIntegration = PiIntegrationModel()
+        let claudeCodeIntegration = ClaudeCodeIntegrationModel()
         _kiloIntegration = StateObject(wrappedValue: kiloIntegration)
         _piIntegration = StateObject(wrappedValue: piIntegration)
+        _claudeCodeIntegration = StateObject(wrappedValue: claudeCodeIntegration)
         let runtime = TurnCompletionRuntime(
             workspaceManager: manager,
             attentionStore: attentionStore,
@@ -46,8 +49,11 @@ struct ArgusApp: App {
         )
         appDelegate.configureSettings(
             settings: settings,
-            kiloIntegration: kiloIntegration,
-            piIntegration: piIntegration
+            agentIntegrations: AgentIntegrationModels(
+                kiloIntegration: kiloIntegration,
+                piIntegration: piIntegration,
+                claudeCodeIntegration: claudeCodeIntegration
+            )
         )
 
         // Initialize GhosttyApp singleton — this triggers ghostty_init and

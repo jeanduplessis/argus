@@ -22,6 +22,7 @@
 		04DCE84FEB30B0CE57BD6213 /* SourceContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEDE6A5A2B6B85C812CEFAC /* SourceContract.swift */; };
 		063B2F813C9D1B216E286880 /* ExternalProcess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 485F571F1FA56170BBCB7BDF /* ExternalProcess.swift */; };
 		06D940FC58CFA264CECE7332 /* LocalBranchPickerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDA50BB27255AFF560A99F86 /* LocalBranchPickerTests.swift */; };
+		070F7117C298432A09B841EB /* ClaudeCodeIntegrationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13BC73E916F9089BDD006E44 /* ClaudeCodeIntegrationServiceTests.swift */; };
 		0A3E6960DEB14D2769E4775A /* ContentAreaView+FilePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD50F7E8079BEC5DEA0DC523 /* ContentAreaView+FilePanel.swift */; };
 		0A9174FAA98F116001D65A47 /* WorkspacePullRequestStatusModel+Requests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E306A62F476E14142539F06 /* WorkspacePullRequestStatusModel+Requests.swift */; };
 		0AD9524D83A220F3109144DA /* ArgusSocketLineBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F61CD808317F709A4E88A5 /* ArgusSocketLineBuffer.swift */; };
@@ -31,6 +32,7 @@
 		0CB71789E21CE29F968F9AEC /* EmptyWorkspaceUIContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D1C8CBCD5980B96C02A3E7 /* EmptyWorkspaceUIContractTests.swift */; };
 		0DE9DF07EE474CAF5F4525BE /* WorkspacePullRequestStatusModel+HostBudget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96EC1387C07FC818EEB2D035 /* WorkspacePullRequestStatusModel+HostBudget.swift */; };
 		0E12DBED45B56CCE6139ADA2 /* GitDiffStatParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31F5743E7A55EE9FBC908770 /* GitDiffStatParserTests.swift */; };
+		0FAC1053E29BDA678B91ADE0 /* ClaudeCodeSettingsEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1814BF48A5A1A079A7B4DFC0 /* ClaudeCodeSettingsEditor.swift */; };
 		104DBD0D752766F49BB55424 /* WorkspaceCommandPayloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D1A3065B0B5364A5D74FAA8 /* WorkspaceCommandPayloads.swift */; };
 		10B09CE9364DF1549BB1A7B2 /* AgentSocketServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53CB9B33F335E72D861FBF52 /* AgentSocketServer.swift */; };
 		119DE14EA5609D09869E6820 /* RightSidebarView+WorkspaceFileModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A5341177B2D47B156B6A161 /* RightSidebarView+WorkspaceFileModels.swift */; };
@@ -224,6 +226,7 @@
 		B04274C27D50C8DF233A77D5 /* StackWorkspaceCreationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF5A5931709FD52185EFBF7A /* StackWorkspaceCreationTests.swift */; };
 		B16BA47DF803A21B3E1A5E37 /* WorkspaceStackPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80EE2E74B39FEB342DB83A41 /* WorkspaceStackPersistenceTests.swift */; };
 		B2244F13024F14AD4518D076 /* RecordedBaseBranchReader+Metadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93B31BE3628269A47AEA562 /* RecordedBaseBranchReader+Metadata.swift */; };
+		B4909A5E17F213A46AA66BCA /* AgentSocketPayloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81ABB0F31E6622473F2B3900 /* AgentSocketPayloads.swift */; };
 		B50B2C4F72FABA84FDBD195C /* PullRequestWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD4D09EA6FAC693CBEC13B64 /* PullRequestWorkspace.swift */; };
 		B59A35BD776DD09F557169D1 /* WorkspaceCommandSetupIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49D1B3C4AB28842A19C16717 /* WorkspaceCommandSetupIntegrationTests.swift */; };
 		B5B9C70020D71F30834C9B8C /* WorkspaceCommandRejectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 925F7CDE6C95D2792B854A22 /* WorkspaceCommandRejectionTests.swift */; };
@@ -315,6 +318,7 @@
 		FA9133A7B329BD1933D7DE64 /* WorktreeProcessOutputReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C59973D1AB55195042E168F /* WorktreeProcessOutputReader.swift */; };
 		FB0D3C8AFA0194B780E21889 /* TerminalPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6799AE81C5533761C5D201 /* TerminalPanel.swift */; };
 		FDAF2BA4BD7232E38852BE37 /* WorkspaceCommandListTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11F757D4A2BF2E70CF7014BE /* WorkspaceCommandListTests.swift */; };
+		FDD83171A81581A7EAE6DC7B /* ClaudeCodeIntegrationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 587B7EE724BD1A829A9E6733 /* ClaudeCodeIntegrationService.swift */; };
 		FEF72267272150104B7A8F3E /* ArgusPiAgentStatusPlugin.js in Resources */ = {isa = PBXBuildFile; fileRef = EB86E7E260A69A54EFC15308 /* ArgusPiAgentStatusPlugin.js */; };
 		FFAE950F38C88E4897FEF00C /* WorktreeSetupManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD2A418CDB3425D339C36B6 /* WorktreeSetupManagerTests.swift */; };
 		FFBDCD8429853973D6C39753 /* AgentStatusStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 916EC158787B40AD0A9CC20D /* AgentStatusStore.swift */; };
@@ -353,12 +357,14 @@
 		125D3A1015BB9B1284254961 /* WorktreeService+PullRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorktreeService+PullRequest.swift"; sourceTree = "<group>"; };
 		131D9C2E0E23FC1E68151005 /* TerminalSurfaceGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSurfaceGeometryTests.swift; sourceTree = "<group>"; };
 		13B8200F602B2E637431B245 /* WorkspaceItemDeletionConfirmation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceItemDeletionConfirmation.swift; sourceTree = "<group>"; };
+		13BC73E916F9089BDD006E44 /* ClaudeCodeIntegrationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCodeIntegrationServiceTests.swift; sourceTree = "<group>"; };
 		13DC35DE5E650C00B845B280 /* GitMetadataWatchPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitMetadataWatchPaths.swift; sourceTree = "<group>"; };
 		15A19A4EF44D78091B016204 /* KiloIntegrationFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KiloIntegrationFixture.swift; sourceTree = "<group>"; };
 		1645605131C8A8280C0D73CC /* ArgusDiffInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArgusDiffInput.swift; sourceTree = "<group>"; };
 		16B9FAB1109B3A420ADD6DC4 /* GitStatusService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusService.swift; sourceTree = "<group>"; };
 		172F49E4DC138F5AEEE1E515 /* MainWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
 		179C29ADF29352FC5DCDACDA /* AgentSocketFraming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSocketFraming.swift; sourceTree = "<group>"; };
+		1814BF48A5A1A079A7B4DFC0 /* ClaudeCodeSettingsEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCodeSettingsEditor.swift; sourceTree = "<group>"; };
 		1852F87E503B25B5EF5630EC /* WorkspaceStackUIContractTests+Creation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspaceStackUIContractTests+Creation.swift"; sourceTree = "<group>"; };
 		18CEC2C4ABBB5016B268EEA9 /* TerminalEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalEnvironment.swift; sourceTree = "<group>"; };
 		1A268687E6FB693A77166E11 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
@@ -438,6 +444,7 @@
 		564CED7FFF04C34E03455980 /* GitStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatus.swift; sourceTree = "<group>"; };
 		57E96BBBDC4C5F3459D8D06F /* AgentStatusRuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentStatusRuntimeTests.swift; sourceTree = "<group>"; };
 		5829E829591A4B9BB28161FD /* GitStatusServiceConcurrencyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatusServiceConcurrencyTests.swift; sourceTree = "<group>"; };
+		587B7EE724BD1A829A9E6733 /* ClaudeCodeIntegrationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCodeIntegrationService.swift; sourceTree = "<group>"; };
 		58D2FD06208386788CD6EAE7 /* RightSidebarSessionStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RightSidebarSessionStateTests.swift; sourceTree = "<group>"; };
 		592791F9F27A74E3630CFBDE /* RunningProcessConfirmationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunningProcessConfirmationView.swift; sourceTree = "<group>"; };
 		5A7DCFCA3143FA38266A9C08 /* RightSidebarView+WorkspaceFilesActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RightSidebarView+WorkspaceFilesActions.swift"; sourceTree = "<group>"; };
@@ -490,6 +497,7 @@
 		7E5CB1EAA0A66B7411EB8C71 /* Panel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panel.swift; sourceTree = "<group>"; };
 		80EE2E74B39FEB342DB83A41 /* WorkspaceStackPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStackPersistenceTests.swift; sourceTree = "<group>"; };
 		80F61CD808317F709A4E88A5 /* ArgusSocketLineBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArgusSocketLineBuffer.swift; sourceTree = "<group>"; };
+		81ABB0F31E6622473F2B3900 /* AgentSocketPayloads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSocketPayloads.swift; sourceTree = "<group>"; };
 		84191554144B687CFE12B3AE /* BranchNameSuggestionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BranchNameSuggestionTests.swift; sourceTree = "<group>"; };
 		84E7834A6BDEE19731655855 /* PullRequestStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PullRequestStatusView.swift; sourceTree = "<group>"; };
 		853A4CD540E21C6486C3F99A /* WorktreeSetupTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeSetupTestSupport.swift; sourceTree = "<group>"; };
@@ -688,6 +696,8 @@
 				53CB9B33F335E72D861FBF52 /* AgentSocketServer.swift */,
 				BE9456CE11D12038D4B1F242 /* AgentStatusRuntime.swift */,
 				916EC158787B40AD0A9CC20D /* AgentStatusStore.swift */,
+				587B7EE724BD1A829A9E6733 /* ClaudeCodeIntegrationService.swift */,
+				1814BF48A5A1A079A7B4DFC0 /* ClaudeCodeSettingsEditor.swift */,
 				485F571F1FA56170BBCB7BDF /* ExternalProcess.swift */,
 				4DB16A21820EB52A4A4D2ABD /* GitDiffStatParser.swift */,
 				10EBB5B9672D03C89A4A05E5 /* GitHubPullRequestService.swift */,
@@ -1038,6 +1048,7 @@
 		66FEA217943576826008CE23 /* ArgusIPC */ = {
 			isa = PBXGroup;
 			children = (
+				81ABB0F31E6622473F2B3900 /* AgentSocketPayloads.swift */,
 				80F61CD808317F709A4E88A5 /* ArgusSocketLineBuffer.swift */,
 				753854D7F099D8497E727D7B /* ArgusSocketProtocol.swift */,
 				5D1A3065B0B5364A5D74FAA8 /* WorkspaceCommandPayloads.swift */,
@@ -1106,6 +1117,14 @@
 				189BC93B4D0838FFEB42D693 /* Titlebar */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		9FEB1EBCDF857288DD95381E /* ClaudeCodeIntegrationTests */ = {
+			isa = PBXGroup;
+			children = (
+				13BC73E916F9089BDD006E44 /* ClaudeCodeIntegrationServiceTests.swift */,
+			);
+			path = ClaudeCodeIntegrationTests;
 			sourceTree = "<group>";
 		};
 		AF471715D166EF51AE46868F /* Ghostty */ = {
@@ -1227,6 +1246,7 @@
 			children = (
 				19671693BEDE8C8CB52914ED /* AgentStatusTests */,
 				C712DC7C337553C36221E9E1 /* BrowserTests */,
+				9FEB1EBCDF857288DD95381E /* ClaudeCodeIntegrationTests */,
 				5A9A933A49AF33D015325453 /* GitStatusTests */,
 				6B9A07E0B337517E94F4C0CD /* KiloIntegrationTests */,
 				68236742397A1CDE1D8CB9B5 /* PiIntegrationTests */,
@@ -1358,6 +1378,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DA8EBDE3D9615CFFC4070291 /* AgentSocketFraming.swift in Sources */,
+				B4909A5E17F213A46AA66BCA /* AgentSocketPayloads.swift in Sources */,
 				0BA0CCB0D419D3E91B7DD0DB /* AgentSocketProtocol.swift in Sources */,
 				10B09CE9364DF1549BB1A7B2 /* AgentSocketServer.swift in Sources */,
 				946582F28CCD417A6C8F33F3 /* AgentStatus.swift in Sources */,
@@ -1376,6 +1397,8 @@
 				DAE90CFBB8856CB435363223 /* ChangeWorkspaceRootSheet.swift in Sources */,
 				9BFCE5E9F8D561CAA0CA6E19 /* ChromeColors.swift in Sources */,
 				7282ACCFE228871782D92156 /* ChromeComponents.swift in Sources */,
+				FDD83171A81581A7EAE6DC7B /* ClaudeCodeIntegrationService.swift in Sources */,
+				0FAC1053E29BDA678B91ADE0 /* ClaudeCodeSettingsEditor.swift in Sources */,
 				ACD06BC90CB63434E5A8F056 /* CloseWorkspaceConfirmationView.swift in Sources */,
 				4574CC99FC01936FB4039E73 /* CollectionNameSheet.swift in Sources */,
 				0A3E6960DEB14D2769E4775A /* ContentAreaView+FilePanel.swift in Sources */,
@@ -1540,6 +1563,7 @@
 				813D2763BDCAD2DEB3EEADF0 /* BrowserPanelTests.swift in Sources */,
 				5A59FFC0BA2E3DDE375850FB /* BrowserPanelUIContractTests.swift in Sources */,
 				17BFCE03C38DDA36E1922CE9 /* BuildScriptTests.swift in Sources */,
+				070F7117C298432A09B841EB /* ClaudeCodeIntegrationServiceTests.swift in Sources */,
 				29C6413C4BF363F461D7F247 /* ClipboardConfirmationTests.swift in Sources */,
 				8A13FAE2D036AA563674A79E /* CloseWorkspaceConfirmationUIContractTests.swift in Sources */,
 				9610F68F0273C22A7C5BA20B /* CurrentBranchDetectionTests.swift in Sources */,
@@ -1825,7 +1849,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 23;
+				CURRENT_PROJECT_VERSION = 24;
 				ENABLE_HARDENED_RUNTIME = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/Frameworks",
@@ -1846,7 +1870,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/Frameworks/GhosttyKit.xcframework/macos-arm64",
 				);
-				MARKETING_VERSION = 1.18.0;
+				MARKETING_VERSION = 1.19.0;
 				OTHER_LDFLAGS = (
 					"-lghostty",
 					"-framework Metal",
@@ -1874,7 +1898,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 23;
+				CURRENT_PROJECT_VERSION = 24;
 				ENABLE_HARDENED_RUNTIME = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/Frameworks",
@@ -1895,7 +1919,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/Frameworks/GhosttyKit.xcframework/macos-arm64",
 				);
-				MARKETING_VERSION = 1.18.0;
+				MARKETING_VERSION = 1.19.0;
 				OTHER_LDFLAGS = (
 					"-lghostty",
 					"-framework Metal",
