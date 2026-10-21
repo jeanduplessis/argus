@@ -2,6 +2,11 @@
 
 This file records changes pushed for local Argus releases. New entries use a `YYYY-MM-DD` heading and link to their commit or commits.
 
+## 2026-10-21
+
+- Released Argus 1.19.0 with a Claude Code integration. Turn it on or off in Settings. It adds hooks to Claude Code's `settings.json` and leaves your other settings and hooks alone. Claude Code sessions in Argus terminals now show live Agent Status (running, needs input, idle, error) and alert you when a turn finishes. Restart running Claude Code sessions after a change. ([9c24f04](https://github.com/jeanduplessis/argus/commit/9c24f0479f8e652b60e904b4535f05da0c640aa6))
+- Split up some Kilo integration code and tests so they pass lint again. Behavior is unchanged. ([bee581f](https://github.com/jeanduplessis/argus/commit/bee581f944e01e1e0e91a179ae46214c5f26dae1))
+
 ## 2026-10-14
 
 - You can now select File Tab source text across many lines and copy it. Copy gives plain text without line numbers. Line numbers, syntax highlighting, and line wrap still work. A File Tab's right-click menu also has **Copy File Content**, which copies the file's current text, or the image for image files. ([268aa41](https://github.com/jeanduplessis/argus/commit/268aa413e78d3ee7643cf8ff1fb706612d946dc8))
