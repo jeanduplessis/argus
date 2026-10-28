@@ -101,8 +101,11 @@ extension GitSidebarView {
         _ summary: GitStatusSummary,
         owner: GitStatusSnapshotOwner
     ) -> some View {
+        // A Change Tree can hold up to the display limit of rows. A lazy stack
+        // builds only the rows in view, so loading a large snapshot does not
+        // block the main thread, even while the Changes View is hidden.
         ScrollView {
-            VStack(spacing: 0) {
+            LazyVStack(spacing: 0) {
                 ForEach(summary.sections) { section in
                     fileSection(
                         GitChangeSectionContent(section: section),

@@ -259,6 +259,7 @@ selection, or existing Git Preview Tabs.
 2. Refreshing the same Workspace and Git Status Root SHOULD preserve loaded content, section and directory expansion, scroll position, selection, and focus. Expansion state MUST remain independent for each Change Section kind.
 3. Expand/collapse-all MUST affect only currently present, available sections.
 4. Accessibility values MUST identify Git File Status and the relevant Working Changes or Against Base context. Unavailable states MUST NOT rely on color alone.
+5. The Changes View MUST build Change Tree rows only as they come into view, including while it is hidden behind another Right-sidebar View, so loading a large Git Status Snapshot does not block the main thread.
 
 ### Automatic Git refresh
 

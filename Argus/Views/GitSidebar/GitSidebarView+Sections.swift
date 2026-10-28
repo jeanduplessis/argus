@@ -63,6 +63,9 @@ struct GitChangeDirectoryRow: View {
 }
 
 extension GitSidebarView {
+    /// Emits the section header and its rows as siblings, not inside a
+    /// container, so the enclosing lazy stack can build each row on demand.
+    @ViewBuilder
     func fileSection(
         _ section: GitChangeSectionContent,
         isExpanded: Binding<Bool>,
@@ -70,23 +73,21 @@ extension GitSidebarView {
     ) -> some View {
         let actions = sectionActions(for: section)
 
-        return VStack(spacing: 0) {
-            fileSectionHeader(section, isExpanded: isExpanded, actions: actions, owner: owner)
-
-            if case .unavailable(let message) = section.state {
-                Text(message)
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.leading)
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 8)
-                    .accessibilityLabel(message)
-            } else if isExpanded.wrappedValue {
-                fileSectionRows(section.files, sectionKind: section.kind, owner: owner)
+        fileSectionHeader(section, isExpanded: isExpanded, actions: actions, owner: owner)
+            .contextMenu {
+                fileSectionContextMenu(section, actions: actions, owner: owner)
             }
-        }
-        .contextMenu {
-            fileSectionContextMenu(section, actions: actions, owner: owner)
+
+        if case .unavailable(let message) = section.state {
+            Text(message)
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.leading)
+                .padding(.horizontal, 32)
+                .padding(.bottom, 8)
+                .accessibilityLabel(message)
+        } else if isExpanded.wrappedValue {
+            fileSectionRows(section.files, sectionKind: section.kind, owner: owner)
         }
     }
 
